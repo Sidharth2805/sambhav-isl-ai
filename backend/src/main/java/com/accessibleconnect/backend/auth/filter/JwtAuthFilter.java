@@ -38,7 +38,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             if (origin != null) {
                 boolean match = false;
                 for (String allowed : allowedOrigins.split(",")) {
-                    if (origin.trim().equals(allowed.trim())) {
+                    if ("*".equals(allowed.trim()) || origin.trim().equalsIgnoreCase(allowed.trim())) {
                         match = true;
                         break;
                     }
