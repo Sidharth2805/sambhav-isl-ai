@@ -57,8 +57,7 @@ services:
         source: /*
         destination: /index.html
     envVars:
+      - key: VITE_API_URL
+        value: https://signbridge-backend-k4k5.onrender.com
       - key: VITE_API_BASE_URL
-        fromService:
-          type: web
-          name: signbridge-backend
-          property: host
+        value: https://signbridge-backend-k4k5.onrender.com
