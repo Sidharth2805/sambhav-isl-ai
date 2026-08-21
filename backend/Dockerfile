@@ -16,10 +16,7 @@ WORKDIR /app
 # Copy built JAR from builder
 COPY --from=builder /app/target/*.jar app.jar
 
-# Expose Spring Boot port
-EXPOSE 8080
-
 # Fast JVM boot optimizations for Render
 ENV JAVA_OPTS="-XX:+TieredCompilation -XX:TieredStopAtLevel=1 -Xms256m -Xmx400m"
 
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Dserver.port=${PORT:-8080} -jar app.jar"]
