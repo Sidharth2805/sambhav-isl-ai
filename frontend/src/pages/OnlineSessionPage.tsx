@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getSession, endSession, getLiveKitToken, startSession, sendFinalTranscript, getTranslationHistory } from '../utils/communicationApi';
 import type { CommunicationSessionDto, LiveKitTokenResponseDto } from '../utils/communicationApi';
@@ -24,6 +24,13 @@ export const OnlineSessionPage: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
   const { user, accessToken } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const incomingSettings = (location.state || {}) as {
+    initialVideo?: boolean;
+    initialAudio?: boolean;
+    initialSpeaker?: number;
+  };
 
   const [session, setSession] = useState<CommunicationSessionDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,10 +39,16 @@ export const OnlineSessionPage: React.FC = () => {
   // LiveKit Connection info state
   const [lkCredentials, setLkCredentials] = useState<LiveKitTokenResponseDto | null>(null);
 
-  // Call Settings UI State
-  const [micEnabled] = useState(true);
-  const [cameraEnabled] = useState(true);
-  const [speakerVolume, setSpeakerVolume] = useState(80);
+  // Call Settings UI State (Respecting pre-call choices: camera default OFF)
+  const [micEnabled] = useState(
+    incomingSettings.initialAudio !== undefined ? incomingSettings.initialAudio : true
+  );
+  const [cameraEnabled] = useState(
+    incomingSettings.initialVideo !== undefined ? incomingSettings.initialVideo : false
+  );
+  const [speakerVolume, setSpeakerVolume] = useState(
+    incomingSettings.initialSpeaker !== undefined ? incomingSettings.initialSpeaker : 80
+  );
   const [showSettings, setShowSettings] = useState(false);
 
   // Connection control states
@@ -279,6 +292,8 @@ export const OnlineSessionPage: React.FC = () => {
           setShowSettings={setShowSettings}
           speakerVolume={speakerVolume}
           setSpeakerVolume={setSpeakerVolume}
+          initialCamera={cameraEnabled}
+          initialMic={micEnabled}
           user={user}
         />
       </LiveKitRoom>
@@ -297,6 +312,8 @@ interface ActiveCallWorkspaceProps {
   setShowSettings: (val: boolean) => void;
   speakerVolume: number;
   setSpeakerVolume: (val: number) => void;
+  initialCamera: boolean;
+  initialMic: boolean;
   user: any;
 }
 
@@ -310,6 +327,8 @@ const ActiveCallWorkspace: React.FC<ActiveCallWorkspaceProps> = ({
   setShowSettings: _setShowSettings,
   speakerVolume: _speakerVolume,
   setSpeakerVolume: _setSpeakerVolume,
+  initialCamera,
+  initialMic,
   user,
 }) => {
   const { localParticipant } = useLocalParticipant();
@@ -436,9 +455,17 @@ const ActiveCallWorkspace: React.FC<ActiveCallWorkspaceProps> = ({
     }
   }, [connectionState, recoverSessionHistory]);
 
-  const [micState, setMicState] = useState(localParticipant?.isMicrophoneEnabled ?? true);
-  const [cameraState, setCameraState] = useState(localParticipant?.isCameraEnabled ?? true);
-  const [screenShareState, setScreenShareState] = useState(localParticipant?.isScreenShareEnabled ?? false);
+  const [micState, setMicState] = useState(initialMic);
+  const [cameraState, setCameraState] = useState(initialCamera);
+  const [screenShareState, setScreenShareState] = useState(false);
+
+  // Synchronize initial hardware tracks when local participant connects
+  useEffect(() => {
+    if (localParticipant) {
+      localParticipant.setCameraEnabled(initialCamera).catch(() => {});
+      localParticipant.setMicrophoneEnabled(initialMic).catch(() => {});
+    }
+  }, [localParticipant, initialCamera, initialMic]);
 
   const { devices: audioDevices, activeDeviceId: activeAudioDeviceId, setActiveMediaDevice: setActiveAudioDevice } = useMediaDeviceSelect({ kind: 'audioinput' });
   const { devices: videoDevices, activeDeviceId: activeVideoDeviceId, setActiveMediaDevice: setActiveVideoDevice } = useMediaDeviceSelect({ kind: 'videoinput' });

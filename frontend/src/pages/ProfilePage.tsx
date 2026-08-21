@@ -3,66 +3,6 @@ import { useAuth } from '../context/AuthContext';
 import { useAccessibility } from '../hooks/useAccessibility';
 import type { FontSize } from '../hooks/useAccessibility';
 
-interface AvatarPreset {
-  id: string;
-  name: string;
-  category: 'male' | 'female' | 'illustrated';
-  url: string;
-}
-
-const DEFAULT_UNISEX_AVATAR = 'https://api.dicebear.com/7.x/bottts-neutral/svg?seed=SignBridge&backgroundColor=b6e3f4,c0aede';
-
-const AVATAR_PRESETS: AvatarPreset[] = [
-  {
-    id: 'default',
-    name: 'Default (Neutral)',
-    category: 'illustrated',
-    url: DEFAULT_UNISEX_AVATAR,
-  },
-  {
-    id: 'i1',
-    name: 'Aria (Adventurer)',
-    category: 'illustrated',
-    url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Aria',
-  },
-  {
-    id: 'i2',
-    name: 'Leo (Explorer)',
-    category: 'illustrated',
-    url: 'https://api.dicebear.com/7.x/adventurer/svg?seed=Leo',
-  },
-  {
-    id: 'i3',
-    name: 'Cyber Bot',
-    category: 'illustrated',
-    url: 'https://api.dicebear.com/7.x/bottts/svg?seed=Felix',
-  },
-  {
-    id: 'i4',
-    name: 'Geometric Minimal',
-    category: 'illustrated',
-    url: 'https://api.dicebear.com/7.x/shapes/svg?seed=Sambhav',
-  },
-  {
-    id: 'i5',
-    name: 'Pixel Neutral',
-    category: 'illustrated',
-    url: 'https://api.dicebear.com/7.x/bottts-neutral/svg?seed=SAMBHAV&backgroundColor=d1d4f9',
-  },
-  {
-    id: 'i6',
-    name: 'Abstract Shape',
-    category: 'illustrated',
-    url: 'https://api.dicebear.com/7.x/shapes/svg?seed=ISL2026&backgroundColor=ffd5dc',
-  },
-  {
-    id: 'i7',
-    name: 'Initials Style',
-    category: 'illustrated',
-    url: 'https://api.dicebear.com/7.x/initials/svg?seed=SB&backgroundColor=4046a8&fontColor=ffffff',
-  },
-];
-
 export const ProfilePage: React.FC = () => {
   const { user, updateUserName, updateUserAvatar, updateUserProfile } = useAuth();
   const { fontSize, setFontSize, theme, toggleTheme } = useAccessibility();
@@ -73,8 +13,7 @@ export const ProfilePage: React.FC = () => {
   const [nameSuccess, setNameSuccess] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
 
-  // Avatar filter tab — illustrated only
-  const [avatarTab, setAvatarTab] = useState<'all' | 'illustrated'>('all');
+  // Avatar states
   const [avatarSuccess, setAvatarSuccess] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -90,8 +29,9 @@ export const ProfilePage: React.FC = () => {
   const [prefError, setPrefError] = useState<string | null>(null);
   const [prefSuccess, setPrefSuccess] = useState<string | null>(null);
 
-  const currentAvatar = user?.avatarUrl || DEFAULT_UNISEX_AVATAR;
-
+  // Live dynamic initial based on entered name
+  const liveInitial = (name || user?.name || 'U').trim().charAt(0).toUpperCase();
+  const customAvatarUrl = user?.avatarUrl;
 
   // Handle Name update
   const handleSaveName = async (e: React.FormEvent) => {
@@ -115,17 +55,6 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
-  // Handle Avatar preset selection
-  const handleSelectAvatar = async (url: string) => {
-    try {
-      await updateUserAvatar(url);
-      setAvatarSuccess('Profile photo updated successfully!');
-      setTimeout(() => setAvatarSuccess(null), 3000);
-    } catch (err) {
-      // Ignored
-    }
-  };
-
   // Handle custom photo upload
   const handleCustomFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -145,6 +74,13 @@ export const ProfilePage: React.FC = () => {
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  // Reset back to initial letter
+  const handleRemovePhoto = async () => {
+    await updateUserAvatar('');
+    setAvatarSuccess('Profile photo reset to default name initial!');
+    setTimeout(() => setAvatarSuccess(null), 3000);
   };
 
   const handleNeedToggle = (need: string) => {
@@ -199,10 +135,6 @@ export const ProfilePage: React.FC = () => {
     }
   };
 
-  const filteredAvatars = avatarTab === 'all' 
-    ? AVATAR_PRESETS 
-    : AVATAR_PRESETS.filter((a) => a.category === avatarTab);
-
   return (
     <div className="flex flex-col gap-8 w-full max-w-5xl mx-auto animate-fadeIn font-['Inter',sans-serif]">
       
@@ -217,7 +149,7 @@ export const ProfilePage: React.FC = () => {
               Profile &amp; Settings
             </h1>
             <p className="text-xs sm:text-sm text-[#45474c] dark:text-[#c1c6d7] mt-0.5">
-              Customize your public profile, select your personal avatar, and adjust accessibility presets.
+              Customize your public profile, update your profile image, and adjust accessibility presets.
             </p>
           </div>
         </div>
@@ -226,16 +158,16 @@ export const ProfilePage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
         {/* ========================================================================= */}
-        {/* LEFT COLUMN: AVATAR SELECTION & ACCOUNT DETAILS (7 COLS)                 */}
+        {/* LEFT COLUMN: PROFILE PHOTO & ACCOUNT DETAILS (7 COLS)                     */}
         {/* ========================================================================= */}
         <div className="lg:col-span-7 flex flex-col gap-6">
           
-          {/* SECTION 1: PROFILE PHOTO & AVATAR PICKER */}
+          {/* SECTION 1: PROFILE PHOTO */}
           <section className="bg-white dark:bg-[#1a202c] rounded-[24px] p-6 border border-[#e0e3e5] dark:border-[#2d3133] shadow-xs flex flex-col gap-5">
             <div className="flex items-center justify-between border-b border-[#e0e3e5] dark:border-[#2d3133] pb-3">
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#fe9832] text-[22px]">face</span>
-                <h2 className="text-base font-bold text-[#030813] dark:text-white">Profile Photo &amp; Avatar</h2>
+                <span className="material-symbols-outlined text-[#fe9832] text-[22px]">account_circle</span>
+                <h2 className="text-base font-bold text-[#030813] dark:text-white">Profile Photo</h2>
               </div>
               <span className="text-[11px] text-[#45474c] dark:text-[#828796]">Displayed across sidebar &amp; calls</span>
             </div>
@@ -247,25 +179,49 @@ export const ProfilePage: React.FC = () => {
               </div>
             )}
 
-            {/* Current Active Avatar Preview & Upload */}
-            <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-2xl bg-[#f7fafc] dark:bg-[#0d121d] border border-[#e0e3e5] dark:border-[#2d3133]">
-              <div className="relative group">
-                <img
-                  src={currentAvatar}
-                  alt={user?.name || 'Active Avatar'}
-                  className="w-20 h-20 rounded-full object-cover border-4 border-white dark:border-[#1a202c] shadow-md ring-2 ring-[#fe9832]"
-                />
-                <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                  <span className="material-symbols-outlined text-white text-[20px]">photo_camera</span>
-                </div>
+            {/* Profile Avatar Card */}
+            <div className="flex flex-col sm:flex-row items-center gap-5 p-5 rounded-2xl bg-[#f7fafc] dark:bg-[#0d121d] border border-[#e0e3e5] dark:border-[#2d3133]">
+              
+              {/* Avatar Circle Preview (Custom Photo or Live Dynamic Name Initial) */}
+              <div className="relative group shrink-0">
+                {customAvatarUrl ? (
+                  <img
+                    src={customAvatarUrl}
+                    alt={name || user?.name || 'Profile'}
+                    className="w-20 h-20 rounded-full object-cover border-4 border-white dark:border-[#1a202c] shadow-md ring-2 ring-[#fe9832]"
+                  />
+                ) : (
+                  <div
+                    className="w-20 h-20 rounded-full bg-gradient-to-br from-[#fe9832] via-[#e8872b] to-[#012700] text-white flex items-center justify-center font-black text-3xl border-4 border-white dark:border-[#1a202c] shadow-md ring-2 ring-[#fe9832] select-none tracking-tight transition-all"
+                  >
+                    {liveInitial}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer text-white"
+                  title="Upload profile photo"
+                >
+                  <span className="material-symbols-outlined text-[22px]">photo_camera</span>
+                </button>
               </div>
 
-              <div className="flex flex-col items-center sm:items-start text-center sm:text-left gap-1 flex-1">
-                <p className="text-xs font-bold text-[#030813] dark:text-white">Active Avatar</p>
-                <p className="text-[11px] text-[#45474c] dark:text-[#828796]">
-                  Select from illustrated avatar presets below, or upload your own custom photo.
-                </p>
-                <div className="flex items-center gap-2 mt-1">
+              {/* Photo Description & Single Upload Action */}
+              <div className="flex flex-col items-center sm:items-start text-center sm:text-left gap-1.5 flex-1">
+                <div>
+                  <p className="text-sm font-bold text-[#030813] dark:text-white">
+                    {customAvatarUrl ? 'Custom Profile Photo' : `Default Initial Avatar (${liveInitial})`}
+                  </p>
+                  <p className="text-xs text-[#45474c] dark:text-[#828796] mt-0.5">
+                    {customAvatarUrl
+                      ? 'You have uploaded a custom profile picture.'
+                      : 'By default, your profile picture shows the first letter of your name. It updates dynamically as you change your name.'}
+                  </p>
+                </div>
+
+                <div className="flex items-center flex-wrap gap-2.5 mt-2">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -276,73 +232,24 @@ export const ProfilePage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="px-3 py-1.5 bg-white dark:bg-[#1a202c] border border-[#c6c6cc] dark:border-[#2d3133] hover:border-[#fe9832] text-[#030813] dark:text-white rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 cursor-pointer transition-all hover:-translate-y-0.5"
+                    className="px-3.5 py-2 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 cursor-pointer transition-all hover:-translate-y-0.5"
                   >
                     <span className="material-symbols-outlined text-[16px]">upload</span>
-                    <span>Upload Custom Photo</span>
+                    <span>Upload Image</span>
                   </button>
+
+                  {customAvatarUrl && (
+                    <button
+                      type="button"
+                      onClick={handleRemovePhoto}
+                      className="px-3 py-2 bg-white dark:bg-[#1a202c] border border-[#c6c6cc] dark:border-[#2d3133] hover:border-red-500 text-red-600 dark:text-red-400 rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1 cursor-pointer transition-all hover:-translate-y-0.5"
+                    >
+                      <span className="material-symbols-outlined text-[15px]">delete</span>
+                      <span>Remove &amp; Use Initial</span>
+                    </button>
+                  )}
                 </div>
               </div>
-            </div>
-
-            {/* Avatar Category Filters */}
-            <div className="flex items-center gap-1.5 p-1 bg-[#f1f4f6] dark:bg-[#0d121d] rounded-xl border border-[#e0e3e5] dark:border-[#2d3133] text-xs font-semibold overflow-x-auto">
-              <button
-                type="button"
-                onClick={() => setAvatarTab('all')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  avatarTab === 'all'
-                    ? 'bg-white dark:bg-[#1a202c] text-[#030813] dark:text-white shadow-xs font-bold'
-                    : 'text-[#45474c] dark:text-[#828796] hover:text-[#030813]'
-                }`}
-              >
-                All Presets
-              </button>
-              <button
-                type="button"
-                onClick={() => setAvatarTab('illustrated')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
-                  avatarTab === 'illustrated'
-                    ? 'bg-white dark:bg-[#1a202c] text-[#030813] dark:text-white shadow-xs font-bold'
-                    : 'text-[#45474c] dark:text-[#828796] hover:text-[#030813]'
-                }`}
-              >
-                <span>✨ Illustrated</span>
-              </button>
-            </div>
-
-
-            {/* Avatar Preset Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {filteredAvatars.map((preset) => {
-                const isSelected = currentAvatar === preset.url;
-                return (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => handleSelectAvatar(preset.url)}
-                    className={`relative flex flex-col items-center gap-2 p-3 rounded-2xl border cursor-pointer transition-all ${
-                      isSelected
-                        ? 'border-[#fe9832] bg-[#fe9832]/10 shadow-sm ring-2 ring-[#fe9832]'
-                        : 'border-[#e0e3e5] dark:border-[#2d3133] bg-[#f7fafc] dark:bg-[#0d121d] hover:border-[#fe9832] hover:-translate-y-0.5'
-                    }`}
-                  >
-                    {isSelected && (
-                      <div className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-[#fe9832] text-white flex items-center justify-center shadow-xs">
-                        <span className="material-symbols-outlined text-[14px]">check</span>
-                      </div>
-                    )}
-                    <img
-                      src={preset.url}
-                      alt={preset.name}
-                      className="w-14 h-14 rounded-full object-cover border-2 border-white dark:border-[#1a202c] shadow-xs"
-                    />
-                    <span className="text-[11px] font-bold text-[#030813] dark:text-white text-center truncate w-full">
-                      {preset.name}
-                    </span>
-                  </button>
-                );
-              })}
             </div>
           </section>
 

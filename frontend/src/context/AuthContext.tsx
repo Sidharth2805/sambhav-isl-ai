@@ -33,8 +33,6 @@ interface AuthContextType {
   updateUserAvatar: (avatarUrl: string) => Promise<void>;
 }
 
-const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80';
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -42,10 +40,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [initializing, setInitializing] = useState<boolean>(true);
 
-  // Helper to load stored avatar
+  // Helper to load stored custom avatar
   const getStoredAvatar = (userIdOrEmail?: string) => {
-    if (!userIdOrEmail) return localStorage.getItem('sambhav_current_avatar') || DEFAULT_AVATAR;
-    return localStorage.getItem(`sambhav_avatar_${userIdOrEmail}`) || localStorage.getItem('sambhav_current_avatar') || DEFAULT_AVATAR;
+    if (!userIdOrEmail) return localStorage.getItem('sambhav_current_avatar') || '';
+    return localStorage.getItem(`sambhav_avatar_${userIdOrEmail}`) || localStorage.getItem('sambhav_current_avatar') || '';
   };
 
   // Attempt token refresh on app mount (browser refresh restore)

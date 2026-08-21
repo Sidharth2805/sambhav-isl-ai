@@ -117,11 +117,17 @@ export const AppLayout: React.FC = () => {
         <div className="md:hidden fixed inset-0 top-16 bg-[#f1f4f6] dark:bg-[#0d121d] z-40 p-4 flex flex-col gap-2 overflow-y-auto">
           {/* User profile info */}
           <div className="flex items-center gap-3 p-3 bg-[#e0e3e5] dark:bg-[#1a202c] rounded-xl mb-2">
-            <img
-              className="w-10 h-10 rounded-full object-cover border-2 border-white dark:border-white/20 shadow-sm shrink-0"
-              src={user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-              alt={userName}
-            />
+            {user?.avatarUrl ? (
+              <img
+                className="w-10 h-10 rounded-full object-cover border-2 border-white dark:border-white/20 shadow-sm shrink-0"
+                src={user.avatarUrl}
+                alt={userName}
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#fe9832] via-[#e8872b] to-[#012700] text-white flex items-center justify-center font-bold text-sm border-2 border-white dark:border-white/20 shadow-sm shrink-0 select-none">
+                {(userName || 'U').trim().charAt(0).toUpperCase()}
+              </div>
+            )}
             <div>
               <p className="font-bold text-sm text-[#030813] dark:text-white">{userName}</p>
               <p className="text-xs text-[#45474c] dark:text-[#828796]">{user?.accountType || 'User Profile'}</p>
@@ -210,11 +216,17 @@ export const AppLayout: React.FC = () => {
             className="flex items-center gap-3 px-3 py-2.5 mb-3 bg-[#e0e3e5] dark:bg-[#1a202c] hover:bg-[#d6dadc] dark:hover:bg-[#252d3d] rounded-xl mx-1 shadow-sm transition-all group"
             title="Edit Profile & Avatar"
           >
-            <img
-              className="w-9 h-9 rounded-full object-cover border-2 border-white dark:border-white/20 shadow-sm shrink-0 group-hover:ring-2 group-hover:ring-[#fe9832] transition-all"
-              src={user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-              alt={userName}
-            />
+            {user?.avatarUrl ? (
+              <img
+                className="w-9 h-9 rounded-full object-cover border-2 border-white dark:border-white/20 shadow-sm shrink-0 group-hover:ring-2 group-hover:ring-[#fe9832] transition-all"
+                src={user.avatarUrl}
+                alt={userName}
+              />
+            ) : (
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#fe9832] via-[#e8872b] to-[#012700] text-white flex items-center justify-center font-bold text-xs border-2 border-white dark:border-white/20 shadow-sm shrink-0 group-hover:ring-2 group-hover:ring-[#fe9832] transition-all select-none">
+                {(userName || 'U').trim().charAt(0).toUpperCase()}
+              </div>
+            )}
             <div className="flex flex-col truncate flex-1">
               <p className="text-xs font-bold text-[#030813] dark:text-white truncate">{userName}</p>
               <p className="text-[10px] text-[#45474c] dark:text-[#828796] truncate">
@@ -231,11 +243,17 @@ export const AppLayout: React.FC = () => {
             className="flex justify-center mb-3 group"
             title={`${userName} (Edit Profile)`}
           >
-            <img
-              className="w-9 h-9 rounded-full object-cover border-2 border-white dark:border-white/20 shadow-sm group-hover:ring-2 group-hover:ring-[#fe9832] transition-all"
-              src={user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-              alt={userName}
-            />
+            {user?.avatarUrl ? (
+              <img
+                className="w-9 h-9 rounded-full object-cover border-2 border-white dark:border-white/20 shadow-sm group-hover:ring-2 group-hover:ring-[#fe9832] transition-all"
+                src={user.avatarUrl}
+                alt={userName}
+              />
+            ) : (
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#fe9832] via-[#e8872b] to-[#012700] text-white flex items-center justify-center font-bold text-xs border-2 border-white dark:border-white/20 shadow-sm group-hover:ring-2 group-hover:ring-[#fe9832] transition-all select-none">
+                {(userName || 'U').trim().charAt(0).toUpperCase()}
+              </div>
+            )}
           </NavLink>
         )}
 

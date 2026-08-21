@@ -20,8 +20,9 @@ export const CommunicatePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   // Pre-call Hardware Preview
-  const [cameraActive, setCameraActive] = useState(true);
+  const [cameraActive, setCameraActive] = useState(false);
   const [micActive, setMicActive] = useState(true);
+  const [speakerActive, setSpeakerActive] = useState(true);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -163,7 +164,13 @@ export const CommunicatePage: React.FC = () => {
       }
 
       // 3. Navigate directly into Live Call
-      navigate(`/communicate/online/${session.id}`);
+      navigate(`/communicate/online/${session.id}`, {
+        state: {
+          initialVideo: cameraActive,
+          initialAudio: micActive,
+          initialSpeaker: speakerActive ? 80 : 0,
+        },
+      });
     } catch (err: any) {
       console.error('Failed to start call:', err);
 
@@ -235,7 +242,13 @@ export const CommunicatePage: React.FC = () => {
       }
 
       // Navigate into call
-      navigate(`/communicate/online/${session.id}`);
+      navigate(`/communicate/online/${session.id}`, {
+        state: {
+          initialVideo: cameraActive,
+          initialAudio: micActive,
+          initialSpeaker: speakerActive ? 80 : 0,
+        },
+      });
     } catch (err: any) {
       console.error('Failed to join call:', err);
 
@@ -464,17 +477,22 @@ export const CommunicatePage: React.FC = () => {
 
                 <button
                   type="button"
-                  className="w-14 h-14 rounded-full flex items-center justify-center bg-[#2d3133] hover:bg-[#3d4346] text-white transition-all duration-200 shadow-lg hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
-                  aria-label="Speaker volume"
-                  title="Speaker Output"
+                  onClick={() => setSpeakerActive((prev) => !prev)}
+                  className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                    speakerActive
+                      ? 'bg-[#2d3133] hover:bg-[#3d4346] text-white focus:ring-gray-400'
+                      : 'bg-red-600 hover:bg-red-700 text-white focus:ring-red-400 shadow-[0_0_16px_rgba(220,38,38,0.4)]'
+                  }`}
+                  aria-label={speakerActive ? 'Mute speaker' : 'Unmute speaker'}
+                  title={speakerActive ? 'Speaker On' : 'Speaker Muted'}
                 >
                   <span className="material-symbols-outlined text-[22px]">
-                    volume_up
+                    {speakerActive ? 'volume_up' : 'volume_off'}
                   </span>
                 </button>
 
                 <span className="text-[11px] font-semibold text-[#45474c] dark:text-[#828796]">
-                  Speaker
+                  {speakerActive ? 'Speaker' : 'Muted'}
                 </span>
 
               </div>
@@ -825,7 +843,14 @@ export const CommunicatePage: React.FC = () => {
                             type="button"
                             onClick={() =>
                               navigate(
-                                `/communicate/online/${call.id}`
+                                `/communicate/online/${call.id}`,
+                                {
+                                  state: {
+                                    initialVideo: cameraActive,
+                                    initialAudio: micActive,
+                                    initialSpeaker: speakerActive ? 80 : 0,
+                                  },
+                                }
                               )
                             }
                             className="px-2.5 py-1 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] rounded-lg font-bold text-[11px] shadow-sm transition-all"
