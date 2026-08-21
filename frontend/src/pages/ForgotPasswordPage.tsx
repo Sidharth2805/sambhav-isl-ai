@@ -77,8 +77,9 @@ export const ForgotPasswordPage: React.FC = () => {
     try {
       const res = await requestForgotPasswordOtp(email.trim());
       setInfoMessage(res.message || `A verification code was sent to ${email.trim()}`);
-      if (res.debugOtp || res.otp) {
-        setGeneratedOtp(res.debugOtp || res.otp);
+      const anyRes = res as any;
+      if (anyRes?.debugOtp || anyRes?.otp) {
+        setGeneratedOtp(anyRes.debugOtp || anyRes.otp);
       } else {
         setGeneratedOtp(null);
       }
