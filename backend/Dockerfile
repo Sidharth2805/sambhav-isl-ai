@@ -1,27 +1,22 @@
-# Multi-stage build for Spring Boot on Render
-FROM maven:3.9.6-eclipse-temurin-17-alpine AS builder
+# Multi-stage build for Spring Boot on Render (Java 21)
+FROM maven:3.9.6-eclipse-temurin-21-alpine AS builder
 WORKDIR /app
 
-# Copy POM and download dependencies for faster cached rebuilds
+# Copy pom.xml and source code
 COPY pom.xml .
-RUN mvn dependency:go-offline -B
-
-# Copy source code and build the JAR
 COPY src ./src
+
+# Build JAR with skipTests
 RUN mvn clean package -DskipTests
 
-# Runtime stage (lightweight JRE container)
-FROM eclipse-temurin:17-jre-alpine
+# Runtime container (Lightweight Java 21 JRE)
+FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-# Run as non-root user for security
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
-USER appuser
-
-# Copy built JAR from builder stage
+# Copy built JAR from builder
 COPY --from=builder /app/target/*.jar app.jar
 
-# Expose default Spring Boot port
+# Expose Spring Boot port
 EXPOSE 8080
 
 # Fast JVM boot optimizations for Render
