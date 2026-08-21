@@ -17,6 +17,7 @@ export interface UserResponseDto {
   phone?: string;
   accountType: 'COMMON_USER' | 'ACCESSIBILITY_USER' | 'ADMIN';
   enabled: boolean;
+  avatarUrl?: string;
   profile?: AccessibilityProfileDto;
 }
 
@@ -28,7 +29,11 @@ interface AuthContextType {
   logout: () => Promise<void>;
   registerUser: (payload: any) => Promise<any>;
   updateUserProfile: (profilePayload: AccessibilityProfileDto) => Promise<void>;
+  updateUserName: (name: string) => Promise<void>;
+  updateUserAvatar: (avatarUrl: string) => Promise<void>;
 }
+
+const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -36,6 +41,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<UserResponseDto | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [initializing, setInitializing] = useState<boolean>(true);
+
+  // Helper to load stored avatar
+  const getStoredAvatar = (userIdOrEmail?: string) => {
+    if (!userIdOrEmail) return localStorage.getItem('sambhav_current_avatar') || DEFAULT_AVATAR;
+    return localStorage.getItem(`sambhav_avatar_${userIdOrEmail}`) || localStorage.getItem('sambhav_current_avatar') || DEFAULT_AVATAR;
+  };
 
   // Attempt token refresh on app mount (browser refresh restore)
   useEffect(() => {
@@ -48,7 +59,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           // Get user details
           const userData = await apiRequest('/api/auth/me', 'GET', null, freshToken);
-          setUser(userData);
+          const savedAvatar = getStoredAvatar(userData?.email || userData?.id);
+          setUser({
+            ...userData,
+            avatarUrl: savedAvatar,
+          });
         }
       } catch (err) {
         // Safe to ignore on startup; user is simply unauthenticated
@@ -67,7 +82,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // 2. Fetch authenticated user record
     const userData = await apiRequest('/api/auth/me', 'GET', null, token);
-    setUser(userData);
+    const savedAvatar = getStoredAvatar(userData?.email || userData?.id);
+    setUser({
+      ...userData,
+      avatarUrl: savedAvatar,
+    });
   };
 
   const logout = async () => {
@@ -84,6 +103,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const registerUser = async (payload: any) => {
     // Register details. Returns 201 Created but does NOT auto-login.
     return await apiRequest('/api/auth/register', 'POST', payload);
+  };
+
+  const updateUserName = async (newName: string) => {
+    if (!accessToken || !user) return;
+    const updatedUser = await apiRequest('/api/auth/name', 'PUT', { name: newName }, accessToken);
+    setUser((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        name: updatedUser.name || newName,
+      };
+    });
+  };
+
+  const updateUserAvatar = async (avatarUrl: string) => {
+    if (!user) return;
+    localStorage.setItem(`sambhav_avatar_${user.email}`, avatarUrl);
+    localStorage.setItem(`sambhav_avatar_${user.id}`, avatarUrl);
+    localStorage.setItem('sambhav_current_avatar', avatarUrl);
+    setUser((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        avatarUrl,
+      };
+    });
   };
 
   const updateUserProfile = async (profilePayload: AccessibilityProfileDto) => {
@@ -108,6 +153,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         registerUser,
         updateUserProfile,
+        updateUserName,
+        updateUserAvatar,
       }}
     >
       {children}

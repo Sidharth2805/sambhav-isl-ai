@@ -7,6 +7,7 @@ public class TranscriptEvent {
     private String senderName;
     private String senderType; // "COMMON_USER" | "ACCESSIBILITY_USER"
     private String text;
+    @com.fasterxml.jackson.annotation.JsonProperty("isFinal")
     private boolean isFinal;
     private long timestamp;
     private double confidence;
@@ -75,11 +76,17 @@ public class TranscriptEvent {
         this.text = text;
     }
 
+    @com.fasterxml.jackson.annotation.JsonProperty("isFinal")
     public boolean isFinal() {
         return isFinal;
     }
 
+    @com.fasterxml.jackson.annotation.JsonProperty("isFinal")
     public void setFinal(boolean isFinal) {
+        this.isFinal = isFinal;
+    }
+
+    public void setIsFinal(boolean isFinal) {
         this.isFinal = isFinal;
     }
 

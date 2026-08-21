@@ -109,4 +109,60 @@ public class AuthController {
 
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Map<String, Object>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        String otp = authService.generatePasswordResetOtp(request.getEmail());
+        Map<String, Object> body = new HashMap<>();
+        body.put("message", "A 6-digit verification code has been dispatched to " + request.getEmail() + ".");
+        body.put("otp", otp);
+        body.put("debugOtp", otp);
+        return ResponseEntity.ok(body);
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<Map<String, Object>> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        boolean valid = authService.verifyPasswordResetOtp(request.getEmail(), request.getOtp());
+        Map<String, Object> body = new HashMap<>();
+        body.put("valid", valid);
+        body.put("message", "Verification code verified successfully.");
+        return ResponseEntity.ok(body);
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Map<String, String>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPasswordWithOtp(request.getEmail(), request.getOtp(), request.getNewPassword());
+        Map<String, String> body = new HashMap<>();
+        body.put("message", "Password has been successfully updated. You can now sign in.");
+        return ResponseEntity.ok(body);
+    }
+
+    @PutMapping("/name")
+    public ResponseEntity<UserResponse> updateName(@RequestBody Map<String, String> body) {
+        String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String newName = body.get("name");
+        User user = authService.updateName(email, newName);
+        UserResponse response = new UserResponse(
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                user.getPhone(),
+                user.getAccountType(),
+                user.isEnabled()
+        );
+        if (user.getAccountType() == com.accessibleconnect.backend.user.entity.AccountType.ACCESSIBILITY_USER) {
+            profileRepository.findByUserId(user.getId()).ifPresent(profile -> {
+                ProfileResponse profileResponse = new ProfileResponse(
+                        profile.getPreferredLanguage(),
+                        profile.getPreferredSignLanguage(),
+                        profile.getTextSizePreference(),
+                        profile.isHighContrastPreference(),
+                        profile.getCommunicationPreference(),
+                        profile.getNeeds().stream().map(n -> n.getNeedType()).collect(Collectors.toList())
+                );
+                response.setProfile(profileResponse);
+            });
+        }
+        return ResponseEntity.ok(response);
+    }
 }

@@ -3,47 +3,36 @@
 @tailwind utilities;
 
 /* =========================================================================
-   ACCESSIBLE CONNECT - GLOBAL CSS & DESIGN TOKENS
+   SAMBHAV - GLOBAL DESIGN TOKENS & DYNAMIC THEME SYSTEM
    ========================================================================= */
 
 @layer base {
-  /* Default Theme (Light Mode) */
+  /* Default Light Theme */
   :root {
-    --color-bg: #ffffff;        /* Pure White */
-    --color-text: #1a237e;      /* Rich Navy Blue */
-    --color-primary: #1d4ed8;   /* Blue 700 */
-    --color-primary-hover: #1e40af; /* Blue 800 */
-    --color-border: #cbd5e1;    /* Slate 300 */
-    --color-focus-ring: #2563eb; /* Blue 600 */
-    --color-card-bg: #f5f5f5;   /* Very light cool grey */
-    --color-sidebar-bg: #f1f5f9; /* Subtle slate grey */
-    --color-accent: #0284c7;    /* Sky 600 */
+    --color-bg: #f7fafc;
+    --color-text: #181c1e;
+    --color-primary: #fe9832;
+    --color-primary-hover: #e8872b;
+    --color-border: #e0e3e5;
+    --color-focus-ring: #fe9832;
+    --color-card-bg: #ffffff;
+    --color-card-surface: #f1f4f6;
+    --color-sidebar-bg: #f1f4f6;
+    --color-accent: #8f4e00;
   }
 
-  /* Dark Theme */
+  /* Deep Sleek Dark Theme (Reference from Translate & Console Design) */
   .dark {
-    --color-bg: #0f172a;        /* Slate 900 */
-    --color-text: #f8fafc;      /* Slate 50 */
-    --color-primary: #3b82f6;   /* Blue 500 */
-    --color-primary-hover: #60a5fa; /* Blue 400 */
-    --color-border: #334155;    /* Slate 700 */
-    --color-focus-ring: #60a5fa; /* Blue 400 */
-    --color-card-bg: #1e293b;   /* Slate 800 */
-    --color-sidebar-bg: #1e293b;
-    --color-accent: #38bdf8;    /* Sky 400 */
-  }
-
-  /* High Contrast Theme */
-  .high-contrast {
-    --color-bg: #000000;        /* Pure Black */
-    --color-text: #ffffff;      /* Pure White */
-    --color-primary: #ffffff;   /* High Contrast White Border/Button */
-    --color-primary-hover: #ffff00; /* Yellow */
-    --color-border: #ffffff;    /* Solid White borders */
-    --color-focus-ring: #ffff00; /* Neon Yellow focus */
-    --color-card-bg: #000000;   /* Black background */
-    --color-sidebar-bg: #000000;
-    --color-accent: #ffff00;    /* Solid Yellow */
+    --color-bg: #030813;
+    --color-text: #f7fafc;
+    --color-primary: #fe9832;
+    --color-primary-hover: #ffb77a;
+    --color-border: #2d3133;
+    --color-focus-ring: #fe9832;
+    --color-card-bg: #1a202c;
+    --color-card-surface: #181c1e;
+    --color-sidebar-bg: #0d121d;
+    --color-accent: #ffb77a;
   }
 
   /* Font Scaling Options */
@@ -65,14 +54,18 @@
   }
 
   body {
-    @apply bg-bg text-text min-h-screen antialiased;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    min-height: 100vh;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    transition: background-color 0.2s ease, color 0.2s ease;
   }
 
   /* Accessible visible focus states */
   *:focus-visible {
-    outline: 4px solid var(--color-focus-ring) !important;
+    outline: 3px solid #fe9832 !important;
     outline-offset: 2px !important;
+    border-radius: 4px;
   }
 
   /* Respect reduced motion system preference */
@@ -86,33 +79,136 @@
   }
 }
 
-@layer components {
-  /* Common Accessible UI Components */
-  .btn-primary {
-    @apply px-5 py-2.5 bg-primary text-bg font-semibold rounded-md border border-transparent 
-           hover:bg-primaryHover focus:outline-none transition-colors duration-150
-           active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
-  }
-
-  .high-contrast .btn-primary {
-    @apply border-2 border-white bg-black text-white hover:bg-white hover:text-black;
-  }
-
-  .btn-secondary {
-    @apply px-5 py-2.5 bg-transparent text-text font-semibold rounded-md border border-border 
-           hover:bg-cardBg focus:outline-none transition-colors duration-150
-           active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
-  }
-
-  .high-contrast .btn-secondary {
-    @apply border-2 border-white text-white bg-black hover:bg-white hover:text-black;
-  }
-  
-  .card {
-    @apply bg-cardBg border border-border rounded-lg p-6 shadow-sm;
-  }
-
-  .high-contrast .card {
-    @apply border-2 border-white rounded-none shadow-none;
-  }
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
 }
+.material-symbols-outlined.fill {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(150, 150, 150, 0.3);
+  border-radius: 4px;
+}
+
+/* =========================================================================
+   LUXURY LANDING PAGE UTILITIES & FONTS
+   ========================================================================= */
+.font-serif-display {
+  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+}
+
+.luxury-card {
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(180, 83, 9, 0.12);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+}
+
+.dark .luxury-card {
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+}
+
+.luxury-card-dark {
+  background: #020617;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7);
+}
+
+.gold-shimmer-text {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 50%, #92400e 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.dark .gold-shimmer-text {
+  background: linear-gradient(135deg, #fde68a 0%, #f59e0b 50%, #d97706 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* =========================================================================
+   SAMBHAV PASTEL THEME & HERO ANIMATION UTILITIES
+   ========================================================================= */
+.font-headline {
+  font-family: 'Atkinson Hyperlegible Next', 'Inter', sans-serif;
+}
+
+.font-body-lg {
+  font-family: 'Inter', sans-serif;
+}
+
+.font-body-md {
+  font-family: 'Inter', sans-serif;
+}
+
+.hero-bg {
+  background-image: url('/hero-bg.png');
+  background-size: cover;
+  background-position: center right;
+  background-repeat: no-repeat;
+  background-color: #E2E0DC;
+}
+
+.page-bg {
+  background: linear-gradient(135deg, #DCD9D4 0%, #EAE7E2 100%);
+  min-height: 100vh;
+}
+
+.card-shadow {
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+}
+
+.soft-shadow {
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.08);
+}
+
+/* Fluid Hardware-Accelerated Animations */
+.fade-up {
+  opacity: 1;
+  transform: none;
+}
+
+.pulse-btn {
+  will-change: box-shadow;
+  animation: pulseButton 2.5s infinite;
+}
+
+@keyframes pulseButton {
+  0% { box-shadow: 0 0 0 0 rgba(64, 70, 168, 0.4); }
+  70% { box-shadow: 0 0 0 8px rgba(64, 70, 168, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(64, 70, 168, 0); }
+}
+
+/* Flow animation for How It Works */
+.flow-arrow {
+  position: relative;
+  overflow: hidden;
+}
+
+.flow-arrow::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(64, 70, 168, 0.25), transparent);
+  animation: flow 3s infinite;
+}
+
+@keyframes flow {
+  0% { left: -100%; }
+  100% { left: 200%; }
+}
+

@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { naturalSpeech } from '../utils/naturalSpeech';
 
 export function useTextToSpeech() {
   const [speaking, setSpeaking] = useState(false);
@@ -10,39 +11,19 @@ export function useTextToSpeech() {
     }
   }, []);
 
-  const speak = useCallback((text: string, language: string = 'English') => {
-    if (!text || !('speechSynthesis' in window)) return;
+  const speak = useCallback((text: string, _language: string = 'English') => {
+    if (!text || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
-    // Cancel current speech before commencing new
-    window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    
-    // Map human-readable profile language selections to standard BCP 47 codes
-    let langCode = 'en-US';
-    const normalizedLang = language.toLowerCase();
-    if (normalizedLang.includes('hindi')) {
-      langCode = 'hi-IN';
-    } else if (normalizedLang.includes('tamil')) {
-      langCode = 'ta-IN';
-    } else if (normalizedLang.includes('bengali')) {
-      langCode = 'bn-IN';
-    }
-    
-    utterance.lang = langCode;
-
-    utterance.onstart = () => setSpeaking(true);
-    utterance.onend = () => setSpeaking(false);
-    utterance.onerror = () => setSpeaking(false);
-
-    window.speechSynthesis.speak(utterance);
+    setSpeaking(true);
+    naturalSpeech.speak(text, {
+      onEnd: () => setSpeaking(false),
+      onError: () => setSpeaking(false),
+    });
   }, []);
 
   const stop = useCallback(() => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      setSpeaking(false);
-    }
+    naturalSpeech.stop();
+    setSpeaking(false);
   }, []);
 
   return { speak, stop, speaking, supported };

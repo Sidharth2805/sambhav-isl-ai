@@ -5,7 +5,10 @@ import { useAccessibility } from '../../hooks/useAccessibility';
 
 export const AppLayout: React.FC = () => {
   const { logout, user } = useAuth();
-  const { theme, highContrast, toggleTheme, toggleHighContrast } = useAccessibility();
+  const { theme, toggleTheme } = useAccessibility();
+  
+  // Sidebar expanded / mini (collapsed to icons only) state
+  const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
 
@@ -18,38 +21,47 @@ export const AppLayout: React.FC = () => {
     {
       name: 'Dashboard',
       path: '/dashboard',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2v-4zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2v-4z" />
-        </svg>
-      ),
+      icon: 'dashboard',
     },
     {
       name: 'Communicate',
       path: '/communicate',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-        </svg>
-      ),
+      icon: 'forum',
+    },
+    {
+      name: 'Translate',
+      path: '/translate',
+      icon: 'translate',
+    },
+    {
+      name: 'News',
+      path: '/news',
+      icon: 'newspaper',
+    },
+    {
+      name: 'Learn ISL',
+      path: '/learn-isl',
+      icon: 'sign_language',
+    },
+    {
+      name: 'Explore',
+      path: '/explore',
+      icon: 'explore',
     },
     {
       name: 'History',
       path: '/history',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      ),
+      icon: 'history',
     },
     {
       name: 'Profile & Settings',
       path: '/profile',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-        </svg>
-      ),
+      icon: 'settings',
+    },
+    {
+      name: 'Help',
+      path: '/help',
+      icon: 'help',
     },
   ];
 
@@ -57,170 +69,241 @@ export const AppLayout: React.FC = () => {
     navItems.push({
       name: 'Admin Console',
       path: '/admin',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-        </svg>
-      ),
-    });
-    navItems.push({
-      name: 'ISL Catalog',
-      path: '/admin/assets',
-      icon: (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-        </svg>
-      ),
+      icon: 'shield_person',
     });
   }
 
+  const userName = user?.name || 'User';
+
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row bg-bg text-text transition-colors duration-200">
+    <div className="min-h-screen flex bg-[#f7fafc] dark:bg-[#030813] text-[#181c1e] dark:text-[#f7fafc] font-['Inter',sans-serif] selection:bg-[#fe9832] selection:text-[#683700] transition-colors duration-200">
       
-      {/* Mobile Header */}
-      <header className="lg:hidden flex items-center justify-between px-6 py-4 bg-[var(--color-sidebar-bg)] border-b border-border shadow-sm">
+      {/* Mobile Top Header */}
+      <header className="md:hidden fixed top-0 left-0 right-0 h-16 bg-[#f1f4f6] dark:bg-[#0d121d] border-b border-[#e0e3e5] dark:border-[#2d3133] px-4 flex items-center justify-between z-50">
         <div className="flex items-center gap-2">
-          <span className="text-xl font-bold tracking-tight">
-            Sign<span className="text-primary font-extrabold">Bridge</span>
+          <img
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBTg0HBcA_4tr0W91LDkwqOnVSfSNqNLfncEA1PPwyGzu5JLTBXpp_wsXkZjo9tzLvf4KFNyaXk060fIQSGUovqRqh34LlLcrxxAUa5VojHfDfu4jRQJGk6QxnzQbHigwRz16MDMj2DwoCRu_i77QAzKuRLVJ8e2mLUwC7-UvMJ_JB5sui2SpIRfZM5c9yAP4gD3yTYgJBzlXm_PtIyr70gHi3MkHGC95pbUZ_Mid5Kj_my4OpeXflK15WPybnDecsYaov545CM4kLxeQ"
+            alt="SAMBHAV Logo"
+            className="h-8 w-8 rounded-full object-cover"
+          />
+          <span className="text-xl font-bold tracking-tight text-[#030813] dark:text-white">
+            SAM<span className="text-[#fe9832] font-extrabold">BHAV</span>
           </span>
         </div>
-        <div className="flex items-center gap-3">
-          {/* Quick theme control */}
+        <div className="flex items-center gap-2">
           <button
             onClick={toggleTheme}
-            className="p-2 bg-bg border border-border rounded-lg text-sm hover:bg-primary hover:text-bg transition-all"
-            aria-label="Toggle dark mode"
+            className="p-2 rounded-lg border border-[#e0e3e5] dark:border-[#2d3133] bg-white dark:bg-[#1a202c] text-[#181c1e] dark:text-white"
+            title="Toggle theme"
           >
-            {theme === 'light' ? '🌙' : '☀️'}
+            <span className="material-symbols-outlined text-[20px]">
+              {theme === 'dark' ? 'light_mode' : 'dark_mode'}
+            </span>
           </button>
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 border border-border rounded-lg hover:bg-cardBg focus:outline-none"
-            aria-expanded={mobileMenuOpen}
+            className="p-2 rounded-lg border border-[#e0e3e5] dark:border-[#2d3133] bg-white dark:bg-[#1a202c] text-[#181c1e] dark:text-white focus:outline-none"
             aria-label="Toggle navigation menu"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {mobileMenuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-              )}
-            </svg>
+            <span className="material-symbols-outlined text-[24px]">
+              {mobileMenuOpen ? 'close' : 'menu'}
+            </span>
           </button>
         </div>
       </header>
 
-      {/* Mobile Navigation Dropdown */}
+      {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
-        <nav className="lg:hidden flex flex-col gap-2 p-4 bg-[var(--color-sidebar-bg)] border-b border-border" aria-label="Mobile Navigation">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.name}
-              to={item.path}
-              onClick={() => setMobileMenuOpen(false)}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
-                  isActive
-                    ? 'bg-primary text-bg font-bold'
-                    : 'hover:bg-bg'
-                }`
-              }
+        <div className="md:hidden fixed inset-0 top-16 bg-[#f1f4f6] dark:bg-[#0d121d] z-40 p-4 flex flex-col gap-2 overflow-y-auto">
+          {/* User profile info */}
+          <div className="flex items-center gap-3 p-3 bg-[#e0e3e5] dark:bg-[#1a202c] rounded-xl mb-2">
+            <img
+              className="w-10 h-10 rounded-full object-cover border-2 border-white dark:border-white/20 shadow-sm shrink-0"
+              src={user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+              alt={userName}
+            />
+            <div>
+              <p className="font-bold text-sm text-[#030813] dark:text-white">{userName}</p>
+              <p className="text-xs text-[#45474c] dark:text-[#828796]">{user?.accountType || 'User Profile'}</p>
+            </div>
+          </div>
+
+          <nav className="flex flex-col gap-1">
+            {navItems.map((item) => (
+              <NavLink
+                key={item.name}
+                to={item.path}
+                onClick={() => setMobileMenuOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm transition-all ${
+                    isActive
+                      ? 'bg-[#fe9832] text-[#683700] font-bold shadow-sm'
+                      : 'text-[#45474c] dark:text-[#c1c6d7] hover:bg-[#e0e3e5] dark:hover:bg-[#1a202c]'
+                  }`
+                }
+              >
+                <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
+                <span>{item.name}</span>
+              </NavLink>
+            ))}
+          </nav>
+
+          <div className="mt-auto pt-4 border-t border-[#e0e3e5] dark:border-[#2d3133] flex flex-col gap-2">
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all"
             >
-              {item.icon}
-              <span>{item.name}</span>
-            </NavLink>
-          ))}
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 w-full text-left px-4 py-3 rounded-lg text-sm font-semibold hover:bg-red-50 hover:text-red-600 transition-all text-red-500"
-            aria-label="Sign out of account"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            <span>Sign Out</span>
-          </button>
-        </nav>
+              <span className="material-symbols-outlined text-[20px]">logout</span>
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </div>
       )}
 
-      {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex flex-col w-64 bg-[var(--color-sidebar-bg)] border-r border-border p-6 shadow-sm min-h-screen">
-        <div className="flex items-center gap-2 mb-8">
-          <span className="text-2xl font-bold tracking-tight">
-            Sign<span className="text-primary font-extrabold">Bridge</span>
-          </span>
-          <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full font-semibold">
-            V1.0
-          </span>
+      {/* Desktop SideNavBar (Expandable / Collapsible to icons only) */}
+      <aside
+        className={`bg-[#f1f4f6] dark:bg-[#0d121d] text-[#030813] dark:text-white docked left-0 h-full shadow-sm flex-col p-3 gap-2 fixed hidden md:flex overflow-y-auto z-30 border-r border-[#e0e3e5] dark:border-[#2d3133] transition-all duration-300 ${
+          sidebarExpanded ? 'w-64' : 'w-20'
+        }`}
+      >
+        {/* Brand Header with 3-Lines (Hamburger) Toggle */}
+        <div className={`flex items-center py-2 mb-2 ${sidebarExpanded ? 'justify-between px-2' : 'flex-col gap-3 items-center px-0'}`}>
+          {sidebarExpanded ? (
+            <div className="flex items-center gap-2.5 overflow-hidden">
+              <img
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBTg0HBcA_4tr0W91LDkwqOnVSfSNqNLfncEA1PPwyGzu5JLTBXpp_wsXkZjo9tzLvf4KFNyaXk060fIQSGUovqRqh34LlLcrxxAUa5VojHfDfu4jRQJGk6QxnzQbHigwRz16MDMj2DwoCRu_i77QAzKuRLVJ8e2mLUwC7-UvMJ_JB5sui2SpIRfZM5c9yAP4gD3yTYgJBzlXm_PtIyr70gHi3MkHGC95pbUZ_Mid5Kj_my4OpeXflK15WPybnDecsYaov545CM4kLxeQ"
+                alt="SAMBHAV Logo"
+                className="h-9 w-9 rounded-full object-cover shadow-sm shrink-0"
+              />
+              <span className="font-bold text-xl tracking-tight text-[#030813] dark:text-white truncate">
+                SAM<span className="text-[#fe9832] font-extrabold">BHAV</span>
+              </span>
+            </div>
+          ) : (
+            <img
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBTg0HBcA_4tr0W91LDkwqOnVSfSNqNLfncEA1PPwyGzu5JLTBXpp_wsXkZjo9tzLvf4KFNyaXk060fIQSGUovqRqh34LlLcrxxAUa5VojHfDfu4jRQJGk6QxnzQbHigwRz16MDMj2DwoCRu_i77QAzKuRLVJ8e2mLUwC7-UvMJ_JB5sui2SpIRfZM5c9yAP4gD3yTYgJBzlXm_PtIyr70gHi3MkHGC95pbUZ_Mid5Kj_my4OpeXflK15WPybnDecsYaov545CM4kLxeQ"
+              alt="SAMBHAV Logo"
+              className="h-9 w-9 rounded-full object-cover shadow-sm shrink-0"
+            />
+          )}
+
+          {/* 3-Lines Collapse/Expand Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setSidebarExpanded(!sidebarExpanded)}
+            className={`flex items-center justify-center rounded-xl bg-white dark:bg-[#1a202c] border border-[#e0e3e5] dark:border-[#2d3133] hover:border-[#fe9832] text-[#030813] dark:text-white hover:text-[#fe9832] transition-all shadow-sm focus:outline-none ${
+              sidebarExpanded ? 'w-9 h-9' : 'w-11 h-11'
+            }`}
+            title={sidebarExpanded ? 'Collapse to Icons (More screen space)' : 'Expand Sidebar (Show all options)'}
+            aria-label="Toggle navigation view"
+          >
+            <span className="material-symbols-outlined text-[24px]">
+              {sidebarExpanded ? 'menu_open' : 'menu'}
+            </span>
+          </button>
         </div>
 
-        <nav className="flex flex-col gap-1.5 flex-grow" aria-label="Desktop Sidebar Navigation">
+        {/* User Card (Rendered in expanded mode or collapsed mini avatar) */}
+        {sidebarExpanded ? (
+          <NavLink
+            to="/profile"
+            className="flex items-center gap-3 px-3 py-2.5 mb-3 bg-[#e0e3e5] dark:bg-[#1a202c] hover:bg-[#d6dadc] dark:hover:bg-[#252d3d] rounded-xl mx-1 shadow-sm transition-all group"
+            title="Edit Profile & Avatar"
+          >
+            <img
+              className="w-9 h-9 rounded-full object-cover border-2 border-white dark:border-white/20 shadow-sm shrink-0 group-hover:ring-2 group-hover:ring-[#fe9832] transition-all"
+              src={user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+              alt={userName}
+            />
+            <div className="flex flex-col truncate flex-1">
+              <p className="text-xs font-bold text-[#030813] dark:text-white truncate">{userName}</p>
+              <p className="text-[10px] text-[#45474c] dark:text-[#828796] truncate">
+                {user?.accountType === 'ADMIN' ? 'Administrator' : 'User Profile'}
+              </p>
+            </div>
+            <span className="material-symbols-outlined text-[16px] text-gray-400 group-hover:text-[#fe9832] transition-colors">
+              edit
+            </span>
+          </NavLink>
+        ) : (
+          <NavLink
+            to="/profile"
+            className="flex justify-center mb-3 group"
+            title={`${userName} (Edit Profile)`}
+          >
+            <img
+              className="w-9 h-9 rounded-full object-cover border-2 border-white dark:border-white/20 shadow-sm group-hover:ring-2 group-hover:ring-[#fe9832] transition-all"
+              src={user?.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+              alt={userName}
+            />
+          </NavLink>
+        )}
+
+        {/* Navigation Items */}
+        <nav className="flex-1 flex flex-col gap-1 px-1">
           {navItems.map((item) => (
             <NavLink
               key={item.name}
               to={item.path}
+              title={!sidebarExpanded ? item.name : undefined}
               className={({ isActive }) =>
-                `flex items-center gap-3.5 px-4 py-3 rounded-lg text-sm font-bold transition-all ${
+                `flex items-center rounded-xl text-xs font-semibold transition-all duration-200 ${
+                  sidebarExpanded ? 'gap-3 px-3.5 py-2.5 hover:translate-x-1' : 'justify-center py-3'
+                } ${
                   isActive
-                    ? 'bg-primary text-bg font-extrabold shadow-sm'
-                    : 'text-text hover:bg-bg'
+                    ? 'bg-[#fe9832] text-[#683700] font-bold shadow-sm'
+                    : 'text-[#45474c] dark:text-[#c1c6d7] hover:bg-[#e0e3e5] dark:hover:bg-[#1a202c]'
                 }`
               }
             >
-              {item.icon}
-              <span>{item.name}</span>
+              <span className="material-symbols-outlined text-[20px] shrink-0">{item.icon}</span>
+              {sidebarExpanded && <span className="truncate">{item.name}</span>}
             </NavLink>
           ))}
         </nav>
 
-        {/* Sidebar Controls & Footer */}
-        <div className="flex flex-col gap-4 pt-6 border-t border-border mt-auto">
-          {/* Quick Accessibility Toggles */}
-          <div className="flex items-center gap-2" aria-label="Quick Settings">
-            <button
-              onClick={toggleTheme}
-              className="flex-1 px-3 py-2 bg-bg border border-border rounded-lg text-xs font-bold hover:bg-primary hover:text-bg transition-all"
-              aria-label="Toggle theme color"
-            >
-              {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
-            </button>
-            <button
-              onClick={toggleHighContrast}
-              className={`flex-1 px-3 py-2 rounded-lg border text-xs font-bold transition-all focus:outline-none ${
-                highContrast
-                  ? 'bg-yellow-400 text-black border-black font-extrabold'
-                  : 'bg-bg border-border hover:bg-primary hover:text-bg'
-              }`}
-              aria-label="Toggle high contrast layout"
-            >
-              👁️ HC
-            </button>
-          </div>
-
+        {/* Bottom Footer Actions */}
+        <div className="mt-auto px-1 pt-3 pb-2 border-t border-[#e0e3e5] dark:border-[#2d3133] flex flex-col gap-2">
+          
+          {/* Dark / Light Theme Toggle */}
           <button
-            onClick={handleLogout}
-            className="flex items-center gap-3.5 px-4 py-3 rounded-lg text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-600 transition-all text-left"
-            aria-label="Sign out of account"
+            onClick={toggleTheme}
+            className={`w-full py-2 bg-white dark:bg-[#1a202c] border border-[#e0e3e5] dark:border-[#2d3133] rounded-xl text-xs font-semibold text-[#45474c] dark:text-[#c1c6d7] hover:bg-[#e0e3e5] dark:hover:bg-[#2d3133] transition-all flex items-center justify-center gap-2 ${
+              !sidebarExpanded && 'px-0'
+            }`}
+            title="Toggle Light / Dark Mode"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            <span>Sign Out</span>
+            <span className="material-symbols-outlined text-[18px]">
+              {theme === 'dark' ? 'light_mode' : 'dark_mode'}
+            </span>
+            {sidebarExpanded && <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>}
           </button>
 
-          <div className="text-[10px] text-center opacity-60">
-            &copy; 2026 SignBridge AI.
-          </div>
+          {/* Sign Out Button */}
+          <button
+            onClick={handleLogout}
+            className={`w-full flex items-center text-[#45474c] dark:text-[#c1c6d7] hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-colors text-xs font-semibold ${
+              sidebarExpanded ? 'gap-2 px-3.5 py-2.5' : 'justify-center py-2.5'
+            }`}
+            title="Sign Out"
+          >
+            <span className="material-symbols-outlined text-[18px]">logout</span>
+            {sidebarExpanded && <span>Sign Out</span>}
+          </button>
         </div>
       </aside>
 
-      {/* Main Content Scrollable Area */}
-      <main className="flex-grow flex flex-col overflow-y-auto max-h-screen">
-        <div className="flex-grow max-w-6xl w-full mx-auto px-6 py-8 md:py-12">
-          <Outlet />
-        </div>
+      {/* Main Content Area (Dynamically adjusts margin when sidebar is expanded or collapsed) */}
+      <main
+        className={`flex-1 flex flex-col max-w-[1360px] mx-auto w-full px-4 sm:px-8 py-8 md:py-10 min-h-screen pt-20 md:pt-8 transition-all duration-300 ${
+          sidebarExpanded ? 'ml-0 md:ml-64' : 'ml-0 md:ml-20'
+        }`}
+      >
+        <Outlet />
       </main>
+
     </div>
   );
 };
+
 export default AppLayout;

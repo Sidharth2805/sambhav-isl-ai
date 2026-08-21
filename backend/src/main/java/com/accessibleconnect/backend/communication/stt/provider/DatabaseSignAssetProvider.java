@@ -2,6 +2,8 @@ package com.accessibleconnect.backend.communication.stt.provider;
 
 import com.accessibleconnect.backend.communication.stt.dto.AssetStatus;
 import com.accessibleconnect.backend.communication.stt.dto.SignAsset;
+import com.accessibleconnect.backend.communication.stt.dto.VerificationStatus;
+import com.accessibleconnect.backend.communication.stt.dto.StorageStatus;
 import com.accessibleconnect.backend.isl.entity.ISLSignAsset;
 import com.accessibleconnect.backend.isl.repository.ISLSignAssetRepository;
 import org.slf4j.Logger;
@@ -39,8 +41,20 @@ public class DatabaseSignAssetProvider implements SignAssetProvider {
             return null;
         }
 
-        // Dotted sorting is done directly in SQL order by major/minor DESC, so index 0 is the highest version
-        ISLSignAsset selected = assets.get(0);
+        ISLSignAsset selected = null;
+        for (ISLSignAsset a : assets) {
+            if (a.getVerificationStatus() == VerificationStatus.VERIFIED &&
+                a.getStorageStatus() == StorageStatus.AVAILABLE) {
+                selected = a;
+                break;
+            }
+        }
+
+        if (selected == null) {
+            log.warn("[DB Asset Provider] No verified and available active assets found for concept: {}", conceptId);
+            return null;
+        }
+
         log.info("[DB Asset Provider] Resolved highest active version asset: {} (v{}.{})",
                 selected.getConceptId(), selected.getVersionMajor(), selected.getVersionMinor());
 

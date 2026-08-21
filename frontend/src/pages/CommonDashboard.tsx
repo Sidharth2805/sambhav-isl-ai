@@ -134,9 +134,8 @@ export const CommonDashboard: React.FC = () => {
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-border bg-cardBg py-6 px-6 text-center text-xs opacity-75 transition-colors duration-200 mt-auto">
-        <span>&copy; 2026 SignBridge. Incremental Phase 2 MVP</span>
+      <footer className="border-t border-[#e0e3e5] dark:border-[#2d3133] bg-[#f1f4f6] dark:bg-[#0d121d] py-6 px-6 text-center text-xs text-[#45474c] dark:text-[#828796] transition-colors duration-200 mt-auto">
+        <span>&copy; 2026 SAMBHAV. All rights reserved.</span>
       </footer>
     </div>
   );

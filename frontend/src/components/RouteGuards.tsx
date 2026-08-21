@@ -85,6 +85,10 @@ export const DashboardRouteDirector: React.FC = () => {
     return <Navigate to="/login" replace />;
   }
 
+  if (user.accountType === 'ADMIN') {
+    return <Navigate to="/admin" replace />;
+  }
+
   if (user.accountType === 'ACCESSIBILITY_USER') {
     return <Navigate to="/accessibility-dashboard" replace />;
   }

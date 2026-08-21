@@ -224,7 +224,12 @@ public class ISLSignAssetServiceImpl implements ISLSignAssetService {
         }
 
         // Playback checks: non-admins can only play ACTIVE + VERIFIED + AVAILABLE assets
-        boolean isAdmin = principal != null && principal.toString().contains("ROLE_ADMIN");
+        boolean isAdmin = false;
+        org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null) {
+            isAdmin = auth.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        }
         if (!isAdmin && (asset.getStatus() != AssetStatus.ACTIVE || asset.getVerificationStatus() != VerificationStatus.VERIFIED)) {
             log.warn("[Security Violation] Unauthorised user requested playback URL for unverified asset: {}", id);
             throw new SecurityException("Access to unverified media is restricted");

@@ -41,8 +41,21 @@ export async function apiRequest(
   const data = text ? JSON.parse(text) : null;
 
   if (!response.ok) {
-    throw data || { message: 'An unexpected request error occurred.' };
+    const errorMsg = data?.message || data?.error || (typeof data === 'string' ? data : 'Request failed. Please check your network connection.');
+    throw new Error(errorMsg);
   }
 
   return data;
+}
+
+export async function requestForgotPasswordOtp(email: string): Promise<{ message: string }> {
+  return await apiRequest('/api/auth/forgot-password', 'POST', { email });
+}
+
+export async function verifyForgotPasswordOtp(email: string, otp: string): Promise<{ valid: boolean; message: string }> {
+  return await apiRequest('/api/auth/verify-otp', 'POST', { email, otp });
+}
+
+export async function resetPasswordWithOtp(email: string, otp: string, newPassword: string): Promise<{ message: string }> {
+  return await apiRequest('/api/auth/reset-password', 'POST', { email, otp, newPassword });
 }

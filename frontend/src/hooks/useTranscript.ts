@@ -1,13 +1,44 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type { TranscriptEvent } from '../types/transcript';
 
 export const useTranscript = (currentSessionId: string) => {
-  const [finalTranscripts, setFinalTranscripts] = useState<TranscriptEvent[]>([]);
+  const storageKey = `sambhav_call_transcripts_${currentSessionId}`;
+
+  // Initialize from sessionStorage if rejoining active call
+  const [finalTranscripts, setFinalTranscripts] = useState<TranscriptEvent[]>(() => {
+    if (typeof window !== 'undefined' && currentSessionId) {
+      try {
+        const cached = sessionStorage.getItem(storageKey);
+        return cached ? JSON.parse(cached) : [];
+      } catch (err) {
+        console.warn('Failed to parse cached transcripts:', err);
+      }
+    }
+    return [];
+  });
+
   const [interimTranscripts, setInterimTranscripts] = useState<Record<string, string>>({});
   const seenEventIds = useRef<Set<string>>(new Set());
 
+  // Seed seen IDs on mount
+  useEffect(() => {
+    finalTranscripts.forEach((t) => {
+      if (t?.id) seenEventIds.current.add(t.id);
+    });
+  }, []);
+
+  // Sync to sessionStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined' && currentSessionId && finalTranscripts.length > 0) {
+      try {
+        sessionStorage.setItem(storageKey, JSON.stringify(finalTranscripts));
+      } catch (err) {
+        console.warn('Failed to persist call transcripts:', err);
+      }
+    }
+  }, [finalTranscripts, currentSessionId, storageKey]);
+
   const addTranscriptEvent = useCallback((event: TranscriptEvent) => {
-    // Validate TranscriptEvent properties
     if (
       !event ||
       typeof event.id !== 'string' ||
@@ -19,35 +50,19 @@ export const useTranscript = (currentSessionId: string) => {
       typeof event.isFinal !== 'boolean' ||
       typeof event.timestamp !== 'number'
     ) {
-      if (import.meta.env.DEV) {
-        console.warn('[SignBridge Debug] Invalid transcript ignored (malformed JSON properties):', event);
-      }
       return;
     }
 
-    // Session validation: ignore events belonging to another communication session
     if (event.sessionId !== currentSessionId) {
-      if (import.meta.env.DEV) {
-        console.log('[SignBridge Debug] Invalid transcript ignored (session mismatch):', event.sessionId);
-      }
       return;
     }
 
-    // Deduplication check
     if (seenEventIds.current.has(event.id)) {
-      if (import.meta.env.DEV) {
-        console.log('[SignBridge Debug] Duplicate transcript ignored:', event.id);
-      }
       return;
     }
 
     if (event.isFinal) {
       seenEventIds.current.add(event.id);
-
-      if (import.meta.env.DEV) {
-        console.log('[SignBridge Debug] Final transcript received:', event.text);
-      }
-
       setFinalTranscripts((prev) => [...prev, event]);
       setInterimTranscripts((prev) => {
         const updated = { ...prev };
@@ -55,10 +70,6 @@ export const useTranscript = (currentSessionId: string) => {
         return updated;
       });
     } else {
-      if (import.meta.env.DEV) {
-        console.log('[SignBridge Debug] Interim transcript received:', event.text);
-      }
-
       setInterimTranscripts((prev) => ({
         ...prev,
         [event.senderId]: event.text,
@@ -70,7 +81,10 @@ export const useTranscript = (currentSessionId: string) => {
     setFinalTranscripts([]);
     setInterimTranscripts({});
     seenEventIds.current.clear();
-  }, []);
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem(storageKey);
+    }
+  }, [storageKey]);
 
   const removeOldTranscript = useCallback((ageMs: number = 60000) => {
     const cutoff = Date.now() - ageMs;
@@ -85,4 +99,5 @@ export const useTranscript = (currentSessionId: string) => {
     removeOldTranscript,
   };
 };
+
 export default useTranscript;

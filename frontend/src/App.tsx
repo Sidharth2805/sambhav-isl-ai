@@ -16,6 +16,14 @@ import { ProfilePage } from './pages/ProfilePage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { SignAssetCatalog } from './components/accessibility/SignAssetCatalog';
 
+import { AdminLoginPage } from './pages/AdminLoginPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { TranslatePage } from './pages/TranslatePage';
+import { LearnISLPage } from './pages/LearnISLPage';
+import { ExplorePage } from './pages/ExplorePage';
+import { HelpPage } from './pages/HelpPage';
+import { NewsPage } from './pages/NewsPage';
+
 const OnlineSessionPage = lazy(() => import('./pages/OnlineSessionPage'));
 
 const App: React.FC = () => {
@@ -31,6 +39,9 @@ const App: React.FC = () => {
             {/* Anonymous Only Routes */}
             <Route element={<UnauthenticatedRoute />}>
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/admin/login" element={<AdminLoginPage />} />
+              <Route path="/admin-login" element={<AdminLoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
             </Route>
 
@@ -63,6 +74,13 @@ const App: React.FC = () => {
                   } 
                 />
                 <Route path="/communicate/offline/:sessionId" element={<OfflineSessionPage />} />
+                
+                {/* Core Navigation Routes */}
+                <Route path="/translate" element={<TranslatePage />} />
+                <Route path="/learn-isl" element={<LearnISLPage />} />
+                <Route path="/explore" element={<ExplorePage />} />
+                <Route path="/help" element={<HelpPage />} />
+                <Route path="/news" element={<NewsPage />} />
                 
                 {/* Session log & Profiles */}
                 <Route path="/history" element={<HistoryPage />} />

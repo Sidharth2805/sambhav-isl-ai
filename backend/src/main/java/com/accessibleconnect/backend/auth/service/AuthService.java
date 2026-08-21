@@ -43,6 +43,9 @@ public class AuthService {
     private JwtService jwtService;
 
     @Autowired
+    private EmailService emailService;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     // Brute-force protection tracking maps (in-memory throttling)
@@ -263,12 +266,112 @@ public class AuthService {
     private void trackFailedAttempt(String email) {
         int attempts = loginFailures.getOrDefault(email, 0) + 1;
         loginFailures.put(email, attempts);
-
         if (attempts >= 5) {
-            cooldownMap.put(email, LocalDateTime.now().plusMinutes(15));
-        } else if (attempts >= 3) {
-            // Introduce a progressive 2-second sleep to delay processing
-            try { Thread.sleep(2000); } catch (InterruptedException ignored) {}
+            cooldownMap.put(email, LocalDateTime.now().plusMinutes(5));
         }
+    }
+
+    // Password Reset OTP Store
+    private static class OtpEntry {
+        final String otp;
+        final LocalDateTime expiry;
+        int attempts;
+        boolean verified;
+
+        OtpEntry(String otp, LocalDateTime expiry) {
+            this.otp = otp;
+            this.expiry = expiry;
+            this.attempts = 0;
+            this.verified = false;
+        }
+    }
+
+    private final Map<String, OtpEntry> otpStore = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.security.SecureRandom secureRandom = new java.security.SecureRandom();
+
+    public String generatePasswordResetOtp(String email) {
+        String normalizedEmail = email.trim().toLowerCase();
+        userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new IllegalArgumentException("No registered account found with email: " + email));
+
+        // Generate 6-digit cryptographic OTP
+        int number = secureRandom.nextInt(900000) + 100000;
+        String otp = String.valueOf(number);
+
+        // Store OTP with 10-minute expiry
+        otpStore.put(normalizedEmail, new OtpEntry(otp, LocalDateTime.now().plusMinutes(10)));
+
+        // Send OTP email via SMTP with fallback logging
+        emailService.sendPasswordResetEmail(normalizedEmail, otp);
+
+        return otp;
+    }
+
+    public boolean verifyPasswordResetOtp(String email, String otp) {
+        String normalizedEmail = email.trim().toLowerCase();
+        OtpEntry entry = otpStore.get(normalizedEmail);
+
+        if (entry == null) {
+            throw new IllegalArgumentException("No active verification code found for this email. Please request a new code.");
+        }
+
+        if (entry.expiry.isBefore(LocalDateTime.now())) {
+            otpStore.remove(normalizedEmail);
+            throw new IllegalArgumentException("Verification code has expired. Please request a new one.");
+        }
+
+        entry.attempts++;
+        if (entry.attempts > 5) {
+            otpStore.remove(normalizedEmail);
+            throw new IllegalArgumentException("Too many incorrect attempts. Please request a new verification code.");
+        }
+
+        if (!entry.otp.equals(otp.trim())) {
+            throw new IllegalArgumentException("Invalid verification code. Please check the code and try again.");
+        }
+
+        entry.verified = true;
+        return true;
+    }
+
+    @Transactional
+    public void resetPasswordWithOtp(String email, String otp, String newPassword) {
+        String normalizedEmail = email.trim().toLowerCase();
+        OtpEntry entry = otpStore.get(normalizedEmail);
+
+        if (entry == null || (!entry.verified && !entry.otp.equals(otp.trim()))) {
+            throw new IllegalArgumentException("Verification required before password can be reset.");
+        }
+
+        if (entry.expiry.isBefore(LocalDateTime.now())) {
+            otpStore.remove(normalizedEmail);
+            throw new IllegalArgumentException("Verification code has expired. Please request a new one.");
+        }
+
+        if (newPassword == null || newPassword.length() < 8) {
+            throw new IllegalArgumentException("Password must be at least 8 characters long.");
+        }
+
+        User user = userRepository.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new IllegalArgumentException("User account not found."));
+
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        // Invalidate OTP after successful reset
+        otpStore.remove(normalizedEmail);
+        loginFailures.remove(normalizedEmail);
+        cooldownMap.remove(normalizedEmail);
+    }
+
+    @Transactional
+    public User updateName(String email, String newName) {
+        if (newName == null || newName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Name cannot be blank.");
+        }
+        User user = userRepository.findByEmail(email.trim().toLowerCase())
+                .orElseThrow(() -> new IllegalArgumentException("User account not found."));
+        user.setName(newName.trim());
+        return userRepository.save(user);
     }
 }

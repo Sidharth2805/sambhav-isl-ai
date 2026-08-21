@@ -41,12 +41,19 @@ interface SignSequencePlayerProps {
   sequence: SignSequenceDto | null;
   onComplete?: () => void;
   onStepStart?: (index: number) => void;
+  hideOverlayBadge?: boolean;
+  playbackSpeed?: number;
 }
+
+// In-memory cache for fast 0ms resolution of signed URLs
+const mediaUrlCache = new Map<string, string>();
 
 export const SignSequencePlayer: React.FC<SignSequencePlayerProps> = ({
   sequence,
   onComplete,
   onStepStart,
+  hideOverlayBadge = false,
+  playbackSpeed = 1.0,
 }) => {
   const { accessToken } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -56,24 +63,15 @@ export const SignSequencePlayer: React.FC<SignSequencePlayerProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [unsupportedPauseMs, setUnsupportedPauseMs] = useState<number>(1500);
 
-  // Fetch backend pause configuration on mount
+  // Synchronize HTML5 video playback rate with playbackSpeed
   useEffect(() => {
-    const fetchConfig = async () => {
-      try {
-        const config = await apiRequest('/api/communication/sessions/config', 'GET', null, accessToken);
-        if (config && typeof config.unsupportedPauseMs === 'number') {
-          setUnsupportedPauseMs(config.unsupportedPauseMs);
-        }
-      } catch (err) {
-        console.warn('Failed to load application pause configurations, falling back to 1500ms:', err);
-      }
-    };
-    fetchConfig();
-  }, [accessToken]);
+    if (videoRef.current) {
+      videoRef.current.playbackRate = playbackSpeed;
+    }
+  }, [playbackSpeed, currentStepIndex]);
 
-  // Fetch all signed URLs for sequence steps on mount/change
+  // Parallel resolve of all media URLs with instant caching
   useEffect(() => {
     if (!sequence || !sequence.steps || sequence.steps.length === 0) {
       setSignedUrls({});
@@ -82,61 +80,99 @@ export const SignSequencePlayer: React.FC<SignSequencePlayerProps> = ({
       return;
     }
 
-    const fetchAllUrls = async () => {
+    let isMounted = true;
+
+    const resolveAllMediaParallel = async () => {
       setIsLoading(true);
       setError(null);
-      setSignedUrls({});
-      setCurrentStepIndex(-1);
       
       const urlsMap: Record<number, string> = {};
+
       try {
-        for (let i = 0; i < sequence.steps.length; i++) {
-          const step = sequence.steps[i];
-          if (step.resolutionStatus === 'FOUND' && step.asset) {
-            try {
-              const data = await apiRequest(`/api/isl/assets/${step.asset.assetId}/media`, 'GET', null, accessToken);
-              urlsMap[i] = data.signedUrl;
-            } catch (err) {
-              console.warn(`Failed to resolve media for step index ${i}:`, err);
-              urlsMap[i] = ''; // Mark as missing/inaccessible
+        await Promise.all(
+          sequence.steps.map(async (step, i) => {
+            if (step.resolutionStatus === 'FOUND' && step.asset) {
+              const assetRef = step.asset.assetReference;
+              
+              if (assetRef && (assetRef.startsWith('http://') || assetRef.startsWith('https://') || assetRef.startsWith('blob:'))) {
+                urlsMap[i] = assetRef;
+                return;
+              }
+
+              const cached = mediaUrlCache.get(step.asset.assetId);
+              if (cached) {
+                urlsMap[i] = cached;
+                return;
+              }
+
+              try {
+                const data = await apiRequest(`/api/isl/assets/${step.asset.assetId}/media`, 'GET', null, accessToken);
+                if (data?.signedUrl) {
+                  mediaUrlCache.set(step.asset.assetId, data.signedUrl);
+                  urlsMap[i] = data.signedUrl;
+                } else {
+                  urlsMap[i] = '';
+                }
+              } catch (err) {
+                urlsMap[i] = '';
+              }
+            } else {
+              urlsMap[i] = '';
             }
-          } else {
-            urlsMap[i] = ''; // Missing/unsupported fallback
-          }
+          })
+        );
+
+        if (isMounted) {
+          setSignedUrls(urlsMap);
+          setCurrentStepIndex(0);
+          setIsPlaying(true);
         }
-        setSignedUrls(urlsMap);
-        setCurrentStepIndex(0);
-        setIsPlaying(true);
       } catch (err: any) {
-        console.error('Failed to load signed media URLs:', err);
-        setError('Error loading sequence media clips.');
+        if (isMounted) {
+          console.error('Fast sequence resolver error:', err);
+          setError('Error loading sequence clips.');
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
-    fetchAllUrls();
+    resolveAllMediaParallel();
+
+    return () => {
+      isMounted = false;
+    };
   }, [sequence, accessToken]);
 
-  // Handle step start callbacks
+  // Trigger onStepStart whenever currentStepIndex changes
   useEffect(() => {
     if (currentStepIndex >= 0 && onStepStart) {
       onStepStart(currentStepIndex);
     }
   }, [currentStepIndex, onStepStart]);
 
-  // Skip missing/unsupported steps after a configured pause duration
+  // Dynamic step progression timer scaled directly with playbackSpeed
   useEffect(() => {
-    if (currentStepIndex === -1 || isLoading || !sequence) return;
+    if (currentStepIndex === -1 || !isPlaying || !sequence || isLoading) return;
 
-    const isStepMissing = !signedUrls[currentStepIndex];
-    if (isStepMissing) {
-      const timer = setTimeout(() => {
-        handleNext();
-      }, unsupportedPauseMs);
-      return () => clearTimeout(timer);
-    }
-  }, [currentStepIndex, signedUrls, isLoading, sequence, unsupportedPauseMs]);
+    const currentStep = sequence.steps[currentStepIndex];
+    const baseDuration = currentStep?.durationMs || 450;
+    // Calculate exact duration divided by user speed
+    const actualDuration = Math.max(100, Math.round(baseDuration / playbackSpeed));
+
+    const timer = setTimeout(() => {
+      if (currentStepIndex + 1 < sequence.steps.length) {
+        setCurrentStepIndex((prev) => prev + 1);
+      } else {
+        setIsPlaying(false);
+        if (onComplete) onComplete();
+      }
+    }, actualDuration);
+
+    return () => clearTimeout(timer);
+  }, [currentStepIndex, isPlaying, sequence, isLoading, playbackSpeed, onComplete]);
 
   const handleNext = () => {
     if (!sequence) return;
@@ -161,7 +197,8 @@ export const SignSequencePlayer: React.FC<SignSequencePlayerProps> = ({
     setIsPlaying(true);
     if (videoRef.current) {
       videoRef.current.currentTime = 0;
-      videoRef.current.play().catch((err) => console.log('Replay playback error:', err));
+      videoRef.current.playbackRate = playbackSpeed;
+      videoRef.current.play().catch(() => {});
     }
   };
 
@@ -171,111 +208,144 @@ export const SignSequencePlayer: React.FC<SignSequencePlayerProps> = ({
       videoRef.current.pause();
       setIsPlaying(false);
     } else {
-      videoRef.current.play().catch((err) => console.log('Toggle play error:', err));
+      videoRef.current.playbackRate = playbackSpeed;
+      videoRef.current.play().catch(() => {});
       setIsPlaying(true);
     }
   };
 
   if (!sequence || sequence.steps.length === 0) {
     return (
-      <div className="w-full aspect-video bg-black rounded-lg flex flex-col items-center justify-center text-center p-4">
-        <div className="w-12 h-12 rounded-full bg-[#1A237E]/10 border border-[#1A237E]/20 flex items-center justify-center text-xl text-[#00BCD4] animate-pulse select-none mb-2">
+      <div className="w-full aspect-video bg-black rounded-xl flex flex-col items-center justify-center text-center p-4">
+        <div className="w-12 h-12 rounded-full bg-[#fe9832]/20 text-[#fe9832] flex items-center justify-center text-2xl animate-pulse mb-2">
           🤖
         </div>
-        <h2 className="text-[11px] font-bold text-white uppercase tracking-wide">Signing Avatar Workspace</h2>
-        <p className="text-[9px] text-white/60 mt-0.5">Ready for translation sequence streams...</p>
+        <h2 className="text-xs font-bold text-white uppercase tracking-wide">ISL Signing Avatar</h2>
+        <p className="text-[10px] text-[#828796] mt-0.5">Ready for instant real-time sign sequences</p>
       </div>
     );
   }
 
   const currentStep = sequence.steps[currentStepIndex];
   const currentUrl = signedUrls[currentStepIndex];
-  const isMissing = !currentUrl;
 
   return (
-    <div className="w-full h-full bg-[#1e1e24] flex flex-col relative select-none">
+    <div className="w-full h-full bg-[#111318] rounded-xl flex flex-col relative select-none overflow-hidden border border-white/10 shadow-inner">
       
       {/* Sequencer Playback Video Display */}
       <div className="flex-grow w-full relative bg-black flex items-center justify-center min-h-0">
         {isLoading ? (
-          <div className="text-white text-xs animate-pulse">Loading sign sequences...</div>
+          <div className="text-[#fe9832] text-xs font-bold animate-pulse flex items-center gap-2">
+            <span className="material-symbols-outlined text-[16px] animate-spin">sync</span>
+            <span>Synthesizing Signs ({playbackSpeed}x)...</span>
+          </div>
         ) : error ? (
           <div className="text-red-400 text-xs p-3 text-center">❌ {error}</div>
-        ) : isMissing && currentStep ? (
-          <div className="flex flex-col items-center justify-center p-4 text-center">
-            <span className="text-[#FFD700] text-sm font-black uppercase">⚠️ {currentStep.conceptId}</span>
-            <span className="text-white text-[10px] opacity-75 mt-1">Sign asset missing or unverified</span>
-          </div>
         ) : currentUrl ? (
           <video
             ref={videoRef}
             src={currentUrl}
             autoPlay={isPlaying}
-            onEnded={handleNext}
-            onPlay={() => setIsPlaying(true)}
-            onPause={() => setIsPlaying(false)}
+            onError={() => {}}
+            onPlay={(e) => {
+              (e.target as HTMLVideoElement).playbackRate = playbackSpeed;
+            }}
             className="w-full h-full object-contain"
             aria-label={`Playing sign step for concept ${currentStep?.conceptId}`}
           >
             <track kind="captions" src="" label="No captions" />
           </video>
+        ) : currentStep ? (
+          <div className="flex flex-col items-center justify-center p-4 text-center">
+            <span className="text-[#fe9832] text-2xl font-black uppercase tracking-wider animate-pulse">
+              {currentStep.conceptId}
+            </span>
+          </div>
         ) : null}
 
-        {/* Top Floating Step Indicator */}
-        {currentStep && !isLoading && (
-          <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/20 text-white text-[9px] font-bold flex items-center gap-1.5 z-10">
-            <span className="text-[#00BCD4] font-black">{currentStepIndex + 1}/{sequence.steps.length}</span>
-            <span className="opacity-80">|</span>
-            <span className="uppercase tracking-wider">{currentStep.conceptId}</span>
+        {/* Optional Step Progress Pill */}
+        {!hideOverlayBadge && currentStep && (
+          <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] font-bold text-white border border-white/10 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-[#fe9832] animate-ping" />
+            <span>
+              Sign {currentStepIndex + 1} / {sequence.steps.length}: <strong className="text-[#fe9832]">{currentStep.conceptId}</strong>
+            </span>
           </div>
         )}
       </div>
 
-      {/* Control Panel Area */}
-      <div className="p-3 bg-[#141419] flex items-center justify-between gap-3 border-t border-white/10 flex-shrink-0">
-        <div className="flex flex-col gap-0.5 min-w-0">
-          <span className="text-white font-bold text-xs truncate uppercase">
-            {currentStep?.conceptId || 'No active step'}
-          </span>
-          <span className="text-[8px] text-white/50">
-            Resolution: {currentStep?.resolutionStatus || 'UNKNOWN'}
-          </span>
+      {/* Interactive Step Strip */}
+      <div className="bg-[#181c24] border-t border-white/10 px-3 py-2 flex items-center justify-between gap-2 shrink-0">
+        
+        {/* Step Tokens Carousel */}
+        <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 max-w-[70%] no-scrollbar">
+          {sequence.steps.map((step, idx) => (
+            <button
+              key={idx}
+              onClick={() => {
+                setCurrentStepIndex(idx);
+                setIsPlaying(true);
+              }}
+              className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all whitespace-nowrap ${
+                idx === currentStepIndex
+                  ? 'bg-[#fe9832] text-[#683700] scale-105 shadow-sm'
+                  : idx < currentStepIndex
+                  ? 'bg-green-900/60 text-[#8dfc75] font-bold border border-green-500/30'
+                  : 'bg-white/5 text-[#828796] hover:bg-white/10'
+              }`}
+            >
+              {step.displayToken}
+            </button>
+          ))}
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
+        {/* Playback Controls & Speed Indicator */}
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] font-mono font-bold text-[#fe9832] px-1 py-0.5 bg-white/5 rounded mr-1">
+            {playbackSpeed}x
+          </span>
+
           <button
             onClick={handlePrevious}
             disabled={currentStepIndex <= 0}
-            className="px-2.5 py-1 bg-white/5 hover:bg-white/10 text-white rounded text-[10px] font-bold disabled:opacity-40 disabled:hover:bg-white/5 transition-colors"
+            className="p-1 text-[#c1c6d7] hover:text-white disabled:opacity-30 rounded hover:bg-white/10"
+            title="Previous sign"
           >
-            ⏮
+            <span className="material-symbols-outlined text-[16px]">skip_previous</span>
           </button>
-          
+
           <button
             onClick={togglePlay}
-            disabled={isMissing || isLoading}
-            className="px-3 py-1 bg-[#00BCD4] hover:bg-[#0097A7] text-black rounded text-[10px] font-black transition-colors"
+            className="p-1 text-[#fe9832] hover:text-white rounded hover:bg-white/10"
+            title={isPlaying ? 'Pause' : 'Play'}
           >
-            {isPlaying ? '⏸' : '▶'}
+            <span className="material-symbols-outlined text-[18px]">
+              {isPlaying ? 'pause' : 'play_arrow'}
+            </span>
           </button>
-          
+
           <button
             onClick={handleNext}
-            disabled={!sequence || currentStepIndex + 1 >= sequence.steps.length}
-            className="px-2.5 py-1 bg-white/5 hover:bg-white/10 text-white rounded text-[10px] font-bold disabled:opacity-40 disabled:hover:bg-white/5 transition-colors"
+            disabled={currentStepIndex >= sequence.steps.length - 1}
+            className="p-1 text-[#c1c6d7] hover:text-white disabled:opacity-30 rounded hover:bg-white/10"
+            title="Next sign"
           >
-            ⏭
+            <span className="material-symbols-outlined text-[16px]">skip_next</span>
           </button>
-          
+
           <button
             onClick={handleReplay}
-            disabled={isLoading}
-            className="px-2.5 py-1 bg-white/5 hover:bg-white/10 text-white rounded text-[10px] font-bold transition-colors"
+            className="p-1 text-[#c1c6d7] hover:text-white rounded hover:bg-white/10"
+            title="Replay sequence"
           >
-            🔄
+            <span className="material-symbols-outlined text-[16px]">replay</span>
           </button>
         </div>
+
       </div>
+
     </div>
   );
 };
+
+export default SignSequencePlayer;

@@ -8,10 +8,10 @@ interface AccessibilityContextType {
   setTheme: (theme: Theme) => void;
   highContrast: boolean;
   setHighContrast: (active: boolean) => void;
+  toggleHighContrast: () => void;
   fontSize: FontSize;
   setFontSize: (size: FontSize) => void;
   toggleTheme: () => void;
-  toggleHighContrast: () => void;
   increaseFontSize: () => void;
   decreaseFontSize: () => void;
 }
@@ -20,35 +20,26 @@ const AccessibilityContext = createContext<AccessibilityContextType | undefined>
 
 export const AccessibilityProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<Theme>(() => {
-    const saved = localStorage.getItem('ac-theme');
-    return (saved as Theme) || 'light';
-  });
-
-  const [highContrast, setHighContrastState] = useState<boolean>(() => {
-    return localStorage.getItem('ac-high-contrast') === 'true';
+    const saved = localStorage.getItem('sambhav-theme');
+    if (saved === 'dark' || saved === 'light') return saved;
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
   const [fontSize, setFontSizeState] = useState<FontSize>(() => {
-    return (localStorage.getItem('ac-font-size') as FontSize) || 'normal';
+    return (localStorage.getItem('sambhav-font-size') as FontSize) || 'normal';
   });
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
-    localStorage.setItem('ac-theme', newTheme);
-  };
-
-  const setHighContrast = (active: boolean) => {
-    setHighContrastState(active);
-    localStorage.setItem('ac-high-contrast', String(active));
+    localStorage.setItem('sambhav-theme', newTheme);
   };
 
   const setFontSize = (size: FontSize) => {
     setFontSizeState(size);
-    localStorage.setItem('ac-font-size', size);
+    localStorage.setItem('sambhav-font-size', size);
   };
 
   const toggleTheme = () => setTheme(theme === 'light' ? 'dark' : 'light');
-  const toggleHighContrast = () => setHighContrast(!highContrast);
 
   const increaseFontSize = () => {
     if (fontSize === 'small') setFontSize('normal');
@@ -62,22 +53,16 @@ export const AccessibilityProvider: React.FC<{ children: React.ReactNode }> = ({
     else if (fontSize === 'normal') setFontSize('small');
   };
 
-  // Sync state to <html> element classes
+  // Sync state to <html> element classes & color-scheme
   useEffect(() => {
     const root = document.documentElement;
 
-    // Theme Classes
     if (theme === 'dark') {
       root.classList.add('dark');
+      root.style.colorScheme = 'dark';
     } else {
       root.classList.remove('dark');
-    }
-
-    // High Contrast Classes
-    if (highContrast) {
-      root.classList.add('high-contrast');
-    } else {
-      root.classList.remove('high-contrast');
+      root.style.colorScheme = 'light';
     }
 
     // Font Size Classes
@@ -89,19 +74,19 @@ export const AccessibilityProvider: React.FC<{ children: React.ReactNode }> = ({
     } else if (fontSize === 'xlarge') {
       root.classList.add('text-xlarge');
     }
-  }, [theme, highContrast, fontSize]);
+  }, [theme, fontSize]);
 
   return (
     <AccessibilityContext.Provider
       value={{
         theme,
         setTheme,
-        highContrast,
-        setHighContrast,
+        highContrast: false,
+        setHighContrast: () => {},
+        toggleHighContrast: () => {},
         fontSize,
         setFontSize,
         toggleTheme,
-        toggleHighContrast,
         increaseFontSize,
         decreaseFontSize,
       }}

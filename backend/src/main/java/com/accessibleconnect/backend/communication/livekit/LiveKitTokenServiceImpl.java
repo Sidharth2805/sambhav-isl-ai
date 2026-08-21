@@ -58,13 +58,6 @@ public class LiveKitTokenServiceImpl implements LiveKitTokenService {
         String apiKey = liveKitConfig.getApiKey();
         String apiSecret = liveKitConfig.getApiSecret();
         String url = liveKitConfig.getUrl();
-        System.out.println("========== LIVEKIT CONFIG CHECK ==========");
-        System.out.println("LiveKit URL = " + url);
-        System.out.println("LiveKit API KEY = " + apiKey);
-        System.out.println("LiveKit API SECRET PRESENT = " +
-                (apiSecret != null && !apiSecret.trim().isEmpty()));
-        System.out.println("==========================================");
-
         if (apiKey == null || apiKey.trim().isEmpty() ||
             apiSecret == null || apiSecret.trim().isEmpty()) {
             throw new IllegalStateException("LiveKit API Key or API Secret is not configured on the server.");

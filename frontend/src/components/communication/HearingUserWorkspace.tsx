@@ -1,8 +1,9 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { VideoTrack } from '@livekit/components-react';
 import { Track, ConnectionState as LkConnectionState } from 'livekit-client';
 import DraggableSelfView from './DraggableSelfView';
 import type { TranscriptEvent } from '../../types/transcript';
+import { naturalSpeech } from '../../utils/naturalSpeech';
 
 interface HearingUserWorkspaceProps {
   sessionId: string;
@@ -49,6 +50,7 @@ export const HearingUserWorkspace: React.FC<HearingUserWorkspaceProps> = ({
   isCreator,
   onEndCall,
   onLeaveCall,
+  user,
 
   connectionState,
   getConnectionStatusText,
@@ -75,14 +77,75 @@ export const HearingUserWorkspace: React.FC<HearingUserWorkspaceProps> = ({
 
   finalTranscripts,
   interimTranscripts,
-  sttSupported,
-  formatSpeakerLabel,
+  sttSupported: _sttSupported,
+  formatSpeakerLabel: _formatSpeakerLabel,
   captionsEndRef,
 
-  controlsVisible,
+  controlsVisible: _controlsVisible,
 }) => {
   const videoParentRef = useRef<HTMLDivElement | null>(null);
-  const [copied, setCopied] = React.useState(false);
+  const [copied, setCopied] = useState(false);
+
+  // 3-Second Camera Inactivity Auto-Hide Controls
+  const [internalControlsVisible, setInternalControlsVisible] = useState(true);
+  const hideTimerRef = useRef<any>(null);
+
+  const resetCameraControlsTimer = useCallback(() => {
+    setInternalControlsVisible(true);
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+    }
+    hideTimerRef.current = setTimeout(() => {
+      if (!showMicDevices && !showCameraDevices) {
+        setInternalControlsVisible(false);
+      }
+    }, 3000);
+  }, [showMicDevices, showCameraDevices]);
+
+  useEffect(() => {
+    resetCameraControlsTimer();
+    return () => {
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    };
+  }, [resetCameraControlsTimer]);
+
+  // Keep controls open if device menus are active
+  useEffect(() => {
+    if (showMicDevices || showCameraDevices) {
+      setInternalControlsVisible(true);
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    } else {
+      resetCameraControlsTimer();
+    }
+  }, [showMicDevices, showCameraDevices, resetCameraControlsTimer]);
+
+  // Text-To-Speech (TTS) for reading remote Deaf participant messages
+  const [ttsEnabled, setTtsEnabled] = useState(true);
+  const spokenTranscriptIdsRef = useRef<Set<string>>(new Set());
+
+  // Trigger Natural Human Speech synthesis ONLY for the hearing-issue / remote participant's messages
+  useEffect(() => {
+    if (!ttsEnabled || typeof window === 'undefined') {
+      return;
+    }
+
+    finalTranscripts.forEach((transcript) => {
+      // Check if not already spoken AND sender is NOT the current hearing user (remote deaf participant only)
+      const isMe = transcript.senderId === user?.email || transcript.senderId === user?.id;
+      if (!isMe && transcript.text && !spokenTranscriptIdsRef.current.has(transcript.id)) {
+        spokenTranscriptIdsRef.current.add(transcript.id);
+        
+        try {
+          naturalSpeech.speak(transcript.text, {
+            rate: 0.96,
+            pitch: 1.02,
+          });
+        } catch (ttsErr) {
+          console.warn('[Natural Speech Error]:', ttsErr);
+        }
+      }
+    });
+  }, [finalTranscripts, ttsEnabled, user]);
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(roomCode);
@@ -90,249 +153,386 @@ export const HearingUserWorkspace: React.FC<HearingUserWorkspaceProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const isRemoteSigning = Object.keys(interimTranscripts).some((senderId) => {
+    return senderId !== user?.email && senderId !== user?.id;
+  });
+
   return (
-    <div className={`h-full flex flex-col gap-2 min-h-0 overflow-hidden select-none relative bg-white p-4 rounded-2xl border transition-all duration-300 ${
-      screenShareState ? 'border-emerald-500 ring-4 ring-emerald-400/55 shadow-[0_0_25px_rgba(16,185,129,0.3)]' : 'border-[#00BCD4]'
-    }`}>
+    <div className="w-full h-[calc(100vh-140px)] md:h-[calc(100vh-115px)] flex flex-col gap-4 min-h-0 select-none font-['Inter',sans-serif] overflow-hidden">
+      
+      {/* Screen Sharing Alert Pill */}
       {screenShareState && (
-        <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-emerald-500 text-white text-[9px] font-bold px-3 py-1 rounded-full shadow-lg z-50 flex items-center gap-1.5 animate-pulse">
-          <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-          SCREEN SHARING ACTIVE
+        <div className="bg-emerald-500 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-md z-50 flex items-center justify-center gap-2 animate-pulse mx-auto flex-shrink-0">
+          <span className="w-2 h-2 rounded-full bg-white animate-ping" />
+          <span>Screen Sharing is Active</span>
         </div>
       )}
 
-      {/* Call Header */}
-      <header className="flex items-center justify-between border-b border-[#00BCD4] pb-1.5 flex-shrink-0">
-        <div className="flex flex-col">
-          <span className="text-[10px] text-[#1A237E] opacity-75 uppercase font-bold tracking-wider font-sans">Hearing Participant Console</span>
-          <h1 className="text-sm font-bold font-mono tracking-wider text-[#1A237E] flex items-center gap-2 select-text">
-            Room Code: <span className="select-all text-[#880E4F]">{roomCode}</span>
-            <button
-              onClick={handleCopyCode}
-              className="px-1.5 py-0.5 rounded border border-[#00BCD4] bg-[#F5F5F5] text-[9px] text-[#1A237E] hover:bg-[#E1F5FE] transition-all font-sans font-bold"
-              aria-label="Copy room code to clipboard"
-            >
-              {copied ? '✓ Copied' : 'Copy'}
-            </button>
-          </h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <span
-            className={`w-2 h-2 rounded-full bg-[#4DD0E1] ${
-              connectionState === LkConnectionState.Connected ? 'animate-pulse' : ''
-            }`}
-            aria-hidden="true"
-          />
-          <span className="text-[11px] font-bold text-[#1A237E]">{getConnectionStatusText()}</span>
-        </div>
-      </header>
-
-      {/* STT Support Alert */}
-      {!sttSupported && (
-        <div className="p-2.5 bg-red-100 dark:bg-red-955/20 border border-red-200 dark:border-red-900 rounded-xl text-center text-xs text-red-700 dark:text-red-400 font-bold flex-shrink-0" role="alert">
-          ⚠️ Live speech recognition is not supported in this browser.
-        </div>
-      )}
-
-      {/* Main Dominant Video Window Area (User B Camera) */}
-      <div 
-        ref={videoParentRef}
-        className={`flex-grow min-h-0 relative overflow-hidden bg-[#F5F5F5] rounded-2xl border flex items-center justify-center transition-all duration-300 ${
-          primaryRemoteTrack?.source === Track.Source.ScreenShare
-            ? 'border-emerald-500 ring-4 ring-emerald-500/50 shadow-[0_0_25px_rgba(16,185,129,0.35)]'
-            : 'border-[#00BCD4]'
-        }`}
-      >
-        {primaryRemoteTrack ? (
-          <VideoTrack trackRef={primaryRemoteTrack as any} className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full text-center flex flex-col items-center justify-center gap-2 p-4 bg-[#212121] text-[#FFD700]">
-            <span className="text-2xl animate-pulse">📷</span>
-            <span className="text-xs font-bold uppercase tracking-wider">Camera Inactive</span>
-            <span className="text-[9px] opacity-75">Waiting for other participant...</span>
-          </div>
-        )}
-
-        {primaryRemoteTrack?.source === Track.Source.ScreenShare && (
-          <div className="absolute top-3 left-3 bg-emerald-500 text-white text-[9px] font-bold px-2.5 py-0.5 rounded-full shadow z-10 flex items-center gap-1.5 animate-pulse">
-            <span className="w-1 h-1 rounded-full bg-white animate-ping" />
-            VIEWING SCREEN SHARE
-          </div>
-        )}
-
-        {primaryRemoteTrack && (
-          <div className="absolute bottom-3 left-3 bg-black/60 px-2 py-0.5 rounded text-[10px] text-white z-10 select-none">
-            {primaryRemoteTrack.source === Track.Source.ScreenShare
-              ? `${primaryRemoteTrack.participant.identity}'s Screen Share`
-              : `${primaryRemoteTrack.participant.identity}`}
-          </div>
-        )}
-
-        {/* Small picture-in-picture draggable preview (Local Camera) */}
-        <DraggableSelfView 
-          parentRef={videoParentRef}
-          cameraState={cameraState}
-          localTrack={localTrack}
-        />
-
-        {/* Controls Overlay Inside Camera Section */}
-        <footer className={`absolute bottom-0 left-0 right-0 z-40 bg-[#F5F5F5] border-t border-[#00BCD4] p-2 rounded-b-2xl flex items-center justify-between transition-opacity duration-300 ${
-          controlsVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        }`}>
-          <div className="flex items-center gap-2">
-            {/* Mic split select button */}
-            <div className="relative flex items-center">
-              <button
-                onClick={handleToggleMic}
-                className={`p-2 rounded-l-full border-y border-l transition-all ${
-                  micState ? 'bg-[#E1F5FE] border-[#00BCD4] text-[#1A237E] hover:bg-[#E1F5FE]/80' : 'bg-red-50 border-red-200 text-red-500 hover:bg-red-100'
-                }`}
-                aria-label={micState ? 'Mute microphone' : 'Unmute microphone'}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                </svg>
-              </button>
-              <button
-                onClick={() => {
-                  setShowMicDevices(!showMicDevices);
-                  setShowCameraDevices(false);
-                }}
-                className="p-2 rounded-r-full border border-[#00BCD4] bg-white text-[#1A237E] hover:bg-[#F5F5F5]"
-                aria-label="Select microphone input device"
-              >
-                <svg className={`w-3 h-3 transition-transform duration-300 ${showMicDevices ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 15l7-7 7 7" />
-                </svg>
-              </button>
-
-              {showMicDevices && (
-                <div className="absolute bottom-14 left-0 bg-white border border-[#00BCD4] rounded-xl shadow-xl p-1.5 w-56 z-50 flex flex-col gap-0.5 max-h-40 overflow-y-auto">
-                  <div className="text-[9px] font-bold uppercase tracking-wider text-[#1A237E]/60 px-1.5 py-0.5">Microphone input</div>
-                  {audioDevices.map((device) => (
-                    <button
-                      key={device.deviceId}
-                      onClick={() => {
-                        setActiveAudioDevice(device.deviceId);
-                        setShowMicDevices(false);
-                      }}
-                      className={`text-left text-[11px] px-1.5 py-1 rounded transition-all flex items-center justify-between ${
-                        activeAudioDeviceId === device.deviceId ? 'bg-[#E1F5FE] text-[#1A237E] font-bold' : 'hover:bg-[#F5F5F5] text-[#1A237E]/80'
-                      }`}
-                    >
-                      <span className="truncate">{device.label || `Microphone ${device.deviceId.substring(0, 5)}`}</span>
-                      {activeAudioDeviceId === device.deviceId && <span>✓</span>}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Camera split select button */}
-            <div className="relative flex items-center">
-              <button
-                onClick={handleToggleCamera}
-                className={`p-2 rounded-l-full border-y border-l transition-all ${
-                  cameraState ? 'bg-[#E1F5FE] border-[#00BCD4] text-[#1A237E] hover:bg-[#E1F5FE]/80' : 'bg-red-50 border-red-200 text-red-500 hover:bg-red-100'
-                }`}
-                aria-label={cameraState ? 'Disable video camera' : 'Enable video camera'}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-              </button>
-              <button
-                onClick={() => {
-                  setShowCameraDevices(!showCameraDevices);
-                  setShowMicDevices(false);
-                }}
-                className="p-2 rounded-r-full border border-[#00BCD4] bg-white text-[#1A237E] hover:bg-[#F5F5F5]"
-                aria-label="Select video camera input device"
-              >
-                <svg className={`w-3 h-3 transition-transform duration-300 ${showCameraDevices ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 15l7-7 7 7" />
-                </svg>
-              </button>
-
-              {showCameraDevices && (
-                <div className="absolute bottom-14 left-0 bg-white border border-[#00BCD4] rounded-xl shadow-xl p-1.5 w-56 z-50 flex flex-col gap-0.5 max-h-40 overflow-y-auto">
-                  <div className="text-[9px] font-bold uppercase tracking-wider text-[#1A237E]/60 px-1.5 py-0.5">Camera input</div>
-                  {videoDevices.map((device) => (
-                    <button
-                      key={device.deviceId}
-                      onClick={() => {
-                        setActiveVideoDevice(device.deviceId);
-                        setShowCameraDevices(false);
-                      }}
-                      className={`text-left text-[11px] px-1.5 py-1 rounded transition-all flex items-center justify-between ${
-                        activeVideoDeviceId === device.deviceId ? 'bg-[#E1F5FE] text-[#1A237E] font-bold' : 'hover:bg-[#F5F5F5] text-[#1A237E]/80'
-                      }`}
-                    >
-                      <span className="truncate">{device.label || `Camera ${device.deviceId.substring(0, 5)}`}</span>
-                      {activeVideoDeviceId === device.deviceId && <span>✓</span>}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Screen share control */}
-            <button
-              onClick={handleToggleScreen}
-              className={`p-2 rounded-full border transition-all ${
-                screenShareState ? 'bg-[#E1F5FE] border-[#00BCD4] text-[#1A237E]' : 'bg-white border border-[#00BCD4] text-[#1A237E] hover:bg-[#F5F5F5]'
-              }`}
-              aria-label={screenShareState ? 'Stop sharing screen' : 'Start sharing screen'}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Leave/End Call buttons */}
-          {isCreator ? (
-            <button
-              onClick={onEndCall}
-              className="px-5 py-2 bg-[#800000] hover:bg-[#990000] text-white rounded-xl text-xs font-bold transition-all shadow-md font-sans"
-            >
-              End Call
-            </button>
-          ) : (
-            <button
-              onClick={onLeaveCall}
-              className="px-5 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all border border-slate-600 font-sans"
-            >
-              Leave Call
-            </button>
-          )}
-        </footer>
-      </div>
-
-      {/* Real-time Scrolling Caption Area (Middle Layer) */}
-      <div className="h-36 flex-shrink-0 bg-[#E1F5FE] border border-[#00BCD4] rounded-xl text-[#1A237E] font-sans flex flex-col min-h-0 overflow-hidden p-3.5 shadow-md" role="log" aria-live="polite">
-        <h3 className="text-[10px] font-bold uppercase tracking-wider text-[#1A237E] mb-1 flex-shrink-0">Live Transcripts</h3>
-        <div className="flex-grow overflow-y-auto flex flex-col gap-1.5 text-xs font-bold tracking-wide">
-          {finalTranscripts.map((t) => (
-            <div key={t.id} className="leading-relaxed border-b border-[#00BCD4]/10 pb-1">
-              <span className="text-[#880E4F]">{formatSpeakerLabel(t.senderId, t.senderName)}:</span> {t.text}
-            </div>
-          ))}
-          {Object.entries(interimTranscripts).map(([senderId, text]) => {
-            const senderName = finalTranscripts.find((t) => t.senderId === senderId)?.senderName || 'Speaker';
-            return (
-              <div key={senderId} className="opacity-80 italic leading-relaxed">
-                <strong>{formatSpeakerLabel(senderId, senderName)}:</strong> {text}...
+      {/* 2-Column Responsive Layout: Left = Conversation & Speech | Right = Video Camera */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-0 h-full overflow-hidden">
+        
+        {/* ========================================================= */}
+        {/* LEFT COLUMN: Texts & Speech from Hearing-Issue Person     */}
+        {/* ========================================================= */}
+        <section className="lg:col-span-6 bg-white dark:bg-[#1a202c] rounded-[24px] border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col h-full min-h-0 overflow-hidden">
+          
+          {/* Header with TTS Speech Audio Controls */}
+          <div className="p-4 border-b border-[#e0e3e5] dark:border-[#2d3133] flex items-center justify-between bg-[#f7fafc] dark:bg-[#030813]/60 flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#fe9832] text-[22px]">forum</span>
+              <div>
+                <h2 className="text-sm font-bold text-[#030813] dark:text-white">Live Conversation</h2>
+                <p className="text-[10px] text-[#45474c] dark:text-[#828796]">ISL Signs & Spoken Transcripts</p>
               </div>
-            );
-          })}
-          {finalTranscripts.length === 0 && Object.keys(interimTranscripts).length === 0 && (
-            <div className="text-[10px] opacity-60 italic text-center my-auto">Waiting for speech...</div>
-          )}
-          <div ref={captionsEndRef} />
-        </div>
+            </div>
+
+            {/* Mute/Unmute Speech Synthesis for Deaf Person's Messages */}
+            <button
+              type="button"
+              onClick={() => {
+                const nextVal = !ttsEnabled;
+                setTtsEnabled(nextVal);
+                if (!nextVal) {
+                  naturalSpeech.stop();
+                }
+              }}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
+                ttsEnabled
+                  ? 'bg-[#fe9832]/10 border-[#fe9832] text-[#8f4e00] dark:text-[#fe9832]'
+                  : 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400'
+              }`}
+              title={ttsEnabled ? 'Mute Speech Voice for Signed Messages' : 'Unmute Speech Voice for Signed Messages'}
+            >
+              <span className="material-symbols-outlined text-[16px]">
+                {ttsEnabled ? 'volume_up' : 'volume_off'}
+              </span>
+              <span>{ttsEnabled ? 'Voice Output: ON' : 'Voice: MUTED'}</span>
+            </button>
+          </div>
+
+          {/* Scrolling Conversation Stream */}
+          <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-3 min-h-0">
+            
+            {/* Helpful Intro Pill */}
+            <div className="p-2.5 bg-[#f1f4f6] dark:bg-[#030813] border border-[#e0e3e5] dark:border-[#2d3133] rounded-xl text-[11px] text-[#45474c] dark:text-[#c1c6d7] text-center">
+              💡 Actions & signs from the hearing-impaired participant appear here in <strong>text</strong> and are read aloud in <strong>voice</strong>.
+            </div>
+
+            {/* Empty State */}
+            {finalTranscripts.length === 0 && Object.keys(interimTranscripts).length === 0 && (
+              <div className="my-auto text-center flex flex-col items-center gap-2 py-8 text-[#828796]">
+                <span className="material-symbols-outlined text-[36px] opacity-40">chat</span>
+                <p className="text-xs font-semibold">Waiting for participants to speak or sign...</p>
+              </div>
+            )}
+
+            {/* Final Transcripts */}
+            {finalTranscripts.map((t) => {
+              const isMe = t.senderId === user?.email || t.senderId === user?.id;
+              return (
+                <div
+                  key={t.id}
+                  className={`flex flex-col max-w-[85%] ${
+                    isMe ? 'self-end items-end' : 'self-start items-start'
+                  }`}
+                >
+                  <span className="text-[10px] font-bold text-[#828796] mb-1 px-1">
+                    {isMe ? 'You (Spoken Voice)' : 'Participant (Sign & Text)'}
+                  </span>
+                  
+                  <div
+                    className={`p-3.5 rounded-2xl text-xs leading-relaxed ${
+                      isMe
+                        ? 'bg-[#fe9832]/15 dark:bg-[#fe9832]/25 text-[#030813] dark:text-white rounded-tr-none border border-[#fe9832]/30'
+                        : 'bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 text-green-900 dark:text-green-200 font-semibold rounded-tl-none shadow-sm'
+                    }`}
+                  >
+                    {!isMe && (
+                      <div className="flex items-center gap-1.5 text-[10px] text-green-700 dark:text-green-400 font-bold mb-1">
+                        <span className="material-symbols-outlined text-[14px]">sign_language</span>
+                        <span>Sign Action Translated</span>
+                      </div>
+                    )}
+                    <p>{t.text}</p>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Real-time Interim Live Stream */}
+            {Object.entries(interimTranscripts).map(([senderId, text]) => {
+              const isMe = senderId === user?.email || senderId === user?.id;
+              return (
+                <div
+                  key={senderId}
+                  className={`flex flex-col max-w-[85%] ${
+                    isMe ? 'self-end items-end' : 'self-start items-start'
+                  } opacity-90`}
+                >
+                  <span className="text-[10px] font-bold text-[#fe9832] mb-1 px-1 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#fe9832] animate-ping" />
+                    <span>{isMe ? 'You (Speaking...)' : 'Participant (Signing...)'}</span>
+                  </span>
+                  <div
+                    className={`p-3 rounded-2xl text-xs italic ${
+                      isMe
+                        ? 'bg-[#fe9832]/10 dark:bg-[#fe9832]/15 text-[#030813] dark:text-white rounded-tr-none border border-[#fe9832]/30'
+                        : 'bg-green-50/70 dark:bg-green-950/30 border border-green-200 dark:border-green-800 text-green-800 dark:text-green-300 rounded-tl-none'
+                    }`}
+                  >
+                    {text}...
+                  </div>
+                </div>
+              );
+            })}
+
+            <div ref={captionsEndRef} />
+          </div>
+
+          {/* Bottom Info Bar */}
+          <div className="p-3 bg-[#f7fafc] dark:bg-[#030813]/60 border-t border-[#e0e3e5] dark:border-[#2d3133] flex items-center justify-between text-[11px] text-[#45474c] dark:text-[#828796] flex-shrink-0">
+            <div className="flex items-center gap-1.5">
+              <span className={`w-2 h-2 rounded-full ${isRemoteSigning ? 'bg-green-500 animate-ping' : 'bg-gray-400'}`} />
+              <span>{isRemoteSigning ? 'Participant is active' : 'Voice synthesis ready'}</span>
+            </div>
+            <span>STT Engine: Active</span>
+          </div>
+
+        </section>
+
+        {/* ========================================================= */}
+        {/* RIGHT COLUMN: Video Camera Part                           */}
+        {/* ========================================================= */}
+        <section className="lg:col-span-6 flex flex-col gap-3 min-h-0">
+          
+          {/* Top Room Code & Connection Banner */}
+          <div className="bg-white dark:bg-[#1a202c] px-4 py-2.5 rounded-2xl border border-[#e0e3e5] dark:border-[#2d3133] flex items-center justify-between shadow-sm flex-shrink-0">
+            <div className="flex items-center gap-2.5">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#45474c] dark:text-[#828796]">
+                Room Code
+              </span>
+              <span className="font-mono text-base font-black text-[#fe9832] tracking-widest">
+                {roomCode}
+              </span>
+              <button
+                type="button"
+                onClick={handleCopyCode}
+                className="px-2.5 py-1 bg-[#f1f4f6] dark:bg-[#2d3133] hover:bg-[#e0e3e5] text-[#030813] dark:text-white rounded-lg text-[10px] font-bold transition-all flex items-center gap-1"
+                aria-label="Copy Room Code"
+              >
+                <span className="material-symbols-outlined text-[14px]">{copied ? 'check' : 'content_copy'}</span>
+                <span>{copied ? 'Copied' : 'Copy'}</span>
+              </button>
+            </div>
+
+              <div className="flex items-center gap-2">
+                <span
+                  className={`w-2.5 h-2.5 rounded-full ${
+                    connectionState === LkConnectionState.Connected
+                      ? 'bg-green-500 animate-pulse'
+                      : 'bg-amber-500'
+                  }`}
+                  aria-hidden="true"
+                />
+                <span className="text-xs font-bold text-[#030813] dark:text-white">
+                  {getConnectionStatusText()}
+                </span>
+              </div>
+            </div>
+
+          {/* Main Camera Arena Frame */}
+          <div
+            ref={videoParentRef}
+            onMouseMove={resetCameraControlsTimer}
+            onMouseEnter={resetCameraControlsTimer}
+            onTouchStart={resetCameraControlsTimer}
+            className="flex-1 min-h-[320px] bg-[#030813] rounded-[24px] border border-[#2d3133] overflow-hidden relative flex items-center justify-center shadow-lg group"
+          >
+
+            {primaryRemoteTrack ? (
+              <VideoTrack trackRef={primaryRemoteTrack as any} className="w-full h-full object-cover" />
+            ) : (
+              <div className="text-center flex flex-col items-center gap-2 p-6 text-[#828796]">
+                <span className="material-symbols-outlined text-[48px] text-[#fe9832] animate-pulse">videocam</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-white">Remote Camera Inactive</span>
+                <span className="text-[11px] text-[#828796]">Waiting for the participant to join or enable video...</span>
+              </div>
+            )}
+
+            {/* Screen share pill */}
+            {primaryRemoteTrack?.source === Track.Source.ScreenShare && (
+              <div className="absolute top-3 left-3 bg-emerald-500 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow z-10 flex items-center gap-1.5 animate-pulse">
+                <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                <span>Viewing Screen Share</span>
+              </div>
+            )}
+
+            {/* Draggable Local Self-View PiP */}
+            <DraggableSelfView
+              parentRef={videoParentRef}
+              cameraState={cameraState}
+              localTrack={localTrack}
+            />
+
+            {/* Floating In-Call Action Bar (3-Second Auto-Hide on Inactivity) */}
+            <footer
+              className={`absolute bottom-3 inset-x-3 z-40 bg-white/95 dark:bg-[#030813]/85 backdrop-blur-2xl border border-[#e0e3e5] dark:border-white/15 px-3 py-2 rounded-2xl flex items-center justify-between shadow-xl transition-all duration-300 transform ${
+                internalControlsVisible
+                  ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto'
+                  : 'opacity-0 translate-y-3 scale-95 pointer-events-none'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {/* Mic Toggle & Device Selector Capsule */}
+                <div className="relative flex items-center bg-[#f1f4f6] dark:bg-white/10 hover:bg-[#e0e3e5] dark:hover:bg-white/15 rounded-2xl border border-[#e0e3e5] dark:border-white/10 transition-all shadow-sm">
+                  <button
+                    type="button"
+                    onClick={handleToggleMic}
+                    className={`h-10 px-3 rounded-l-2xl transition-all duration-200 flex items-center gap-1.5 active:scale-95 ${
+                      micState
+                        ? 'text-[#030813] dark:text-white hover:text-green-600 dark:hover:text-green-400'
+                        : 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md'
+                    }`}
+                    aria-label={micState ? 'Mute microphone' : 'Unmute microphone'}
+                    title={micState ? 'Mute Microphone' : 'Unmute Microphone'}
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      {micState ? 'mic' : 'mic_off'}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowMicDevices(!showMicDevices);
+                      setShowCameraDevices(false);
+                    }}
+                    className="h-10 px-2 rounded-r-2xl border-l border-[#e0e3e5] dark:border-white/15 hover:bg-[#e0e3e5] dark:hover:bg-white/20 text-[#030813] dark:text-white transition-all active:scale-95"
+                    aria-label="Select microphone device"
+                  >
+                    <span className={`material-symbols-outlined text-[15px] transition-transform duration-200 ${showMicDevices ? 'rotate-180 text-[#fe9832]' : ''}`}>
+                      expand_less
+                    </span>
+                  </button>
+
+                  {showMicDevices && (
+                    <div className="absolute bottom-12 left-0 bg-white dark:bg-[#1a202c] border border-[#e0e3e5] dark:border-white/15 rounded-2xl shadow-2xl p-2 w-60 z-50 flex flex-col gap-1 max-h-44 overflow-y-auto text-xs text-[#030813] dark:text-white animate-scaleUp">
+                      <div className="text-[10px] font-bold text-[#828796] uppercase px-1.5 py-0.5">Microphones</div>
+                      {audioDevices.map((d) => (
+                        <button
+                          key={d.deviceId}
+                          onClick={() => {
+                            setActiveAudioDevice(d.deviceId);
+                            setShowMicDevices(false);
+                          }}
+                          className={`text-left p-2 rounded-xl text-xs truncate transition-colors ${
+                            activeAudioDeviceId === d.deviceId ? 'bg-[#fe9832] text-[#683700] font-bold' : 'hover:bg-[#f1f4f6] dark:hover:bg-white/10'
+                          }`}
+                        >
+                          {d.label || 'Microphone'}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Camera Toggle & Device Selector Capsule */}
+                <div className="relative flex items-center bg-[#f1f4f6] dark:bg-white/10 hover:bg-[#e0e3e5] dark:hover:bg-white/15 rounded-2xl border border-[#e0e3e5] dark:border-white/10 transition-all shadow-sm">
+                  <button
+                    type="button"
+                    onClick={handleToggleCamera}
+                    className={`h-10 px-3 rounded-l-2xl transition-all duration-200 flex items-center gap-1.5 active:scale-95 ${
+                      cameraState
+                        ? 'text-[#030813] dark:text-white hover:text-green-600 dark:hover:text-green-400'
+                        : 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md'
+                    }`}
+                    aria-label={cameraState ? 'Turn off camera' : 'Turn on camera'}
+                    title={cameraState ? 'Turn off camera' : 'Turn on camera'}
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      {cameraState ? 'videocam' : 'videocam_off'}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCameraDevices(!showCameraDevices);
+                      setShowMicDevices(false);
+                    }}
+                    className="h-10 px-2 rounded-r-2xl border-l border-[#e0e3e5] dark:border-white/15 hover:bg-[#e0e3e5] dark:hover:bg-white/20 text-[#030813] dark:text-white transition-all active:scale-95"
+                    aria-label="Select camera device"
+                  >
+                    <span className={`material-symbols-outlined text-[15px] transition-transform duration-200 ${showCameraDevices ? 'rotate-180 text-[#fe9832]' : ''}`}>
+                      expand_less
+                    </span>
+                  </button>
+
+                  {showCameraDevices && (
+                    <div className="absolute bottom-12 left-0 bg-white dark:bg-[#1a202c] border border-[#e0e3e5] dark:border-white/15 rounded-2xl shadow-2xl p-2 w-60 z-50 flex flex-col gap-1 max-h-44 overflow-y-auto text-xs text-[#030813] dark:text-white animate-scaleUp">
+                      <div className="text-[10px] font-bold text-[#828796] uppercase px-1.5 py-0.5">Cameras</div>
+                      {videoDevices.map((d) => (
+                        <button
+                          key={d.deviceId}
+                          onClick={() => {
+                            setActiveVideoDevice(d.deviceId);
+                            setShowCameraDevices(false);
+                          }}
+                          className={`text-left p-2 rounded-xl text-xs truncate transition-colors ${
+                            activeVideoDeviceId === d.deviceId ? 'bg-[#fe9832] text-[#683700] font-bold' : 'hover:bg-[#f1f4f6] dark:hover:bg-white/10'
+                          }`}
+                        >
+                          {d.label || 'Camera'}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Screen Share Button */}
+                <button
+                  type="button"
+                  onClick={handleToggleScreen}
+                  className={`h-10 px-3 rounded-2xl border transition-all duration-200 flex items-center justify-center active:scale-95 ${
+                    screenShareState
+                      ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/30 font-bold border-transparent'
+                      : 'bg-[#f1f4f6] dark:bg-white/10 hover:bg-[#e0e3e5] dark:hover:bg-white/20 text-[#030813] dark:text-white border-[#e0e3e5] dark:border-white/10'
+                  }`}
+                  aria-label="Toggle Screen Sharing"
+                  title={screenShareState ? 'Stop Screen Sharing' : 'Share Screen'}
+                >
+                  <span className="material-symbols-outlined text-[18px]">present_to_all</span>
+                </button>
+              </div>
+
+              {/* End Call / Leave Button */}
+              {isCreator ? (
+                <button
+                  type="button"
+                  onClick={onEndCall}
+                  className="h-10 px-4 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-500 text-white rounded-2xl text-xs font-extrabold transition-all duration-200 shadow-xl shadow-red-600/30 flex items-center gap-1.5 hover:scale-105 active:scale-95 border border-red-400/30"
+                >
+                  <span className="material-symbols-outlined text-[17px]">call_end</span>
+                  <span>End Call</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onLeaveCall}
+                  className="h-10 px-4 bg-[#f1f4f6] dark:bg-slate-700/80 hover:bg-[#e0e3e5] dark:hover:bg-slate-700 text-[#030813] dark:text-white rounded-2xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 hover:scale-105 active:scale-95 border border-[#e0e3e5] dark:border-white/10"
+                >
+                  <span className="material-symbols-outlined text-[17px]">logout</span>
+                  <span>Leave</span>
+                </button>
+              )}
+            </footer>
+          </div>
+
+        </section>
+
       </div>
     </div>
   );
 };
+
 export default HearingUserWorkspace;

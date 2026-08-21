@@ -163,7 +163,7 @@ export const OfflineSessionPage: React.FC = () => {
         'G_HELLO': 'Hello, my name is Sidharth.',
         'G_HELP': 'How can I help you today?',
         'G_COMMUNICATE': 'I use Indian Sign Language to communicate.',
-        'G_THANKYOU': 'Thank you for using SignBridge!'
+        'G_THANKYOU': 'Thank you for using SAMBHAV!'
       };
       if (result.gesture !== 'G_UNKNOWN') {
         setRecognizedText(vocab[result.gesture]);

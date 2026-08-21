@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-export const LoginPage: React.FC = () => {
+export const AdminLoginPage: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -23,21 +23,18 @@ export const LoginPage: React.FC = () => {
       src: '/assets/isl_gesture_1.png',
       title: 'Hello / Greeting',
       description: 'Namaste & Welcome Sign in Indian Sign Language',
-      icon: 'waving_hand',
     },
     {
       id: 1,
       src: '/assets/isl_gesture_2.png',
       title: 'Thank You',
       description: 'Gratitude & Appreciation Sign in Indian Sign Language',
-      icon: 'sentiment_very_satisfied',
     },
     {
       id: 2,
       src: '/assets/isl_gesture_3.png',
       title: 'Help',
       description: 'Assistance & Support Sign in Indian Sign Language',
-      icon: 'front_hand',
     },
   ];
 
@@ -60,9 +57,9 @@ export const LoginPage: React.FC = () => {
     setError(null);
     try {
       await login(email, password);
-      navigate('/dashboard');
+      navigate('/admin');
     } catch (err: any) {
-      setError(err?.message || 'Invalid email or password.');
+      setError(err?.message || 'Invalid administrator credentials.');
     } finally {
       setLoading(false);
     }
@@ -73,7 +70,7 @@ export const LoginPage: React.FC = () => {
       {/* Split Screen Container */}
       <div className="flex w-full min-h-screen">
         
-        {/* Left Side: Visual Storytelling & High-Res ISL Hover Animation */}
+        {/* Left Side: Visual Storytelling & High-Res ISL Animation */}
         <div className="hidden lg:flex w-1/2 flex-col justify-between p-12 relative overflow-hidden bg-[#1a202c]">
           {/* Decorative Background Glow */}
           <div className="absolute -top-24 -left-24 w-96 h-96 bg-[#fe9832]/10 rounded-full blur-3xl pointer-events-none" />
@@ -92,20 +89,19 @@ export const LoginPage: React.FC = () => {
             </Link>
 
             <h1 className="text-[38px] xl:text-[44px] font-extrabold leading-[48px] tracking-tight text-white mt-4">
-              Empowering Connection.
+              Admin & Governance.
             </h1>
             <p className="text-base leading-relaxed text-[#c1c6d7] max-w-md">
-              Bridging the communication gap with AI-powered Indian Sign Language interpretation. Experience seamless interaction designed for universal accessibility.
+              Secure administrative access for monitoring system telemetry, verifying sign asset repositories, and overseeing communication logs.
             </p>
           </div>
 
-          {/* High-Resolution ISL Gesture Interactive Frame (Zero Blank Space) */}
+          {/* High-Resolution ISL Gesture Animated Frame (Zero Blank Space) */}
           <div
             className="relative z-10 w-full max-w-md mx-auto my-auto py-2"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
           >
-            {/* Gesture Image Container */}
             <div className="aspect-[16/10] bg-[#111318] rounded-2xl shadow-2xl overflow-hidden relative border border-white/10 group">
               {gestureImages.map((img, idx) => (
                 <div
@@ -121,7 +117,6 @@ export const LoginPage: React.FC = () => {
                     alt={img.title}
                     src={img.src}
                   />
-                  {/* Subtle Floating Sign Label */}
                   <div className="absolute bottom-3 left-3 px-3 py-1.5 bg-black/70 backdrop-blur-md rounded-full text-xs font-bold text-white border border-white/10 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-[#fe9832] animate-ping" />
                     <span>Sign: <strong className="text-[#fe9832]">{img.title}</strong></span>
@@ -155,42 +150,31 @@ export const LoginPage: React.FC = () => {
               })}
             </div>
 
-            {/* Helper tooltip */}
             <p className="text-[11px] text-center text-[#828796] mt-2">
               Hover over any button to preview the ISL gesture sign
             </p>
           </div>
 
           <div className="relative z-10 text-xs text-[#828796] flex items-center justify-between border-t border-white/10 pt-4">
-            <span>SAMBHAV ISL AI Platform</span>
-            <span>Accessibility First</span>
+            <span>SAMBHAV Admin Console</span>
+            <span>Restricted Governance</span>
           </div>
         </div>
 
-        {/* Right Side: Login Form */}
+        {/* Right Side: Admin Login Form */}
         <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-10 md:p-12 bg-[#f7fafc] dark:bg-[#030813] relative">
           
           <div className="w-full max-w-md bg-white dark:bg-[#1a202c] p-6 sm:p-10 rounded-2xl shadow-lg border border-[#e0e3e5] dark:border-[#2d3133]">
             
-            {/* Mobile Logo */}
-            <div className="lg:hidden flex justify-center mb-6">
-              <Link to="/" className="flex items-center gap-2">
-                <img
-                  alt="SAMBHAV Logo"
-                  className="h-10 w-10 object-contain rounded-full shadow-sm"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuBTg0HBcA_4tr0W91LDkwqOnVSfSNqNLfncEA1PPwyGzu5JLTBXpp_wsXkZjo9tzLvf4KFNyaXk060fIQSGUovqRqh34LlLcrxxAUa5VojHfDfu4jRQJGk6QxnzQbHigwRz16MDMj2DwoCRu_i77QAzKuRLVJ8e2mLUwC7-UvMJ_JB5sui2SpIRfZM5c9yAP4gD3yTYgJBzlXm_PtIyr70gHi3MkHGC95pbUZ_Mid5Kj_my4OpeXflK15WPybnDecsYaov545CM4kLxeQ"
-                />
-                <span className="text-xl font-bold tracking-tight text-[#030813] dark:text-white">
-                  SAM<span className="text-[#fe9832] font-extrabold">BHAV</span>
-                </span>
-              </Link>
-            </div>
-
             {/* Form Header */}
             <div className="mb-6">
-              <h2 className="text-2xl font-bold text-[#030813] dark:text-white tracking-tight">Log In</h2>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#fe9832]/10 text-[#fe9832] rounded-full text-xs font-bold mb-3">
+                <span className="material-symbols-outlined text-[16px]">shield_person</span>
+                <span>Administrator Access</span>
+              </div>
+              <h2 className="text-2xl font-bold text-[#030813] dark:text-white tracking-tight">Admin Sign In</h2>
               <p className="text-xs text-[#45474c] dark:text-[#828796] mt-1">
-                Access your SAMBHAV dashboard and real-time workspaces.
+                Enter your administrative credentials to manage SAMBHAV.
               </p>
             </div>
 
@@ -208,20 +192,20 @@ export const LoginPage: React.FC = () => {
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               {/* Email Input */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-[#181c1e] dark:text-white" htmlFor="email">
-                  Email Address
+                <label className="text-xs font-bold text-[#181c1e] dark:text-white" htmlFor="admin-email">
+                  Admin Email
                 </label>
                 <div className="relative">
                   <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[#45474c] dark:text-[#828796] text-[18px]">
                     mail
                   </span>
                   <input
-                    id="email"
+                    id="admin-email"
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@example.com"
+                    placeholder="admin@accessibleconnect.com"
                     className="w-full pl-10 pr-4 py-2.5 bg-[#f7fafc] dark:bg-[#030813] border border-[#c6c6cc] dark:border-[#2d3133] rounded-xl text-xs text-[#030813] dark:text-white focus:border-[#fe9832] outline-none transition-colors"
                   />
                 </div>
@@ -229,28 +213,20 @@ export const LoginPage: React.FC = () => {
 
               {/* Password Input */}
               <div className="flex flex-col gap-1.5">
-                <div className="flex justify-between items-center">
-                  <label className="text-xs font-bold text-[#181c1e] dark:text-white" htmlFor="password">
-                    Password
-                  </label>
-                  <Link
-                    to="/forgot-password"
-                    className="text-[11px] font-bold text-[#fe9832] hover:underline"
-                  >
-                    Forgot Password?
-                  </Link>
-                </div>
+                <label className="text-xs font-bold text-[#181c1e] dark:text-white" htmlFor="admin-password">
+                  Password
+                </label>
                 <div className="relative">
                   <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[#45474c] dark:text-[#828796] text-[18px]">
                     lock
                   </span>
                   <input
-                    id="password"
+                    id="admin-password"
                     type={showPassword ? 'text' : 'password'}
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter your password"
+                    placeholder="Enter admin password"
                     className="w-full pl-10 pr-10 py-2.5 bg-[#f7fafc] dark:bg-[#030813] border border-[#c6c6cc] dark:border-[#2d3133] rounded-xl text-xs text-[#030813] dark:text-white focus:border-[#fe9832] outline-none transition-colors"
                   />
                   <button
@@ -269,14 +245,14 @@ export const LoginPage: React.FC = () => {
               {/* Remember Me */}
               <div className="flex items-center gap-2">
                 <input
-                  id="remember"
+                  id="admin-remember"
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="w-4 h-4 rounded text-[#fe9832] focus:ring-[#fe9832] cursor-pointer"
                 />
-                <label htmlFor="remember" className="text-xs text-[#45474c] dark:text-[#c1c6d7] cursor-pointer select-none">
-                  Keep me signed in on this device
+                <label htmlFor="admin-remember" className="text-xs text-[#45474c] dark:text-[#c1c6d7] cursor-pointer select-none">
+                  Keep admin session active
                 </label>
               </div>
 
@@ -284,24 +260,24 @@ export const LoginPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="mt-2 w-full py-3 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] font-bold text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                className="mt-2 w-full py-3 bg-[#030813] dark:bg-[#fe9832] text-white dark:text-[#683700] hover:bg-[#1a202c] dark:hover:bg-[#e8872b] font-bold text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {loading ? (
                   <span className="material-symbols-outlined text-[18px] animate-spin">sync</span>
                 ) : (
                   <>
-                    <span>Sign In</span>
+                    <span>Enter Admin Console</span>
                     <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
                   </>
                 )}
               </button>
             </form>
 
-            {/* Footer Registration Link */}
+            {/* User Login Redirect */}
             <div className="mt-6 pt-5 border-t border-[#e0e3e5] dark:border-[#2d3133] text-center text-xs text-[#45474c] dark:text-[#828796]">
-              Don't have an account?{' '}
-              <Link to="/register" className="text-[#fe9832] font-bold hover:underline">
-                Create Account
+              Standard User?{' '}
+              <Link to="/login" className="text-[#fe9832] font-bold hover:underline">
+                Sign in to User Dashboard
               </Link>
             </div>
 
@@ -314,4 +290,4 @@ export const LoginPage: React.FC = () => {
   );
 };
 
-export default LoginPage;
+export default AdminLoginPage;
