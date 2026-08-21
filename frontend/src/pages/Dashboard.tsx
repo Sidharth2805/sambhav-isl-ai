@@ -45,7 +45,7 @@ export const Dashboard: React.FC = () => {
     {
       id: 'learn',
       title: 'Learn ISL',
-      desc: 'Interactive video lessons, thumbnail uploads, and personal watch progress tracking.',
+      desc: 'Curated video lessons, vocabulary tutorials, and personal watch progress tracking.',
       icon: 'sign_language',
       iconBg: 'bg-[#012700] dark:bg-[#8dfc75]/20',
       iconColor: 'text-[#8dfc75]',

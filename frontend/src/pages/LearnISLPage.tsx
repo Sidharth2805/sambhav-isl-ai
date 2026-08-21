@@ -65,22 +65,6 @@ export const LearnISLPage: React.FC = () => {
     );
   };
 
-  const handleThumbnailUpload = (e: React.ChangeEvent<HTMLInputElement>, id: string) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === 'string') {
-          const newUrl = reader.result;
-          setLessons((prev) =>
-            prev.map((item) => (item.id === id ? { ...item, thumbnail: newUrl } : item))
-          );
-        }
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   const watchedCount = lessons.filter((l) => l.watched).length;
   const progressPercent = Math.round((watchedCount / lessons.length) * 100);
 
@@ -172,7 +156,7 @@ export const LearnISLPage: React.FC = () => {
                   {lesson.title}
                 </h3>
                 <p className="text-xs text-[#45474c] dark:text-[#828796]">
-                  Link Target: <code className="bg-[#f1f4f6] dark:bg-[#2d3133] px-1.5 py-0.5 rounded text-[#8f4e00] dark:text-[#fe9832] font-bold">{lesson.youtubeLink}</code>
+                  Channel / Creator: <code className="bg-[#f1f4f6] dark:bg-[#2d3133] px-1.5 py-0.5 rounded text-[#8f4e00] dark:text-[#fe9832] font-bold">{lesson.youtubeLink}</code>
                 </p>
               </div>
 
@@ -189,17 +173,15 @@ export const LearnISLPage: React.FC = () => {
                   <span>{lesson.watched ? 'Mark as Unwatched' : 'Mark as Watched'}</span>
                 </label>
 
-                {/* Upload Thumbnail Button */}
-                <label className="px-2.5 py-1.5 bg-[#f1f4f6] dark:bg-[#2d3133] hover:bg-[#e0e3e5] dark:hover:bg-[#3d4346] text-[#030813] dark:text-white rounded-lg text-[11px] font-bold cursor-pointer transition-colors flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[14px]">image</span>
-                  <span>Upload Thumbnail</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => handleThumbnailUpload(e, lesson.id)}
-                  />
-                </label>
+                <a
+                  href={lesson.youtubeLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-1.5 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 shadow-sm"
+                >
+                  <span>Watch Lesson</span>
+                  <span className="material-symbols-outlined text-[13px]">open_in_new</span>
+                </a>
               </div>
 
             </div>
