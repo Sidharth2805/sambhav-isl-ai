@@ -20,24 +20,24 @@ export const LoginPage: React.FC = () => {
   const gestureImages = [
     {
       id: 0,
-      src: '/assets/isl_gesture_1.png',
-      title: 'Hello / Greeting',
-      description: 'Namaste & Welcome Sign in Indian Sign Language',
+      src: '/assets/isl_gesture_hello.jpg',
+      title: 'Hello',
+      description: 'Greeting & Welcome Sign in Indian Sign Language',
       icon: 'waving_hand',
     },
     {
       id: 1,
-      src: '/assets/isl_gesture_2.png',
-      title: 'Thank You',
+      src: '/assets/isl_gesture_thankyou.jpg',
+      title: 'Thank you',
       description: 'Gratitude & Appreciation Sign in Indian Sign Language',
-      icon: 'sentiment_very_satisfied',
+      icon: 'favorite',
     },
     {
       id: 2,
-      src: '/assets/isl_gesture_3.png',
-      title: 'Help',
-      description: 'Assistance & Support Sign in Indian Sign Language',
-      icon: 'front_hand',
+      src: '/assets/isl_gesture_sorry.jpg',
+      title: 'Sorry',
+      description: 'Apology & Regret Sign in Indian Sign Language',
+      icon: 'sentiment_neutral',
     },
   ];
 
