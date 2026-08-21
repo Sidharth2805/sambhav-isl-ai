@@ -8,7 +8,8 @@ export async function apiRequest(
   path: string,
   method: string = 'GET',
   body?: any,
-  accessToken?: string | null
+  accessToken?: string | null,
+  timeoutMs: number = 15000
 ) {
   console.log('[SignBridge Debug] apiRequest:', method, `${API_URL}${path}`);
   const headers: HeadersInit = {
@@ -20,9 +21,13 @@ export async function apiRequest(
     headers['Authorization'] = `Bearer ${accessToken}`;
   }
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
   const options: RequestInit = {
     method,
     headers,
+    signal: controller.signal,
   };
 
   // Cookie-authenticated routes require credentials inclusion
@@ -34,21 +39,30 @@ export async function apiRequest(
     options.body = JSON.stringify(body);
   }
 
-  const response = await fetch(`${API_URL}${path}`, options);
+  try {
+    const response = await fetch(`${API_URL}${path}`, options);
 
-  if (response.status === 204) {
-    return null;
+    if (response.status === 204) {
+      return null;
+    }
+
+    const text = await response.text();
+    const data = text ? JSON.parse(text) : null;
+
+    if (!response.ok) {
+      const errorMsg = data?.message || data?.error || (typeof data === 'string' ? data : 'Request failed. Please check your network connection.');
+      throw new Error(errorMsg);
+    }
+
+    return data;
+  } catch (err: any) {
+    if (err?.name === 'AbortError') {
+      throw new Error('Server took too long to respond. Please try again.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
-
-  if (!response.ok) {
-    const errorMsg = data?.message || data?.error || (typeof data === 'string' ? data : 'Request failed. Please check your network connection.');
-    throw new Error(errorMsg);
-  }
-
-  return data;
 }
 
 export async function requestForgotPasswordOtp(email: string): Promise<{ message: string }> {
