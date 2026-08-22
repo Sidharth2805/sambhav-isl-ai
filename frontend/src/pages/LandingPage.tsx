@@ -381,9 +381,9 @@ export const LandingPage: React.FC = () => {
             </div>
             <div className="rounded-2xl sm:rounded-3xl shadow-lg border border-[#D0CCC5] bg-[#FFFFFF]/80 p-3 sm:p-4 flow-arrow max-w-4xl mx-auto">
               <img
-                alt="Sambhav AI Two-Way Communication Bridge"
+                alt="SAANKET: The Bidirectional Bridge - How it Works"
                 className="w-full h-auto object-cover rounded-xl sm:rounded-2xl relative z-10"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDxNUIb39AzQfG8IFED8IMn2tJ695-beig2tTEpRl4wjAIKz0580qD9oIimJPUBxkAuhLEhLR9TqvIIcU0h2Pc5exGPu3RlqUOZfC93w4qnReSI-khwZ7wUto1IF4o_t7JZhVVL03oAjccmdB22ZBvMRIV1qKPdD1OhrIrdq6-MlVJkQuQ6JuRbJoDP1gnuQ0UYh7YS6_UO4QFK7M7jAYnZl_LiwnhRhZtmcSf3C_QY-xxTvpba9eDRyn8cdqM3zjbQTIjTBxcT3fvSPg"
+                src="/assets/how_it_works_diagram.jpg"
               />
             </div>
           </div>
