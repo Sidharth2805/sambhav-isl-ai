@@ -46,6 +46,7 @@ interface DeafUserWorkspaceProps {
   activeSequence: any | null;
   onSequenceComplete: () => void;
   recoveryState?: 'CONNECTED' | 'RECONNECTING' | 'RECOVERING' | 'READY';
+  onSendMessage?: (text: string) => void;
 }
 
 export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
@@ -88,7 +89,9 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
   activeSequence,
   onSequenceComplete,
   recoveryState = 'READY',
+  onSendMessage,
 }) => {
+  const [typedResponse, setTypedResponse] = useState('');
   const videoParentRef = useRef<HTMLDivElement | null>(null);
   const [copied, setCopied] = useState(false);
   const [avatarSpeed, setAvatarSpeed] = useState(1.0);
@@ -528,6 +531,34 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
 
           <div ref={captionsEndRef} />
         </div>
+
+        {/* Quick Message Input for Accessibility / Deaf User */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (typedResponse.trim() && onSendMessage) {
+              onSendMessage(typedResponse.trim());
+              setTypedResponse('');
+            }
+          }}
+          className="pt-2 border-t border-[#e0e3e5] dark:border-white/10 flex items-center gap-2 flex-shrink-0"
+        >
+          <input
+            type="text"
+            value={typedResponse}
+            onChange={(e) => setTypedResponse(e.target.value)}
+            placeholder="Type a quick reply (reads aloud in voice to hearing participant)..."
+            className="flex-1 px-3 py-1.5 bg-[#f1f4f6] dark:bg-white/10 border border-[#e0e3e5] dark:border-white/10 rounded-xl text-xs text-[#030813] dark:text-white placeholder-[#828796] focus:outline-none focus:border-[#fe9832]"
+          />
+          <button
+            type="submit"
+            disabled={!typedResponse.trim()}
+            className="px-3 py-1.5 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] rounded-xl text-xs font-bold transition-all disabled:opacity-40 flex items-center gap-1 shrink-0 active:scale-95"
+          >
+            <span className="material-symbols-outlined text-[15px]">send</span>
+            <span className="hidden sm:inline">Send</span>
+          </button>
+        </form>
       </section>
 
     </div>

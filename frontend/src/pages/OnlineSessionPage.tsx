@@ -616,6 +616,35 @@ const ActiveCallWorkspace: React.FC<ActiveCallWorkspaceProps> = ({
     };
   }, [micState, connectionState, sessionId, senderIdentity, senderDisplayName, senderAccountType]);
 
+  const handleSendTextMessage = useCallback(
+    async (text: string) => {
+      if (!text || !text.trim()) return;
+      const cleanText = text.trim();
+      const eventId = `${sessionId}-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+      const transcriptEvent: TranscriptEvent = {
+        id: eventId,
+        sessionId,
+        senderId: senderIdentity,
+        senderName: senderDisplayName,
+        senderType: senderAccountType,
+        text: cleanText,
+        isFinal: true,
+        timestamp: Date.now(),
+        confidence: 1.0,
+      };
+
+      addTranscriptEvent(transcriptEvent);
+      broadcastTranscriptEvent(transcriptEvent);
+
+      try {
+        await sendFinalTranscript(sessionId, transcriptEvent, accessToken);
+      } catch (err) {
+        console.error('Failed to persist typed message to backend:', err);
+      }
+    },
+    [sessionId, senderIdentity, senderDisplayName, senderAccountType, addTranscriptEvent, broadcastTranscriptEvent, accessToken]
+  );
+
   useEffect(() => {
     if (!room) return;
 
@@ -738,6 +767,7 @@ const ActiveCallWorkspace: React.FC<ActiveCallWorkspaceProps> = ({
     activeSequence: sequenceQueue[0] || null,
     onSequenceComplete: handleSequenceComplete,
     recoveryState,
+    onSendMessage: handleSendTextMessage,
   };
 
   return (

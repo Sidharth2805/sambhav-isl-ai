@@ -43,6 +43,7 @@ interface HearingUserWorkspaceProps {
   captionsEndRef: React.RefObject<HTMLDivElement | null>;
 
   controlsVisible: boolean;
+  onSendMessage?: (text: string) => void;
 }
 
 export const HearingUserWorkspace: React.FC<HearingUserWorkspaceProps> = ({
@@ -82,7 +83,9 @@ export const HearingUserWorkspace: React.FC<HearingUserWorkspaceProps> = ({
   captionsEndRef,
 
   controlsVisible: _controlsVisible,
+  onSendMessage,
 }) => {
+  const [typedMessage, setTypedMessage] = useState('');
   const videoParentRef = useRef<HTMLDivElement | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -289,13 +292,41 @@ export const HearingUserWorkspace: React.FC<HearingUserWorkspaceProps> = ({
             <div ref={captionsEndRef} />
           </div>
 
+          {/* Quick Text Input for Hearing User */}
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (typedMessage.trim() && onSendMessage) {
+                onSendMessage(typedMessage.trim());
+                setTypedMessage('');
+              }
+            }}
+            className="p-2.5 bg-[#f7fafc] dark:bg-[#030813]/60 border-t border-[#e0e3e5] dark:border-[#2d3133] flex items-center gap-2 flex-shrink-0"
+          >
+            <input
+              type="text"
+              value={typedMessage}
+              onChange={(e) => setTypedMessage(e.target.value)}
+              placeholder="Type a message to translate or speak into mic..."
+              className="flex-1 px-3.5 py-2 bg-white dark:bg-[#1a202c] border border-[#e0e3e5] dark:border-[#2d3133] rounded-xl text-xs text-[#030813] dark:text-white placeholder-[#828796] focus:outline-none focus:border-[#fe9832]"
+            />
+            <button
+              type="submit"
+              disabled={!typedMessage.trim()}
+              className="px-3.5 py-2 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] rounded-xl text-xs font-bold transition-all disabled:opacity-40 flex items-center gap-1 shrink-0 active:scale-95"
+            >
+              <span className="material-symbols-outlined text-[16px]">send</span>
+              <span className="hidden sm:inline">Send</span>
+            </button>
+          </form>
+
           {/* Bottom Info Bar */}
-          <div className="p-3 bg-[#f7fafc] dark:bg-[#030813]/60 border-t border-[#e0e3e5] dark:border-[#2d3133] flex items-center justify-between text-[11px] text-[#45474c] dark:text-[#828796] flex-shrink-0">
+          <div className="px-3 py-2 bg-[#f7fafc] dark:bg-[#030813]/60 border-t border-[#e0e3e5] dark:border-[#2d3133] flex items-center justify-between text-[11px] text-[#45474c] dark:text-[#828796] flex-shrink-0">
             <div className="flex items-center gap-1.5">
               <span className={`w-2 h-2 rounded-full ${isRemoteSigning ? 'bg-green-500 animate-ping' : 'bg-gray-400'}`} />
               <span>{isRemoteSigning ? 'Participant is active' : 'Voice synthesis ready'}</span>
             </div>
-            <span>STT Engine: Active</span>
+            <span>STT &amp; Captions: Active</span>
           </div>
 
         </section>
