@@ -14,11 +14,13 @@ export interface SpeechToTextAdapter {
 export class WebSpeechSTTAdapter implements SpeechToTextAdapter {
   private recognition: any = null;
   private isRunning: boolean = false;
+  private shouldBeListening: boolean = false;
   private callback: ((event: TranscriptEvent) => void) | null = null;
   private sessionId: string = '';
   private senderId: string = '';
   private senderName: string = '';
   private senderType: 'COMMON_USER' | 'ACCESSIBILITY_USER' = 'COMMON_USER';
+  private restartTimeout: any = null;
 
   start(
     sessionId: string,
@@ -33,68 +35,98 @@ export class WebSpeechSTTAdapter implements SpeechToTextAdapter {
       return;
     }
 
-    if (this.isRunning) {
-      this.stop();
-    }
-
     this.sessionId = sessionId;
     this.senderId = senderId;
     this.senderName = senderName;
     this.senderType = senderType;
     this.callback = callback;
+    this.shouldBeListening = true;
+
+    // If recognition is already actively running, just update the metadata and return
+    if (this.isRunning && this.recognition) {
+      return;
+    }
+
+    this.initAndStartRecognition();
+  }
+
+  private initAndStartRecognition(): void {
+    if (!this.shouldBeListening) return;
+
+    if (this.restartTimeout) {
+      clearTimeout(this.restartTimeout);
+      this.restartTimeout = null;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    if (this.recognition) {
+      try {
+        this.recognition.onstart = null;
+        this.recognition.onresult = null;
+        this.recognition.onerror = null;
+        this.recognition.onend = null;
+        this.recognition.abort();
+      } catch (e) {
+        // Ignore
+      }
+      this.recognition = null;
+    }
 
     try {
-      this.recognition = new SpeechRecognition();
-      this.recognition.continuous = true;
-      this.recognition.interimResults = true;
-      this.recognition.lang = 'en-US';
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-IN';
+      recognition.maxAlternatives = 1;
 
-      this.recognition.onstart = () => {
+      recognition.onstart = () => {
         this.isRunning = true;
-        if (import.meta.env.DEV) {
-          console.log('[SignBridge Debug] STT started');
+      };
+
+      recognition.onerror = (event: any) => {
+        const err = event?.error;
+        if (err === 'not-allowed' || err === 'service-not-allowed') {
+          console.warn('[SignBridge STT] Microphone permission denied.');
+          this.shouldBeListening = false;
+          this.isRunning = false;
         }
       };
 
-      this.recognition.onerror = (event: any) => {
-        console.error('[SignBridge Debug] Speech recognition error:', event.error);
-        if (event.error === 'not-allowed') {
-          console.warn('[SignBridge Debug] Microphone permission denied for speech recognition.');
-        }
-      };
-
-      this.recognition.onend = () => {
+      recognition.onend = () => {
         this.isRunning = false;
-        if (import.meta.env.DEV) {
-          console.log('[SignBridge Debug] STT stopped');
-        }
-        // Auto-restart only if we were not intentionally stopped
-        if (this.callback) {
-          if (import.meta.env.DEV) {
-            console.log('[SignBridge Debug] STT ended unexpectedly. Restarting...');
-          }
-          this.restart();
+        // If user still has mic ON, smoothly resume recognition after browser pause
+        if (this.shouldBeListening && this.callback) {
+          this.restartTimeout = setTimeout(() => {
+            if (this.shouldBeListening && !this.isRunning) {
+              this.initAndStartRecognition();
+            }
+          }, 300);
         }
       };
 
-      this.recognition.onresult = (event: any) => {
+      recognition.onresult = (event: any) => {
         let interimTranscript = '';
         let finalTranscript = '';
 
         for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript;
-          } else {
-            interimTranscript += event.results[i][0].transcript;
+          const item = event.results[i];
+          if (item && item[0]) {
+            if (item.isFinal) {
+              finalTranscript += item[0].transcript;
+            } else {
+              interimTranscript += item[0].transcript;
+            }
           }
         }
 
-        const text = finalTranscript || interimTranscript;
-        if (!text.trim()) return;
+        const text = (finalTranscript || interimTranscript).trim();
+        if (!text) return;
 
-        const isFinal = !!finalTranscript;
-        const confidence = event.results[event.results.length - 1][0].confidence || 1.0;
-        const eventId = `${this.sessionId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const isFinal = Boolean(finalTranscript);
+        const confidence = event.results[event.results.length - 1]?.[0]?.confidence || 0.95;
+        const eventId = `${this.sessionId}-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
 
         const transcriptEvent: TranscriptEvent = {
           id: eventId,
@@ -102,7 +134,7 @@ export class WebSpeechSTTAdapter implements SpeechToTextAdapter {
           senderId: this.senderId,
           senderName: this.senderName,
           senderType: this.senderType,
-          text: text.trim(),
+          text,
           isFinal,
           timestamp: Date.now(),
           confidence,
@@ -113,33 +145,42 @@ export class WebSpeechSTTAdapter implements SpeechToTextAdapter {
         }
       };
 
-      this.recognition.start();
-    } catch (e) {
-      console.error('[SignBridge Debug] Failed to start speech recognition:', e);
-    }
-  }
-
-  private restart(): void {
-    if (this.callback && !this.isRunning) {
-      setTimeout(() => {
-        if (this.callback && !this.isRunning) {
-          this.start(this.sessionId, this.senderId, this.senderName, this.senderType, this.callback);
-        }
-      }, 1000);
+      this.recognition = recognition;
+      recognition.start();
+    } catch (e: any) {
+      console.warn('[SignBridge STT] Start attempt note:', e?.message || e);
+      if (this.shouldBeListening) {
+        this.restartTimeout = setTimeout(() => {
+          if (this.shouldBeListening && !this.isRunning) {
+            this.initAndStartRecognition();
+          }
+        }, 800);
+      }
     }
   }
 
   stop(): void {
+    this.shouldBeListening = false;
+    this.isRunning = false;
     this.callback = null;
+
+    if (this.restartTimeout) {
+      clearTimeout(this.restartTimeout);
+      this.restartTimeout = null;
+    }
+
     if (this.recognition) {
       try {
+        this.recognition.onstart = null;
+        this.recognition.onresult = null;
+        this.recognition.onerror = null;
+        this.recognition.onend = null;
         this.recognition.stop();
       } catch (e) {
         // Ignore
       }
       this.recognition = null;
     }
-    this.isRunning = false;
   }
 }
 

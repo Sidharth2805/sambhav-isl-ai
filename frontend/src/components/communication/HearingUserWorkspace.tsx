@@ -228,7 +228,7 @@ export const HearingUserWorkspace: React.FC<HearingUserWorkspaceProps> = ({
 
             {/* Final Transcripts */}
             {finalTranscripts.map((t) => {
-              const isMe = t.senderId === user?.email || t.senderId === user?.id;
+              const isMe = t.senderId === user?.email || t.senderId === user?.id || t.senderId === user?.name || t.senderName === user?.name || t.senderName === 'Me';
               return (
                 <div
                   key={t.id}
@@ -237,7 +237,7 @@ export const HearingUserWorkspace: React.FC<HearingUserWorkspaceProps> = ({
                   }`}
                 >
                   <span className="text-[10px] font-bold text-[#828796] mb-1 px-1">
-                    {isMe ? 'You (Spoken Voice)' : 'Participant (Sign & Text)'}
+                    {isMe ? 'You (Spoken Voice)' : (t.senderName ? `${t.senderName} (Sign & Text)` : 'Participant (Sign & Text)')}
                   </span>
                   
                   <div
@@ -261,7 +261,7 @@ export const HearingUserWorkspace: React.FC<HearingUserWorkspaceProps> = ({
 
             {/* Real-time Interim Live Stream */}
             {Object.entries(interimTranscripts).map(([senderId, text]) => {
-              const isMe = senderId === user?.email || senderId === user?.id;
+              const isMe = senderId === user?.email || senderId === user?.id || senderId === user?.name || senderId === 'me';
               return (
                 <div
                   key={senderId}
@@ -271,7 +271,7 @@ export const HearingUserWorkspace: React.FC<HearingUserWorkspaceProps> = ({
                 >
                   <span className="text-[10px] font-bold text-[#fe9832] mb-1 px-1 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#fe9832] animate-ping" />
-                    <span>{isMe ? 'You (Speaking...)' : 'Participant (Signing...)'}</span>
+                    <span>{isMe ? 'You (Speaking...)' : 'Participant (Speaking/Signing...)'}</span>
                   </span>
                   <div
                     className={`p-3 rounded-2xl text-xs italic ${

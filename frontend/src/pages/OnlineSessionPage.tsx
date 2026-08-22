@@ -569,6 +569,25 @@ const ActiveCallWorkspace: React.FC<ActiveCallWorkspaceProps> = ({
     [room, connectionState]
   );
 
+  // Stable callback ref to prevent STT thrashing on every re-render
+  const transcriptCallbackRef = useRef<(event: TranscriptEvent) => void>(() => {});
+  transcriptCallbackRef.current = async (event: TranscriptEvent) => {
+    addTranscriptEvent(event);
+    broadcastTranscriptEvent(event);
+
+    if (event.isFinal) {
+      try {
+        await sendFinalTranscript(sessionId, event, accessToken);
+      } catch (err) {
+        console.error('Failed to persist final transcript to backend:', err);
+      }
+    }
+  };
+
+  const senderIdentity = localParticipant?.identity || user?.email || user?.id || 'me';
+  const senderDisplayName = user?.name || user?.email || 'Me';
+  const senderAccountType = user?.accountType || 'COMMON_USER';
+
   useEffect(() => {
     const stt = SpeechToTextService.getInstance();
     const isSupported = stt.isSupported();
@@ -581,20 +600,11 @@ const ActiveCallWorkspace: React.FC<ActiveCallWorkspaceProps> = ({
     if (micState && connectionState === LkConnectionState.Connected) {
       stt.startRecording(
         sessionId,
-        localParticipant.identity,
-        user?.fullName || 'Me',
-        user?.accountType || 'COMMON_USER',
-        async (event: TranscriptEvent) => {
-          addTranscriptEvent(event);
-          broadcastTranscriptEvent(event);
-
-          if (event.isFinal) {
-            try {
-              await sendFinalTranscript(sessionId, event, accessToken);
-            } catch (err) {
-              console.error('Failed to persist final transcript to backend:', err);
-            }
-          }
+        senderIdentity,
+        senderDisplayName,
+        senderAccountType,
+        (event: TranscriptEvent) => {
+          transcriptCallbackRef.current(event);
         }
       );
     } else {
@@ -604,7 +614,7 @@ const ActiveCallWorkspace: React.FC<ActiveCallWorkspaceProps> = ({
     return () => {
       stt.stopRecording();
     };
-  }, [micState, connectionState, sessionId, localParticipant, user, accessToken, addTranscriptEvent, broadcastTranscriptEvent]);
+  }, [micState, connectionState, sessionId, senderIdentity, senderDisplayName, senderAccountType]);
 
   useEffect(() => {
     if (!room) return;
