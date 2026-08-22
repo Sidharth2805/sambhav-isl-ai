@@ -5,6 +5,7 @@ interface VideoLesson {
   title: string;
   category: string;
   duration: string;
+  creator: string;
   youtubeLink: string;
   thumbnail: string;
   watched: boolean;
@@ -14,47 +15,62 @@ export const LearnISLPage: React.FC = () => {
   const [lessons, setLessons] = useState<VideoLesson[]>([
     {
       id: 'lesson-1',
-      title: 'ISL Alphabet & Numbers 1-100',
-      category: 'Beginner',
-      duration: '12 mins',
-      youtubeLink: 'DjMahi',
-      thumbnail: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=600&auto=format&fit=crop&q=80',
+      title: 'Indian Sign Language 101 (Complete Series)',
+      category: 'Playlist',
+      duration: 'Series',
+      creator: 'Pragya Gupta',
+      youtubeLink: 'https://youtube.com/playlist?list=PLxYMaKXKMMcMgg4f47WkG7AM0bb3AyjTi&si=15iv2Nxfv-M-mFvi',
+      thumbnail: 'https://i.ytimg.com/vi/JPV-vboWfhY/hqdefault.jpg',
       watched: true,
     },
     {
       id: 'lesson-2',
-      title: 'Daily Greetings & Common Expressions',
-      category: 'Beginner',
-      duration: '18 mins',
-      youtubeLink: 'DjMahi',
-      thumbnail: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=600&auto=format&fit=crop&q=80',
+      title: 'Basic ISL Course in Self Learning Mode',
+      category: 'Course Playlist',
+      duration: 'Full Course',
+      creator: 'ISLRTC / Deaf Education',
+      youtubeLink: 'https://youtube.com/playlist?list=PLFjydPMg4DapfRTBMokl09Ht-fhMOAYf6&si=1WF2zJ8OWbsZZOMY',
+      thumbnail: 'https://i.ytimg.com/vi/5PF6JXzYyUI/hqdefault.jpg',
       watched: true,
     },
     {
       id: 'lesson-3',
-      title: 'Family, Relationships & Pronouns in ISL',
-      category: 'Intermediate',
-      duration: '22 mins',
-      youtubeLink: 'DjMahi',
-      thumbnail: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600&auto=format&fit=crop&q=80',
+      title: 'Basic 25 Words in Indian Sign Language (Part I)',
+      category: 'Vocabulary',
+      duration: '11 mins',
+      creator: 'BUMPER CLAP',
+      youtubeLink: 'https://youtu.be/OK7ppVdau8M?si=YVxi9LuzJG1m9b1D',
+      thumbnail: 'https://i.ytimg.com/vi/OK7ppVdau8M/hqdefault.jpg',
       watched: false,
     },
     {
       id: 'lesson-4',
-      title: 'Emergency, Healthcare & Medical Signs',
-      category: 'Essential',
-      duration: '25 mins',
-      youtubeLink: 'DjMahi',
-      thumbnail: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=600&auto=format&fit=crop&q=80',
+      title: 'ISL 201: Basic Everyday Conversations 1',
+      category: 'Conversations',
+      duration: '8 mins',
+      creator: 'Pragya Gupta',
+      youtubeLink: 'https://youtu.be/aOL-yBRQHmM?si=hVazCvcZGMT5cCCw',
+      thumbnail: 'https://i.ytimg.com/vi/aOL-yBRQHmM/hqdefault.jpg',
       watched: false,
     },
     {
       id: 'lesson-5',
-      title: 'Workplace, Technical & Technology Jargon',
-      category: 'Advanced',
-      duration: '30 mins',
-      youtubeLink: 'DjMahi',
-      thumbnail: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=600&auto=format&fit=crop&q=80',
+      title: 'ISL 201: Grammar & Sentence Formation',
+      category: 'Grammar',
+      duration: '10 mins',
+      creator: 'Pragya Gupta',
+      youtubeLink: 'https://youtu.be/LpLM-8Uj1Bc?si=14K2bk8zuYM7Nzgv',
+      thumbnail: 'https://i.ytimg.com/vi/LpLM-8Uj1Bc/hqdefault.jpg',
+      watched: false,
+    },
+    {
+      id: 'lesson-6',
+      title: 'ISL 201: Daily Expressions & Dialogues',
+      category: 'Practice',
+      duration: '8 mins',
+      creator: 'Pragya Gupta',
+      youtubeLink: 'https://youtu.be/aOL-yBRQHmM?si=XgR9KaBrwWy572DO',
+      thumbnail: 'https://i.ytimg.com/vi/aOL-yBRQHmM/hqdefault.jpg',
       watched: false,
     },
   ]);
@@ -155,8 +171,9 @@ export const LearnISLPage: React.FC = () => {
                 <h3 className="text-base font-bold text-[#181c1e] dark:text-white leading-snug mb-1">
                   {lesson.title}
                 </h3>
-                <p className="text-xs text-[#45474c] dark:text-[#828796]">
-                  Channel / Creator: <code className="bg-[#f1f4f6] dark:bg-[#2d3133] px-1.5 py-0.5 rounded text-[#8f4e00] dark:text-[#fe9832] font-bold">{lesson.youtubeLink}</code>
+                <p className="text-xs text-[#45474c] dark:text-[#828796] flex items-center gap-1.5">
+                  <span>Instructor / Source:</span>
+                  <span className="font-semibold text-[#030813] dark:text-white">{lesson.creator}</span>
                 </p>
               </div>
 
