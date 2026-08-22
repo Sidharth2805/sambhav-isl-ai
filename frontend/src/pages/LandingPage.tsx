@@ -401,14 +401,14 @@ export const LandingPage: React.FC = () => {
               <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#0c1322] font-headline">
                 How It Works <span className="text-[#ea580c]">?</span>
               </h2>
-              <p className="text-sm sm:text-base text-[#475569] mt-2 max-w-xl mx-auto">
-                SAANKET Bidirectional Bridge: Powering seamless 2-way sign-to-speech and speech-to-sign conversions.
+              <p className="text-sm sm:text-base text-[#475569] mt-2 max-w-xl mx-auto font-medium">
+                SAMBHAV: The Bidirectional Bridge — Powering seamless 2-way sign-to-speech and speech-to-sign conversions.
               </p>
             </div>
             <div className="p-2 rounded-3xl bg-gradient-to-r from-amber-400 via-indigo-500 to-emerald-400 shadow-2xl max-w-4xl mx-auto">
               <div className="bg-white rounded-[22px] p-3 sm:p-5">
                 <img
-                  alt="SAANKET: The Bidirectional Bridge - How it Works"
+                  alt="SAMBHAV: The Bidirectional Bridge - How it Works"
                   className="w-full h-auto object-cover rounded-xl sm:rounded-2xl"
                   src="/assets/how_it_works_diagram.jpg"
                 />
