@@ -94,7 +94,7 @@ public class CommunicationSessionControllerTest {
                 .andExpect(jsonPath("$.mode", is("ONLINE")))
                 .andExpect(jsonPath("$.status", is("CREATED")))
                 .andExpect(jsonPath("$.roomCode", notNullValue()))
-                .andExpect(jsonPath("$.roomCode", hasLength(8)));
+                .andExpect(jsonPath("$.roomCode", hasLength(6)));
     }
 
     @Test

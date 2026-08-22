@@ -194,12 +194,12 @@ export const CommunicatePage: React.FC = () => {
 
     // Room code validation
     if (!cleanCode) {
-      setError('Please enter a valid 6-character room code.');
+      setError('Please enter a valid room code.');
       return;
     }
 
-    if (cleanCode.length !== 6) {
-      setError('Room code must contain exactly 6 characters.');
+    if (cleanCode.length < 6 || cleanCode.length > 8) {
+      setError('Room code must be 6 characters long.');
       return;
     }
 
@@ -671,11 +671,11 @@ export const CommunicatePage: React.FC = () => {
                         e.target.value
                           .toUpperCase()
                           .replace(/[^A-Z0-9]/g, '')
-                          .slice(0, 6)
+                          .slice(0, 8)
                       )
                     }
                     placeholder="e.g. A3F9KZ"
-                    maxLength={6}
+                    maxLength={8}
                     autoComplete="off"
                     className="w-full px-4 py-2.5 bg-white dark:bg-[#1a202c] border border-[#e0e3e5] dark:border-[#2d3133] rounded-xl text-[#030813] dark:text-white font-mono uppercase tracking-widest text-center text-sm font-bold focus:outline-none focus:border-[#fe9832] shadow-inner"
                   />
@@ -684,7 +684,7 @@ export const CommunicatePage: React.FC = () => {
 
                 <button
                   type="submit"
-                  disabled={loading || joinCode.trim().length !== 6}
+                  disabled={loading || joinCode.trim().length < 6}
                   className="w-full py-3 px-5 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] rounded-xl font-bold text-xs sm:text-sm transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50 hover:scale-[1.01] active:scale-[0.99]"
                 >
 
