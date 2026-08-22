@@ -81,7 +81,7 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
   finalTranscripts,
   interimTranscripts,
   sttSupported: _sttSupported,
-  formatSpeakerLabel,
+  formatSpeakerLabel: _formatSpeakerLabel,
   captionsEndRef,
 
   controlsVisible: _controlsVisible,
@@ -478,7 +478,7 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
           captionFontSize === 'sm' ? 'text-xs' : captionFontSize === 'lg' ? 'text-base font-semibold' : 'text-sm'
         }`}>
           {finalTranscripts.map((t) => {
-            const isMe = t.senderId === user?.email || t.senderId === user?.id;
+            const isMe = t.senderId === user?.email || t.senderId === user?.id || t.senderId === user?.name || t.senderName === user?.name || t.senderName === 'Me';
             return (
               <div
                 key={t.id}
@@ -493,7 +493,7 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
                     ? 'bg-[#fe9832]/25 text-[#8f4e00] dark:text-[#fe9832] border border-[#fe9832]/30'
                     : 'bg-green-500/20 text-green-800 dark:text-green-300 border border-green-500/30'
                 }`}>
-                  {isMe ? 'You' : formatSpeakerLabel(t.senderId, t.senderName)}
+                  {isMe ? 'You' : (t.senderName || 'Participant')}
                 </span>
                 <span className="text-[#030813] dark:text-white tracking-wide">{t.text}</span>
               </div>
@@ -502,14 +502,17 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
 
           {/* Live In-Progress Interim Speech Stream */}
           {Object.entries(interimTranscripts).map(([senderId, text]) => {
+            const isMe = senderId === user?.email || senderId === user?.id || senderId === user?.name || senderId === 'me';
             const senderName = finalTranscripts.find((t) => t.senderId === senderId)?.senderName || 'Participant';
             return (
               <div
                 key={senderId}
-                className="flex items-start gap-2.5 p-2 rounded-2xl bg-amber-500/10 border border-amber-400/30 animate-pulse max-w-[90%]"
+                className={`flex items-start gap-2.5 p-2 rounded-2xl bg-amber-500/10 border border-amber-400/30 animate-pulse max-w-[90%] ${
+                  isMe ? 'self-end' : 'self-start'
+                }`}
               >
                 <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-lg bg-amber-400 text-black shrink-0 mt-0.5">
-                  {formatSpeakerLabel(senderId, senderName)} (Speaking...)
+                  {isMe ? 'You (Speaking...)' : `${senderName} (Speaking...)`}
                 </span>
                 <span className="text-[#b45309] dark:text-[#fe9832] italic font-semibold">{text}</span>
               </div>

@@ -39,40 +39,46 @@ export const useTranscript = (currentSessionId: string) => {
   }, [finalTranscripts, currentSessionId, storageKey]);
 
   const addTranscriptEvent = useCallback((event: TranscriptEvent) => {
-    if (
-      !event ||
-      typeof event.id !== 'string' ||
-      typeof event.sessionId !== 'string' ||
-      typeof event.senderId !== 'string' ||
-      typeof event.senderName !== 'string' ||
-      typeof event.senderType !== 'string' ||
-      typeof event.text !== 'string' ||
-      typeof event.isFinal !== 'boolean' ||
-      typeof event.timestamp !== 'number'
-    ) {
+    if (!event || !event.text) {
       return;
     }
 
-    if (event.sessionId !== currentSessionId) {
-      return;
-    }
+    const text = String(event.text).trim();
+    if (!text) return;
 
-    if (seenEventIds.current.has(event.id)) {
-      return;
-    }
+    const eventId = event.id || `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+    const senderId = event.senderId || 'participant';
+    const senderName = event.senderName || 'Participant';
+    const isFinal = Boolean(event.isFinal);
+    const timestamp = typeof event.timestamp === 'number' ? event.timestamp : Date.now();
 
-    if (event.isFinal) {
-      seenEventIds.current.add(event.id);
-      setFinalTranscripts((prev) => [...prev, event]);
+    const normalizedEvent: TranscriptEvent = {
+      id: eventId,
+      sessionId: event.sessionId || currentSessionId,
+      senderId,
+      senderName,
+      senderType: event.senderType || 'COMMON_USER',
+      text,
+      isFinal,
+      timestamp,
+      confidence: event.confidence || 0.95,
+    };
+
+    if (isFinal) {
+      if (seenEventIds.current.has(eventId)) {
+        return;
+      }
+      seenEventIds.current.add(eventId);
+      setFinalTranscripts((prev) => [...prev, normalizedEvent]);
       setInterimTranscripts((prev) => {
         const updated = { ...prev };
-        delete updated[event.senderId];
+        delete updated[senderId];
         return updated;
       });
     } else {
       setInterimTranscripts((prev) => ({
         ...prev,
-        [event.senderId]: event.text,
+        [senderId]: text,
       }));
     }
   }, [currentSessionId]);
