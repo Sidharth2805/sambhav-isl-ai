@@ -157,66 +157,158 @@ export const LandingPage: React.FC = () => {
       <main className="pt-16">
         
         {/* ------------------------------------------------------------------------- */}
-        {/* 1. HERO SECTION                                                          */}
+        {/* 1. HERO SECTION (ORGANIZED 2-COLUMN STUDIO LAYOUT)                        */}
         {/* ------------------------------------------------------------------------- */}
-        <section className="relative pt-12 pb-12 sm:pt-16 sm:pb-16 lg:pt-24 lg:pb-24 hero-bg overflow-hidden">
-          {/* Vivid Gradient Orbs */}
-          <div className="absolute top-[-80px] right-[-120px] w-[600px] h-[600px] bg-[#4046A8]/20 rounded-full blur-[130px] pointer-events-none" />
-          <div className="absolute bottom-[-60px] left-[10%] w-[420px] h-[420px] bg-[#7C3AED]/15 rounded-full blur-[100px] pointer-events-none" />
-          <div className="absolute top-[30%] left-[-80px] w-[300px] h-[300px] bg-[#06B6D4]/10 rounded-full blur-[80px] pointer-events-none" />
-          <div className="absolute top-[10%] right-[30%] w-[200px] h-[200px] bg-[#F59E0B]/10 rounded-full blur-[60px] pointer-events-none" />
+        <section className="relative pt-10 pb-12 sm:pt-14 sm:pb-16 lg:pt-20 lg:pb-20 hero-bg overflow-hidden">
+          {/* Subtle Gradient Orbs */}
+          <div className="absolute top-[-80px] right-[-120px] w-[500px] h-[500px] bg-[#4046A8]/15 rounded-full blur-[120px] pointer-events-none" />
+          <div className="absolute bottom-[-60px] left-[10%] w-[380px] h-[380px] bg-[#7C3AED]/10 rounded-full blur-[100px] pointer-events-none" />
+          <div className="absolute top-[30%] left-[-80px] w-[260px] h-[260px] bg-[#06B6D4]/10 rounded-full blur-[80px] pointer-events-none" />
 
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div className="max-w-3xl text-center lg:text-left flex flex-col items-center lg:items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
               
-              {/* Top Status Badge */}
-              <div className="inline-flex items-center space-x-2 bg-[#ECEEFF]/90 backdrop-blur-xs border border-[#D8DBFF] text-[#343890] px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold mb-5 sm:mb-6 shadow-xs">
-                <div className="w-2 h-2 rounded-full bg-[#343890]"></div>
-                <span>Empowering ISL Communication</span>
+              {/* Left Column: Hero Content (7 cols) */}
+              <div className="lg:col-span-7 text-center lg:text-left flex flex-col items-center lg:items-start">
+                
+                {/* Top Status Badge */}
+                <div className="inline-flex items-center space-x-2 bg-[#ECEEFF]/90 backdrop-blur-xs border border-[#D8DBFF] text-[#343890] px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold mb-4 sm:mb-5 shadow-xs">
+                  <span className="w-2 h-2 rounded-full bg-[#343890] animate-ping" />
+                  <span>Empowering Indian Sign Language Communication</span>
+                </div>
+
+                {/* Main Headline */}
+                <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-[#0C1322] mb-4 sm:mb-5 leading-[1.15] sm:leading-[1.12] font-headline">
+                  Bridging worlds with accessible AI.
+                </h1>
+
+                {/* Subtext */}
+                <p className="text-base sm:text-lg md:text-xl text-[#1E293B] mb-7 sm:mb-8 leading-relaxed font-body-lg max-w-2xl">
+                  India's leading AI-powered accessibility platform, enabling seamless bidirectional communication through Indian Sign Language (ISL), 3D Avatars, and live speech translation.
+                </p>
+
+                {/* Action CTA Buttons */}
+                <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start space-y-3 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/communicate')}
+                    className="w-full sm:w-auto bg-[#4046A8] text-white px-7 sm:px-8 py-3.5 rounded-xl text-sm sm:text-base font-semibold hover:bg-[#353A8F] hover:-translate-y-0.5 transition-all duration-200 shadow-[0_4px_24px_rgba(64,70,168,0.45)] hover:shadow-[0_8px_32px_rgba(64,70,168,0.65)] text-center pulse-btn cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">videocam</span>
+                    <span>Try Sambhav Now</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => scrollTo('how-it-works-section')}
+                    className="w-full sm:w-auto bg-[#E2E0DC] text-[#1E293B] border border-[#BDB9B0] px-7 sm:px-8 py-3.5 rounded-xl text-sm sm:text-base font-semibold hover:bg-[#D5D2CD] hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center space-x-2 shadow-xs hover:shadow-md cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[#4046A8] text-[20px]">info</span>
+                    <span>How it Works</span>
+                  </button>
+                </div>
+
+                {/* Bottom Feature Pills */}
+                <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2.5 sm:gap-3 mt-7 sm:mt-8 pt-5 border-t border-[#D0CCC5]/80 text-xs sm:text-sm font-semibold text-[#334155]">
+                  <span className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFFFF]/90 rounded-full border border-[#D0CCC5] shadow-xs">
+                    <span className="w-2 h-2 rounded-full bg-[#4046A8]" />
+                    Real-time 3D ISL Avatar
+                  </span>
+                  <span className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFFFF]/90 rounded-full border border-[#D0CCC5] shadow-xs">
+                    <span className="w-2 h-2 rounded-full bg-[#0D9488]" />
+                    Live Speech &amp; Subtitles
+                  </span>
+                  <span className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFFFF]/90 rounded-full border border-[#D0CCC5] shadow-xs">
+                    <span className="w-2 h-2 rounded-full bg-[#D97706]" />
+                    End-to-End Encrypted WebRTC
+                  </span>
+                </div>
+
               </div>
 
-              {/* Main Headline */}
-              <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-[#0C1322] mb-4 sm:mb-5 leading-[1.15] sm:leading-[1.12] font-headline">
-                Bridging worlds with accessible AI.
-              </h1>
+              {/* Right Column: Clean Live Preview Card (5 cols) */}
+              <div className="lg:col-span-5 relative mt-4 lg:mt-0">
+                <div className="bg-[#FFFFFF]/95 backdrop-blur-md rounded-3xl p-5 sm:p-6 border border-[#D0CCC5] shadow-xl space-y-4 text-left">
+                  
+                  {/* Card Header */}
+                  <div className="flex items-center justify-between border-b border-[#E2E0DC] pb-3">
+                    <div className="flex items-center space-x-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
+                      <span className="text-xs font-bold uppercase tracking-wider text-[#0C1322]">
+                        SAMBHAV LIVE STUDIO
+                      </span>
+                    </div>
+                    <span className="px-2.5 py-0.5 bg-[#ECEEFF] text-[#343890] rounded-full text-[10px] font-bold">
+                      WebRTC Active
+                    </span>
+                  </div>
 
-              {/* Subtext */}
-              <p className="text-base sm:text-lg md:text-xl text-[#1E293B] mb-7 sm:mb-8 leading-relaxed font-body-lg max-w-2xl">
-                India's leading AI-powered accessibility platform, enabling seamless communication and information access through Indian Sign Language (ISL).
-              </p>
+                  {/* Hearing Speaker Preview */}
+                  <div className="bg-[#F5F3EF] p-3.5 rounded-2xl border border-[#E2E0DC] flex items-center space-x-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#4046A8] text-white flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-xl">mic</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-bold text-[#4046A8] uppercase tracking-wider">Hearing Participant</p>
+                      <p className="text-xs font-semibold text-[#0C1322] truncate">
+                        "Namaste! Welcome to SAMBHAV AI."
+                      </p>
+                    </div>
+                  </div>
 
-              {/* Action CTA Buttons */}
-              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start space-y-3 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
-                <button
-                  type="button"
-                  onClick={() => navigate('/communicate')}
-                  className="w-full sm:w-auto bg-[#4046A8] text-white px-7 sm:px-8 py-3.5 rounded-xl text-sm sm:text-base font-semibold hover:bg-[#353A8F] hover:-translate-y-0.5 transition-all duration-200 shadow-[0_4px_24px_rgba(64,70,168,0.45)] hover:shadow-[0_8px_32px_rgba(64,70,168,0.65)] text-center pulse-btn cursor-pointer"
-                >
-                  Try Sambhav Now
-                </button>
-                <button
-                  type="button"
-                  onClick={() => scrollTo('how-it-works-section')}
-                  className="w-full sm:w-auto bg-[#E2E0DC] text-[#1E293B] border border-[#BDB9B0] px-7 sm:px-8 py-3.5 rounded-xl text-sm sm:text-base font-semibold hover:bg-[#D5D2CD] hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center space-x-2 shadow-xs hover:shadow-md cursor-pointer"
-                >
-                  <span>Know More</span>
-                </button>
-              </div>
+                  {/* Central Pipeline Indicator */}
+                  <div className="flex items-center justify-center space-x-2 py-0.5">
+                    <span className="h-px flex-1 bg-[#D0CCC5]" />
+                    <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider px-2 bg-[#F5F3EF] py-0.5 rounded-full border border-[#D0CCC5]">
+                      ⚡ AI Translation Pipeline
+                    </span>
+                    <span className="h-px flex-1 bg-[#D0CCC5]" />
+                  </div>
 
-              {/* Bottom Feature Pills */}
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2.5 sm:gap-3.5 mt-8 sm:mt-10 pt-5 sm:pt-6 border-t border-[#D0CCC5]/80 text-xs sm:text-sm font-semibold text-[#334155]">
-                <span className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#FFFFFF]/90 rounded-full border border-[#D0CCC5] shadow-xs backdrop-blur-xs">
-                  <span className="w-2 h-2 rounded-full bg-[#64748B]" />
-                  Real-time 3D ISL Avatar
-                </span>
-                <span className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#FFFFFF]/90 rounded-full border border-[#D0CCC5] shadow-xs backdrop-blur-xs">
-                  <span className="w-2 h-2 rounded-full bg-[#64748B]" />
-                  Live Speech &amp; Subtitles
-                </span>
-                <span className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#FFFFFF]/90 rounded-full border border-[#D0CCC5] shadow-xs backdrop-blur-xs">
-                  <span className="w-2 h-2 rounded-full bg-[#64748B]" />
-                  End-to-End Encrypted WebRTC
-                </span>
+                  {/* Deaf Participant 3D Avatar Preview */}
+                  <div className="bg-[#F5F3EF] p-3.5 rounded-2xl border border-[#E2E0DC] flex items-center space-x-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#343890] text-white flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-xl">sign_language</span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-bold text-[#343890] uppercase tracking-wider">3D ISL Avatar Output</p>
+                      <p className="text-xs font-semibold text-[#0C1322] truncate">
+                        [ISL Gesture: नमस्ते / Welcome]
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Live Caption Bar */}
+                  <div className="bg-[#0C1322] text-white p-3 rounded-xl flex items-center justify-between text-xs font-mono">
+                    <div className="flex items-center space-x-2 truncate">
+                      <span className="text-green-400 font-bold">CC:</span>
+                      <span className="truncate text-slate-300">Live subtitles stream active in real-time...</span>
+                    </div>
+                    <span className="text-[9px] bg-green-500/20 text-green-300 px-1.5 py-0.5 rounded font-bold">
+                      LIVE
+                    </span>
+                  </div>
+
+                  {/* Quick Action Buttons */}
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => navigate('/communicate')}
+                      className="bg-[#4046A8] hover:bg-[#353A8F] text-white py-2 px-3 rounded-xl text-xs font-semibold transition text-center cursor-pointer flex items-center justify-center gap-1"
+                    >
+                      <span className="material-symbols-outlined text-sm">meeting_room</span>
+                      <span>Start Call</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/translate')}
+                      className="bg-[#E2E0DC] hover:bg-[#D5D2CD] text-[#1E293B] border border-[#BDB9B0] py-2 px-3 rounded-xl text-xs font-semibold transition text-center cursor-pointer flex items-center justify-center gap-1"
+                    >
+                      <span className="material-symbols-outlined text-sm">translate</span>
+                      <span>Translate</span>
+                    </button>
+                  </div>
+
+                </div>
               </div>
 
             </div>
