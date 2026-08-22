@@ -78,6 +78,9 @@ const App: React.FC = () => {
                 {/* Core Navigation Routes */}
                 <Route path="/translate" element={<TranslatePage />} />
                 <Route path="/learn-isl" element={<LearnISLPage />} />
+                <Route path="/learn" element={<Navigate to="/learn-isl" replace />} />
+                <Route path="/learning" element={<Navigate to="/learn-isl" replace />} />
+                <Route path="/isl-learn" element={<Navigate to="/learn-isl" replace />} />
                 <Route path="/explore" element={<ExplorePage />} />
                 <Route path="/help" element={<HelpPage />} />
                 <Route path="/news" element={<NewsPage />} />
