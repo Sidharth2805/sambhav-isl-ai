@@ -442,129 +442,206 @@ export const TranslatePage: React.FC = () => {
       </header>
 
       {/* ========================================================================= */}
-      {/* SCREEN 1: LOBBY (START COMMUNICATION) WITH AMBIENT BACKGROUND             */}
+      {/* SCREEN 1: LOBBY (START COMMUNICATION) - ORGANIZED STUDIO LAYOUT           */}
       {/* ========================================================================= */}
       {!inSession && !showSummaryModal && (
-        <div className="flex-1 flex flex-col justify-between py-4 relative overflow-hidden">
+        <div className="flex-1 flex flex-col justify-center py-4 sm:py-6 relative overflow-y-auto">
           
           {/* Ambient Lighting & Glow Background */}
-          <div className="absolute inset-0 -z-10 bg-gradient-to-br from-[#f1f4f6] via-[#f7fafc] to-[#ebeef0] dark:from-[#0d121d] dark:via-[#101726] dark:to-[#030813] rounded-[28px] border border-[#e0e3e5]/60 dark:border-[#2d3133] overflow-hidden">
-            <div className="absolute -top-32 -left-32 w-96 h-96 bg-[#ffdcc2]/40 dark:bg-[#fe9832]/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-[#8dfc75]/20 dark:bg-[#10b981]/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#fe9832]/10 dark:bg-[#4f46e5]/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute inset-0 -z-10 bg-gradient-to-br from-slate-50 via-slate-100 to-indigo-50/40 dark:from-[#090e17] dark:via-[#0d131f] dark:to-[#040810] rounded-[28px] border border-slate-200 dark:border-slate-800/80 overflow-hidden">
+            <div className="absolute -top-24 -left-24 w-80 h-80 bg-amber-500/15 dark:bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-24 -right-24 w-80 h-80 bg-indigo-500/15 dark:bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-purple-500/10 dark:bg-purple-500/5 rounded-full blur-3xl pointer-events-none" />
           </div>
 
-          {/* Central Highlight CTA */}
-          <div className="flex flex-col items-center justify-center text-center my-auto px-4 z-10">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/90 dark:bg-[#1a202c]/90 border border-[#e0e3e5] dark:border-[#2d3133] text-xs font-bold text-[#8f4e00] dark:text-[#ffb77a] shadow-sm mb-4">
-              <span className="material-symbols-outlined text-[16px]">bolt</span>
-              <span>Hardware-Accelerated Real-Time Sign Synthesis</span>
-            </div>
-
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#181c1e] dark:text-white tracking-tight leading-tight max-w-2xl">
-              Break Barriers in <span className="text-[#fe9832]">Real-Time</span>
-            </h2>
-            <p className="text-sm sm:text-base text-[#45474c] dark:text-[#c1c6d7] mt-3 max-w-xl leading-relaxed">
-              Enable your camera and microphone for instant two-way translation between spoken voice, text, and Indian Sign Language.
-            </p>
-
-            {/* Main Action Button */}
-            <button
-              onClick={handleStartCommunication}
-              className="mt-6 px-8 py-4 bg-gradient-to-r from-[#fe9832] to-[#ffb77a] hover:scale-105 active:scale-95 text-[#4a2600] font-black text-base sm:text-lg rounded-2xl transition-all shadow-lg hover:shadow-[#fe9832]/30 flex items-center gap-3 group cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-[28px] group-hover:rotate-12 transition-transform">
-                videocam
-              </span>
-              <span>Start Communication</span>
-              <span className="material-symbols-outlined text-[22px] group-hover:translate-x-1 transition-transform">
-                arrow_forward
-              </span>
-            </button>
-          </div>
-
-          {/* Bottom Overview of the 3 Modes */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 z-10 mt-auto">
+          <div className="max-w-6xl w-full mx-auto px-4 sm:px-6 py-2 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center z-10">
             
-            {/* Mode 1 */}
-            <div className="bg-white/90 dark:bg-[#1a202c]/90 backdrop-blur-sm p-4 rounded-2xl border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#fe9832]/15 dark:bg-[#fe9832]/25 text-[#8f4e00] dark:text-[#ffb77a] flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[22px]">mic</span>
+            {/* Left Column: Hero & Launch Controls (6 cols) */}
+            <div className="lg:col-span-6 flex flex-col items-center lg:items-start text-center lg:text-left">
+              
+              {/* Status Badge */}
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-100/90 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700/60 text-xs font-extrabold text-amber-900 dark:text-amber-300 shadow-sm mb-4">
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                <span>AI-Powered Real-Time ISL Translation</span>
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-[#181c1e] dark:text-white">Speech &harr; ISL</h3>
-                <p className="text-xs text-[#45474c] dark:text-[#c1c6d7] mt-0.5 leading-relaxed">
-                  Real-time microphone capture with live captions and avatar animation.
-                </p>
-              </div>
-            </div>
 
-            {/* Mode 2 */}
-            <div className="bg-white/90 dark:bg-[#1a202c]/90 backdrop-blur-sm p-4 rounded-2xl border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/15 dark:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[22px]">edit_note</span>
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-[#181c1e] dark:text-white">Text &rarr; ISL</h3>
-                <p className="text-xs text-[#45474c] dark:text-[#c1c6d7] mt-0.5 leading-relaxed">
-                  Conversation history with synchronized real-time green text highlighting as the avatar signs.
-                </p>
-              </div>
-            </div>
+              {/* Main Headline */}
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight leading-[1.15] mb-4">
+                Break Communication Barriers in{' '}
+                <span className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 bg-clip-text text-transparent">
+                  Real-Time
+                </span>
+              </h2>
 
-            {/* Mode 3 */}
-            <div className="bg-white/90 dark:bg-[#1a202c]/90 backdrop-blur-sm p-4 rounded-2xl border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-500/15 dark:bg-indigo-500/25 text-indigo-700 dark:text-indigo-300 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[22px]">sign_language</span>
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-[#181c1e] dark:text-white">ISL &rarr; Text / Voice</h3>
-                <p className="text-xs text-[#45474c] dark:text-[#c1c6d7] mt-0.5 leading-relaxed">
-                  Camera-based gesture tracking synthesizes natural spoken audio in real time.
-                </p>
-              </div>
-            </div>
+              {/* Subtext */}
+              <p className="text-sm sm:text-base text-slate-700 dark:text-slate-300 mb-6 leading-relaxed max-w-lg">
+                Translate seamlessly between <strong className="text-amber-600 dark:text-amber-400">spoken voice</strong>, <strong className="text-emerald-600 dark:text-emerald-400">live text</strong>, and <strong className="text-indigo-600 dark:text-indigo-400">Indian Sign Language 3D avatars</strong> with zero delay.
+              </p>
 
-          </div>
-
-          {/* Quick Settings & Preferences Bar in Lobby */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[#e0e3e5]/60 dark:border-[#2d3133] text-xs text-[#45474c] dark:text-[#c1c6d7] z-10">
-            <div className="flex items-center gap-4">
-              <span className="font-semibold text-[#181c1e] dark:text-white flex items-center gap-1">
-                <span className="material-symbols-outlined text-[16px]">tune</span>
-                Preferences:
-              </span>
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <span>Font Size:</span>
-                <select
-                  value={captionFontSize}
-                  onChange={(e: any) => setCaptionFontSize(e.target.value)}
-                  className="bg-white dark:bg-[#1a202c] border border-[#c6c6cc] dark:border-[#2d3133] text-[#181c1e] dark:text-white rounded px-2 py-1 text-xs font-semibold outline-none"
+              {/* Main Start CTA Button */}
+              <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-3 mb-6">
+                <button
+                  onClick={handleStartCommunication}
+                  className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold text-base rounded-2xl transition-all duration-200 shadow-[0_8px_24px_rgba(245,158,11,0.35)] hover:shadow-[0_12px_32px_rgba(245,158,11,0.5)] flex items-center justify-center gap-3 group cursor-pointer hover:-translate-y-0.5 active:scale-95"
                 >
-                  <option value="sm">Small</option>
-                  <option value="md">Medium</option>
-                  <option value="lg">Large</option>
-                </select>
-              </label>
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <span>Avatar Speed:</span>
-                <select
-                  value={avatarSpeed}
-                  onChange={(e: any) => setAvatarSpeed(parseFloat(e.target.value))}
-                  className="bg-white dark:bg-[#1a202c] border border-[#c6c6cc] dark:border-[#2d3133] text-[#181c1e] dark:text-white rounded px-2 py-1 text-xs font-semibold outline-none"
-                >
-                  <option value={0.5}>0.5x (Slow - Clear)</option>
-                  <option value={0.75}>0.75x (Relaxed)</option>
-                  <option value={1.0}>1.0x (Normal)</option>
-                  <option value={1.25}>1.25x (Fast - Snappy)</option>
-                  <option value={1.5}>1.5x (Real-Time Pro)</option>
-                </select>
-              </label>
+                  <span className="material-symbols-outlined text-2xl group-hover:rotate-12 transition-transform">
+                    videocam
+                  </span>
+                  <span>Start Translation Studio</span>
+                  <span className="material-symbols-outlined text-xl group-hover:translate-x-1 transition-transform">
+                    arrow_forward
+                  </span>
+                </button>
+              </div>
+
+              {/* Preferences Card */}
+              <div className="w-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-wrap items-center justify-between gap-4 text-xs">
+                <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-200">
+                  <span className="material-symbols-outlined text-amber-500 text-[18px]">tune</span>
+                  <span>Studio Preferences:</span>
+                </div>
+                
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-semibold cursor-pointer">
+                    <span>Font:</span>
+                    <select
+                      value={captionFontSize}
+                      onChange={(e: any) => setCaptionFontSize(e.target.value)}
+                      className="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg px-2 py-1 text-xs font-bold outline-none cursor-pointer"
+                    >
+                      <option value="sm">Small</option>
+                      <option value="md">Medium</option>
+                      <option value="lg">Large</option>
+                    </select>
+                  </label>
+
+                  <label className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-semibold cursor-pointer">
+                    <span>Speed:</span>
+                    <select
+                      value={avatarSpeed}
+                      onChange={(e: any) => setAvatarSpeed(parseFloat(e.target.value))}
+                      className="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg px-2 py-1 text-xs font-bold outline-none cursor-pointer"
+                    >
+                      <option value={0.5}>0.5x (Slow)</option>
+                      <option value={0.75}>0.75x (Relaxed)</option>
+                      <option value={1.0}>1.0x (Normal)</option>
+                      <option value={1.25}>1.25x (Fast)</option>
+                      <option value={1.5}>1.5x (Pro)</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+
             </div>
-            <span className="text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1">
-              <span className="material-symbols-outlined text-[14px]">verified</span>
-              Zero Latency Parallel Pipeline
-            </span>
+
+            {/* Right Column: Interactive Mode Cards (6 cols) */}
+            <div className="lg:col-span-6 flex flex-col gap-3.5">
+              
+              <div className="text-left mb-1">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  Select a Translation Mode to Launch:
+                </span>
+              </div>
+
+              {/* Mode 1: Speech to ISL */}
+              <div 
+                onClick={() => {
+                  setActiveMode('SPEECH_TO_ISL');
+                  handleStartCommunication();
+                }}
+                className="bg-white/95 dark:bg-slate-900/95 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-600 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex items-center justify-between group"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/15 dark:bg-amber-500/25 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                    <span className="material-symbols-outlined text-2xl">mic</span>
+                  </div>
+                  <div className="text-left">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <span>Speech &harr; ISL</span>
+                      <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 text-[10px] font-extrabold rounded-full">Voice Active</span>
+                    </h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+                      Continuous microphone capture with live captions and 3D avatar signing in real time.
+                    </p>
+                  </div>
+                </div>
+                <span className="material-symbols-outlined text-slate-400 group-hover:text-amber-500 group-hover:translate-x-1 transition-all">
+                  chevron_right
+                </span>
+              </div>
+
+              {/* Mode 2: Text to ISL */}
+              <div 
+                onClick={() => {
+                  setActiveMode('TEXT_TO_ISL');
+                  handleStartCommunication();
+                }}
+                className="bg-white/95 dark:bg-slate-900/95 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-600 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex items-center justify-between group"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 dark:bg-emerald-500/25 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                    <span className="material-symbols-outlined text-2xl">edit_note</span>
+                  </div>
+                  <div className="text-left">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <span>Text &rarr; ISL</span>
+                      <span className="px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 text-[10px] font-extrabold rounded-full">Word-Sync</span>
+                    </h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+                      Type sentences with synchronized green word highlighting matching the 3D avatar's signs.
+                    </p>
+                  </div>
+                </div>
+                <span className="material-symbols-outlined text-slate-400 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all">
+                  chevron_right
+                </span>
+              </div>
+
+              {/* Mode 3: ISL to Text */}
+              <div 
+                onClick={() => {
+                  setActiveMode('ISL_TO_TEXT');
+                  handleStartCommunication();
+                }}
+                className="bg-white/95 dark:bg-slate-900/95 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/20 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-600 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex items-center justify-between group"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-500/15 dark:bg-indigo-500/25 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                    <span className="material-symbols-outlined text-2xl">sign_language</span>
+                  </div>
+                  <div className="text-left">
+                    <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <span>ISL &rarr; Text / Voice</span>
+                      <span className="px-2 py-0.5 bg-indigo-100 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300 text-[10px] font-extrabold rounded-full">Camera Tracker</span>
+                    </h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+                      Camera-based gesture tracking synthesizes natural spoken audio and subtitles in real time.
+                    </p>
+                  </div>
+                </div>
+                <span className="material-symbols-outlined text-slate-400 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all">
+                  chevron_right
+                </span>
+              </div>
+
+              {/* Feature Tags Ribbon */}
+              <div className="flex items-center justify-between px-2 pt-1 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+                <span className="flex items-center gap-1">
+                  <span className="material-symbols-outlined text-amber-500 text-sm">bolt</span>
+                  &lt; 200ms Latency
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="material-symbols-outlined text-emerald-500 text-sm">verified</span>
+                  1,000+ Dictionary Signs
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="material-symbols-outlined text-indigo-500 text-sm">lock</span>
+                  End-to-End Encrypted
+                </span>
+              </div>
+
+            </div>
+
           </div>
 
         </div>
