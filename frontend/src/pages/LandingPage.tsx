@@ -318,22 +318,27 @@ export const LandingPage: React.FC = () => {
         {/* ------------------------------------------------------------------------- */}
         {/* 2. PROBLEM: COMMUNICATION CHALLENGES IN INDIA                             */}
         {/* ------------------------------------------------------------------------- */}
-        <section id="problem-section" className="py-12 sm:py-16 lg:py-20 relative bg-[#FFFFFF]/90 rounded-[2rem] sm:rounded-[2.75rem] mx-3 sm:mx-6 lg:mx-8 border border-[#D0CCC5] shadow-lg my-10 sm:my-14">
+        <section id="problem-section" className="py-10 sm:py-14 lg:py-16 relative bg-[#FFFFFF]/95 rounded-[2rem] sm:rounded-[2.5rem] mx-3 sm:mx-6 lg:mx-8 border border-[#D0CCC5] shadow-lg my-8 sm:my-12">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10">
-            <div className="text-center mb-10 sm:mb-14">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#0C1322] mb-3 sm:mb-4 font-headline">Communication Challenges in India</h2>
-              <p className="text-sm sm:text-base md:text-lg text-[#1E293B] max-w-2xl mx-auto font-body-lg leading-relaxed">
+            <div className="text-center mb-8 sm:mb-10">
+              <span className="px-3 py-1 bg-indigo-50 border border-indigo-200 text-indigo-800 text-xs font-bold rounded-full mb-3 inline-block">
+                The Accessibility Gap
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0C1322] mb-2 sm:mb-3 font-headline">
+                Communication Challenges in India
+              </h2>
+              <p className="text-sm sm:text-base text-[#1E293B] max-w-2xl mx-auto font-body-lg leading-relaxed">
                 The communication gap in India affects millions, with a critical shortage of resources leaving the Deaf and hard-of-hearing community with limited access to essential information and services.
               </p>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-10 items-center max-w-3xl mx-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-8 items-center max-w-2xl mx-auto">
               
               {/* 63M+ Stat Gauge */}
-              <div className="flex flex-col items-center text-center space-y-3 bg-[#F5F3EF] p-6 sm:p-7 rounded-2xl sm:rounded-3xl border border-[#D0CCC5] shadow-xs">
-                <div className="relative w-32 h-32 sm:w-36 sm:h-36">
+              <div className="flex flex-col items-center text-center space-y-3 bg-[#F8F9FF] p-6 sm:p-7 rounded-2xl sm:rounded-3xl border border-indigo-200/80 shadow-xs">
+                <div className="relative w-28 h-28 sm:w-32 sm:h-32">
                   <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" fill="none" r="40" stroke="#E2E0DC" strokeWidth="8" />
+                    <circle cx="50" cy="50" fill="none" r="40" stroke="#E0E3F5" strokeWidth="8" />
                     <circle
                       className="gauge-ring"
                       cx="50"
@@ -349,19 +354,19 @@ export const LandingPage: React.FC = () => {
                     />
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-[#0C1322] font-extrabold text-2xl sm:text-3xl font-headline">63M+</span>
+                    <span className="text-[#0C1322] font-extrabold text-xl sm:text-2xl font-headline">63M+</span>
                   </div>
                 </div>
-                <h3 className="text-[#0C1322] font-bold text-base sm:text-lg font-headline">Significant Hearing Loss</h3>
-                <p className="text-[#475569] text-xs sm:text-sm">Individuals facing daily communication barriers.</p>
-                <p className="text-[11px] text-gray-500 uppercase tracking-wider">Source: WHO</p>
+                <h3 className="text-[#0C1322] font-bold text-sm sm:text-base font-headline">Significant Hearing Loss</h3>
+                <p className="text-[#475569] text-xs leading-relaxed">Individuals facing daily communication barriers.</p>
+                <span className="text-[10px] font-bold text-indigo-700 bg-indigo-100/70 px-2 py-0.5 rounded-full">Source: WHO</span>
               </div>
 
               {/* <1% Stat Gauge */}
-              <div className="flex flex-col items-center text-center space-y-3 bg-[#F5F3EF] p-6 sm:p-7 rounded-2xl sm:rounded-3xl border border-[#D0CCC5] shadow-xs">
-                <div className="relative w-32 h-32 sm:w-36 sm:h-36">
+              <div className="flex flex-col items-center text-center space-y-3 bg-[#FFFBF5] p-6 sm:p-7 rounded-2xl sm:rounded-3xl border border-amber-200/80 shadow-xs">
+                <div className="relative w-28 h-28 sm:w-32 sm:h-32">
                   <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" fill="none" r="40" stroke="#E2E0DC" strokeWidth="8" />
+                    <circle cx="50" cy="50" fill="none" r="40" stroke="#FDE8D0" strokeWidth="8" />
                     <circle
                       className="gauge-ring"
                       cx="50"
@@ -369,7 +374,7 @@ export const LandingPage: React.FC = () => {
                       data-percent="1"
                       fill="none"
                       r="40"
-                      stroke="#F59E0B"
+                      stroke="#EA580C"
                       strokeDasharray="251.2"
                       strokeDashoffset="248.814"
                       strokeLinecap="round"
@@ -377,12 +382,12 @@ export const LandingPage: React.FC = () => {
                     />
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-[#0C1322] font-extrabold text-2xl sm:text-3xl font-headline">&lt;1%</span>
+                    <span className="text-[#0C1322] font-extrabold text-xl sm:text-2xl font-headline">&lt;1%</span>
                   </div>
                 </div>
-                <h3 className="text-[#0C1322] font-bold text-base sm:text-lg font-headline">Access to ISL Education</h3>
-                <p className="text-[#475569] text-xs sm:text-sm">Deaf individuals with access to formal ISL education.</p>
-                <p className="text-[11px] text-gray-500 uppercase tracking-wider">Source: Census of India</p>
+                <h3 className="text-[#0C1322] font-bold text-sm sm:text-base font-headline">Access to ISL Education</h3>
+                <p className="text-[#475569] text-xs leading-relaxed">Deaf individuals with access to formal ISL education.</p>
+                <span className="text-[10px] font-bold text-amber-800 bg-amber-100/70 px-2 py-0.5 rounded-full">Source: Census of India</span>
               </div>
 
             </div>
@@ -392,36 +397,36 @@ export const LandingPage: React.FC = () => {
         {/* ------------------------------------------------------------------------- */}
         {/* 3. ABOUT ISL: UNDERSTANDING THE POWER OF ISL                             */}
         {/* ------------------------------------------------------------------------- */}
-        <section className="py-12 sm:py-16 lg:py-20">
+        <section className="py-10 sm:py-14 lg:py-16">
           <div className="max-w-6xl mx-auto px-4 sm:px-6">
-            <div className="bg-[#FFFFFF]/85 backdrop-blur-md rounded-[28px] sm:rounded-[36px] border border-[#D0CCC5] shadow-lg p-6 sm:p-10 lg:p-12 flex flex-col lg:flex-row items-center gap-8 lg:gap-14">
+            <div className="bg-[#FFFFFF]/95 backdrop-blur-md rounded-[28px] sm:rounded-[36px] border border-[#D0CCC5] shadow-lg p-6 sm:p-10 lg:p-12 flex flex-col lg:flex-row items-center gap-8 lg:gap-14">
               
               {/* Text Content */}
               <div className="lg:w-1/2 flex flex-col items-start text-left">
-                <div className="inline-flex items-center space-x-2 bg-[#ECEEFF] border border-[#D8DBFF] text-[#343890] px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-semibold mb-5 shadow-xs">
+                <div className="inline-flex items-center space-x-2 bg-[#ECEEFF] border border-[#D8DBFF] text-[#343890] px-3.5 py-1.5 rounded-full text-xs font-bold mb-4 shadow-xs">
                   <span className="material-symbols-outlined text-sm">visibility</span>
-                  <span>Visual Language</span>
+                  <span>Visual Linguistic Expression</span>
                 </div>
-                <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#0C1322] mb-6 leading-tight font-headline">
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0C1322] mb-4 leading-tight font-headline">
                   Understanding the Power of ISL
                 </h2>
-                <ul className="space-y-3.5 sm:space-y-4 text-sm sm:text-base md:text-lg text-[#1E293B] font-body-lg">
+                <ul className="space-y-3 sm:space-y-3.5 text-sm sm:text-base text-[#1E293B] font-body-lg">
                   <li className="flex items-start">
-                    <span className="material-symbols-outlined text-[#4046A8] mr-3 mt-1 text-lg sm:text-xl">check_circle</span>
-                    <span><strong>ISL is a complete language</strong> with its own grammar.</span>
+                    <span className="material-symbols-outlined text-[#4046A8] mr-3 mt-1 text-lg">check_circle</span>
+                    <span><strong>ISL is a complete language</strong> with its own grammatical structure and spatial syntax.</span>
                   </li>
                   <li className="flex items-start">
-                    <span className="material-symbols-outlined text-[#4046A8] mr-3 mt-1 text-lg sm:text-xl">check_circle</span>
-                    <span>Sign language provides <strong>depth and nuance</strong> that text alone cannot capture.</span>
+                    <span className="material-symbols-outlined text-[#4046A8] mr-3 mt-1 text-lg">check_circle</span>
+                    <span>Sign language provides <strong>depth, emotion, and nuance</strong> that plain text captions cannot convey alone.</span>
                   </li>
                   <li className="flex items-start">
-                    <span className="material-symbols-outlined text-[#4046A8] mr-3 mt-1 text-lg sm:text-xl">check_circle</span>
-                    <span><strong>True accessibility</strong> is about linguistic inclusion.</span>
+                    <span className="material-symbols-outlined text-[#4046A8] mr-3 mt-1 text-lg">check_circle</span>
+                    <span><strong>True accessibility</strong> means full linguistic inclusion in workplaces, schools, and hospitals.</span>
                   </li>
                 </ul>
               </div>
 
-              {/* Interactive Glass Hub Grid */}
+              {/* Interactive Hub Grid */}
               <div className="lg:w-1/2 w-full grid grid-cols-2 gap-4 sm:gap-5 items-center">
                 {/* Column 1 */}
                 <div className="space-y-4 sm:space-y-5 transform translate-y-3 sm:translate-y-4">
@@ -451,14 +456,14 @@ export const LandingPage: React.FC = () => {
         {/* ------------------------------------------------------------------------- */}
         {/* 4. SOLUTION: MISSION STATEMENT                                           */}
         {/* ------------------------------------------------------------------------- */}
-        <section className="py-12 sm:py-16 lg:py-20">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 text-center">
-            <div className="w-12 h-1 bg-[#4046A8] mx-auto mb-8 rounded-full opacity-80"></div>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#0C1322] mb-6 max-w-4xl mx-auto leading-tight tracking-tight font-headline">
+        <section className="py-10 sm:py-14 lg:py-16">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+            <div className="w-10 h-1 bg-[#4046A8] mx-auto mb-6 rounded-full opacity-80"></div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0C1322] mb-4 max-w-3xl mx-auto leading-tight tracking-tight font-headline">
               We are on a mission to make communication universal, regardless of ability.
             </h2>
-            <p className="text-sm sm:text-base md:text-lg text-[#1E293B] max-w-3xl mx-auto leading-relaxed">
-              Sambhav is not just an app; it's a movement. By leveraging advanced computer vision and natural language processing, we are building a seamless bridge between Indian Sign Language and spoken languages, creating a truly inclusive society.
+            <p className="text-sm sm:text-base text-[#1E293B] max-w-2xl mx-auto leading-relaxed font-body-lg">
+              SAMBHAV is not just an app; it's a movement. By leveraging advanced computer vision and natural language processing, we are building a seamless bridge between Indian Sign Language and spoken languages.
             </p>
           </div>
         </section>
@@ -466,14 +471,17 @@ export const LandingPage: React.FC = () => {
         {/* ------------------------------------------------------------------------- */}
         {/* 5. HOW IT WORKS                                                          */}
         {/* ------------------------------------------------------------------------- */}
-        <section id="how-it-works-section" className="py-12 sm:py-16 lg:py-20">
+        <section id="how-it-works-section" className="py-10 sm:py-14 lg:py-16">
           <div className="max-w-6xl mx-auto px-4 sm:px-6">
-            <div className="text-center mb-10 sm:mb-12">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#0C1322] font-headline">How it Works ?</h2>
+            <div className="text-center mb-8 sm:mb-10">
+              <span className="px-3 py-1 bg-indigo-50 border border-indigo-200 text-indigo-800 text-xs font-bold rounded-full mb-3 inline-block">
+                System Architecture
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0C1322] font-headline">How it Works</h2>
             </div>
-            <div className="rounded-2xl sm:rounded-3xl shadow-lg border border-[#D0CCC5] bg-[#FFFFFF]/80 p-3 sm:p-4 flow-arrow max-w-4xl mx-auto">
+            <div className="rounded-2xl sm:rounded-3xl shadow-lg border border-[#D0CCC5] bg-[#FFFFFF]/90 p-3 sm:p-4 flow-arrow max-w-4xl mx-auto">
               <img
-                alt="SAANKET: The Bidirectional Bridge - How it Works"
+                alt="SAMBHAV: The Bidirectional Bridge - How it Works"
                 className="w-full h-auto object-cover rounded-xl sm:rounded-2xl relative z-10"
                 src="/assets/how_it_works_diagram.jpg"
               />
@@ -484,89 +492,89 @@ export const LandingPage: React.FC = () => {
         {/* ------------------------------------------------------------------------- */}
         {/* 6. FEATURES: WHY CHOOSE US                                               */}
         {/* ------------------------------------------------------------------------- */}
-        <section id="features-section" className="py-12 sm:py-16 lg:py-20">
+        <section id="features-section" className="py-10 sm:py-14 lg:py-16">
           <div className="max-w-6xl mx-auto px-4 sm:px-6">
-            <div className="text-center mb-10 sm:mb-12">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#0C1322] mb-3 font-headline">
-                Why Choose&nbsp;<span className="text-[#4046A8]">Us?</span>
+            <div className="text-center mb-8 sm:mb-10">
+              <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0C1322] mb-2 font-headline">
+                Why Choose <span className="text-[#4046A8]">SAMBHAV?</span>
               </h2>
-              <p className="text-sm sm:text-base md:text-lg text-[#1E293B] max-w-2xl mx-auto">
-                Experience the next generation of accessibility features designed for seamless and instant interaction.
+              <p className="text-sm sm:text-base text-[#1E293B] max-w-2xl mx-auto">
+                Next-generation accessibility features designed for seamless and instant interaction.
               </p>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
               
               {/* Feature 1 */}
-              <div className="bg-[#FFFFFF]/90 p-6 rounded-2xl border border-[#D0CCC5] flex flex-col h-full transition-all duration-200 hover:shadow-lg hover:-translate-y-1 text-left">
-                <div className="w-10 h-10 rounded-xl bg-[#ECEEFF] border border-[#D8DBFF] flex items-center justify-center mb-4">
-                  <span className="material-symbols-outlined text-[#4046A8] text-2xl">translate</span>
+              <div className="bg-[#FFFFFF]/95 p-5 rounded-2xl border border-indigo-100 shadow-xs flex flex-col h-full transition-all duration-200 hover:shadow-md hover:-translate-y-1 text-left">
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center mb-3">
+                  <span className="material-symbols-outlined text-[#4046A8] text-xl">translate</span>
                 </div>
-                <h3 className="text-lg sm:text-xl font-bold text-[#0C1322] mb-2 font-headline">Real-time Translation</h3>
-                <p className="text-[#475569] text-xs sm:text-sm leading-relaxed">Instant ISL-to-text conversion with minimal latency.</p>
+                <h3 className="text-base font-bold text-[#0C1322] mb-1.5 font-headline">Real-time Translation</h3>
+                <p className="text-[#475569] text-xs leading-relaxed">Instant ISL-to-text conversion with minimal latency.</p>
               </div>
 
               {/* Feature 2 */}
-              <div className="bg-[#FFFFFF]/90 p-6 rounded-2xl border border-[#D0CCC5] flex flex-col h-full transition-all duration-200 hover:shadow-lg hover:-translate-y-1 text-left">
-                <div className="w-10 h-10 rounded-xl bg-[#ECFDF5] border border-[#A7F3D0] flex items-center justify-center mb-4">
-                  <span className="material-symbols-outlined text-[#059669] text-2xl">check_circle</span>
+              <div className="bg-[#FFFFFF]/95 p-5 rounded-2xl border border-emerald-100 shadow-xs flex flex-col h-full transition-all duration-200 hover:shadow-md hover:-translate-y-1 text-left">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center mb-3">
+                  <span className="material-symbols-outlined text-[#059669] text-xl">verified</span>
                 </div>
-                <h3 className="text-lg sm:text-xl font-bold text-[#0C1322] mb-2 font-headline">High Precision</h3>
-                <p className="text-[#475569] text-xs sm:text-sm leading-relaxed">Accurate gesture recognition for clear communication.</p>
+                <h3 className="text-base font-bold text-[#0C1322] mb-1.5 font-headline">High Precision</h3>
+                <p className="text-[#475569] text-xs leading-relaxed">Accurate gesture recognition for clear communication.</p>
               </div>
 
               {/* Feature 3 */}
-              <div className="bg-[#FFFFFF]/90 p-6 rounded-2xl border border-[#D0CCC5] flex flex-col h-full transition-all duration-200 hover:shadow-lg hover:-translate-y-1 text-left">
-                <div className="w-10 h-10 rounded-xl bg-[#F5F3FF] border border-[#DDD6FE] flex items-center justify-center mb-4">
-                  <span className="material-symbols-outlined text-[#7C3AED] text-2xl">bolt</span>
+              <div className="bg-[#FFFFFF]/95 p-5 rounded-2xl border border-amber-100 shadow-xs flex flex-col h-full transition-all duration-200 hover:shadow-md hover:-translate-y-1 text-left">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center mb-3">
+                  <span className="material-symbols-outlined text-[#D97706] text-xl">bolt</span>
                 </div>
-                <h3 className="text-lg sm:text-xl font-bold text-[#0C1322] mb-2 font-headline">Fast Processing</h3>
-                <p className="text-[#475569] text-xs sm:text-sm leading-relaxed">Lightning-fast response times for smooth interaction.</p>
+                <h3 className="text-base font-bold text-[#0C1322] mb-1.5 font-headline">Fast Processing</h3>
+                <p className="text-[#475569] text-xs leading-relaxed">Lightning-fast response times for smooth interaction.</p>
               </div>
 
               {/* Feature 4 */}
-              <div className="bg-[#FFFFFF]/90 p-6 rounded-2xl border border-[#D0CCC5] flex flex-col h-full transition-all duration-200 hover:shadow-lg hover:-translate-y-1 text-left">
-                <div className="w-10 h-10 rounded-xl bg-[#FFF7ED] border border-[#FED7AA] flex items-center justify-center mb-4">
-                  <span className="material-symbols-outlined text-[#EA580C] text-2xl">sentiment_satisfied</span>
+              <div className="bg-[#FFFFFF]/95 p-5 rounded-2xl border border-orange-100 shadow-xs flex flex-col h-full transition-all duration-200 hover:shadow-md hover:-translate-y-1 text-left">
+                <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center mb-3">
+                  <span className="material-symbols-outlined text-[#EA580C] text-xl">sentiment_satisfied</span>
                 </div>
-                <h3 className="text-lg sm:text-xl font-bold text-[#0C1322] mb-2 font-headline">User-Friendly</h3>
-                <p className="text-[#475569] text-xs sm:text-sm leading-relaxed">Simple interface designed for everyone to use.</p>
+                <h3 className="text-base font-bold text-[#0C1322] mb-1.5 font-headline">User-Friendly</h3>
+                <p className="text-[#475569] text-xs leading-relaxed">Simple interface designed for everyone to use.</p>
               </div>
 
               {/* Feature 5 */}
-              <div className="bg-[#FFFFFF]/90 p-6 rounded-2xl border border-[#D0CCC5] flex flex-col h-full transition-all duration-200 hover:shadow-lg hover:-translate-y-1 text-left">
-                <div className="w-10 h-10 rounded-xl bg-[#EEF2FF] border border-[#C7D2FE] flex items-center justify-center mb-4">
-                  <span className="material-symbols-outlined text-[#4F46E5] text-2xl">auto_awesome</span>
+              <div className="bg-[#FFFFFF]/95 p-5 rounded-2xl border border-indigo-100 shadow-xs flex flex-col h-full transition-all duration-200 hover:shadow-md hover:-translate-y-1 text-left">
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200 flex items-center justify-center mb-3">
+                  <span className="material-symbols-outlined text-[#4F46E5] text-xl">auto_awesome</span>
                 </div>
-                <h3 className="text-lg sm:text-xl font-bold text-[#0C1322] mb-2 font-headline">AI Intelligence</h3>
-                <p className="text-[#475569] text-xs sm:text-sm leading-relaxed">Advanced learning models for superior sign recognition.</p>
+                <h3 className="text-base font-bold text-[#0C1322] mb-1.5 font-headline">AI Intelligence</h3>
+                <p className="text-[#475569] text-xs leading-relaxed">Advanced learning models for superior sign recognition.</p>
               </div>
 
               {/* Feature 6 */}
-              <div className="bg-[#FFFFFF]/90 p-6 rounded-2xl border border-[#D0CCC5] flex flex-col h-full transition-all duration-200 hover:shadow-lg hover:-translate-y-1 text-left">
-                <div className="w-10 h-10 rounded-xl bg-[#F0FDFA] border border-[#99F6E4] flex items-center justify-center mb-4">
-                  <span className="material-symbols-outlined text-[#0D9488] text-2xl">menu_book</span>
+              <div className="bg-[#FFFFFF]/95 p-5 rounded-2xl border border-teal-100 shadow-xs flex flex-col h-full transition-all duration-200 hover:shadow-md hover:-translate-y-1 text-left">
+                <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center mb-3">
+                  <span className="material-symbols-outlined text-[#0D9488] text-xl">menu_book</span>
                 </div>
-                <h3 className="text-lg sm:text-xl font-bold text-[#0C1322] mb-2 font-headline">Educational Tools</h3>
-                <p className="text-[#475569] text-xs sm:text-sm leading-relaxed">Easy lessons to help you learn and master ISL.</p>
+                <h3 className="text-base font-bold text-[#0C1322] mb-1.5 font-headline">Educational Tools</h3>
+                <p className="text-[#475569] text-xs leading-relaxed">Easy lessons to help you learn and master ISL.</p>
               </div>
 
               {/* Feature 7 */}
-              <div className="bg-[#FFFFFF]/90 p-6 rounded-2xl border border-[#D0CCC5] flex flex-col h-full transition-all duration-200 hover:shadow-lg hover:-translate-y-1 text-left">
-                <div className="w-10 h-10 rounded-xl bg-[#ECEEFF] border border-[#D8DBFF] flex items-center justify-center mb-4">
-                  <span className="material-symbols-outlined text-[#4046A8] text-2xl">verified_user</span>
+              <div className="bg-[#FFFFFF]/95 p-5 rounded-2xl border border-blue-100 shadow-xs flex flex-col h-full transition-all duration-200 hover:shadow-md hover:-translate-y-1 text-left">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center mb-3">
+                  <span className="material-symbols-outlined text-[#2563EB] text-xl">verified_user</span>
                 </div>
-                <h3 className="text-lg sm:text-xl font-bold text-[#0C1322] mb-2 font-headline">Secure Platform</h3>
-                <p className="text-[#475569] text-xs sm:text-sm leading-relaxed">Your data and privacy are always protected.</p>
+                <h3 className="text-base font-bold text-[#0C1322] mb-1.5 font-headline">Secure Platform</h3>
+                <p className="text-[#475569] text-xs leading-relaxed">Your data and privacy are always protected.</p>
               </div>
 
               {/* Feature 8 */}
-              <div className="bg-[#FFFFFF]/90 p-6 rounded-2xl border border-[#D0CCC5] flex flex-col h-full transition-all duration-200 hover:shadow-lg hover:-translate-y-1 text-left">
-                <div className="w-10 h-10 rounded-xl bg-[#FFFBEB] border border-[#FDE68A] flex items-center justify-center mb-4">
-                  <span className="material-symbols-outlined text-[#D97706] text-2xl">diversity_3</span>
+              <div className="bg-[#FFFFFF]/95 p-5 rounded-2xl border border-purple-100 shadow-xs flex flex-col h-full transition-all duration-200 hover:shadow-md hover:-translate-y-1 text-left">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-center mb-3">
+                  <span className="material-symbols-outlined text-[#9333EA] text-xl">diversity_3</span>
                 </div>
-                <h3 className="text-lg sm:text-xl font-bold text-[#0C1322] mb-2 font-headline">Community Focused</h3>
-                <p className="text-[#475569] text-xs sm:text-sm leading-relaxed">Built to connect deaf and hearing people everywhere.</p>
+                <h3 className="text-base font-bold text-[#0C1322] mb-1.5 font-headline">Community Focused</h3>
+                <p className="text-[#475569] text-xs leading-relaxed">Built to connect deaf and hearing people everywhere.</p>
               </div>
 
             </div>
