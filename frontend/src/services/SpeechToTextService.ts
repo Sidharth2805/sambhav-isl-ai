@@ -6,9 +6,11 @@ export interface SpeechToTextAdapter {
     senderId: string,
     senderName: string,
     senderType: 'COMMON_USER' | 'ACCESSIBILITY_USER',
-    callback: (event: TranscriptEvent) => void
+    callback: (event: TranscriptEvent) => void,
+    language?: string
   ): void;
   stop(): void;
+  setLanguage?(lang: string): void;
 }
 
 export class WebSpeechSTTAdapter implements SpeechToTextAdapter {
@@ -20,18 +22,21 @@ export class WebSpeechSTTAdapter implements SpeechToTextAdapter {
   private senderId: string = '';
   private senderName: string = '';
   private senderType: 'COMMON_USER' | 'ACCESSIBILITY_USER' = 'COMMON_USER';
+  private language: string = 'en-IN';
   private restartTimeout: any = null;
+  private consecutiveErrors: number = 0;
 
   start(
     sessionId: string,
     senderId: string,
     senderName: string,
     senderType: 'COMMON_USER' | 'ACCESSIBILITY_USER',
-    callback: (event: TranscriptEvent) => void
+    callback: (event: TranscriptEvent) => void,
+    language: string = 'en-IN'
   ): void {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      console.warn('[SignBridge Debug] Web Speech API is not supported in this browser.');
+      console.warn('[SAMBHAV STT] Web Speech API is not supported in this browser.');
       return;
     }
 
@@ -40,14 +45,19 @@ export class WebSpeechSTTAdapter implements SpeechToTextAdapter {
     this.senderName = senderName;
     this.senderType = senderType;
     this.callback = callback;
+    this.language = language;
     this.shouldBeListening = true;
-
-    // If recognition is already actively running, just update the metadata and return
-    if (this.isRunning && this.recognition) {
-      return;
-    }
+    this.consecutiveErrors = 0;
 
     this.initAndStartRecognition();
+  }
+
+  setLanguage(lang: string): void {
+    if (this.language === lang) return;
+    this.language = lang;
+    if (this.shouldBeListening) {
+      this.initAndStartRecognition();
+    }
   }
 
   private initAndStartRecognition(): void {
@@ -78,19 +88,34 @@ export class WebSpeechSTTAdapter implements SpeechToTextAdapter {
       const recognition = new SpeechRecognition();
       recognition.continuous = true;
       recognition.interimResults = true;
-      recognition.lang = 'en-IN';
+      recognition.lang = this.language || 'en-IN';
       recognition.maxAlternatives = 1;
 
       recognition.onstart = () => {
         this.isRunning = true;
+        this.consecutiveErrors = 0;
       };
 
       recognition.onerror = (event: any) => {
         const err = event?.error;
         if (err === 'not-allowed' || err === 'service-not-allowed') {
-          console.warn('[SignBridge STT] Microphone permission denied.');
+          console.warn('[SAMBHAV STT] Microphone permission denied by browser.');
           this.shouldBeListening = false;
           this.isRunning = false;
+          return;
+        }
+
+        // For benign pauses (no-speech, audio-capture, aborted, network), smoothly recover
+        this.consecutiveErrors++;
+        if (this.consecutiveErrors > 5) {
+          // Add backoff to prevent fast retry spinning
+          if (this.restartTimeout) clearTimeout(this.restartTimeout);
+          this.restartTimeout = setTimeout(() => {
+            if (this.shouldBeListening) {
+              this.consecutiveErrors = 0;
+              this.initAndStartRecognition();
+            }
+          }, 2000);
         }
       };
 
@@ -98,11 +123,12 @@ export class WebSpeechSTTAdapter implements SpeechToTextAdapter {
         this.isRunning = false;
         // If user still has mic ON, smoothly resume recognition after browser pause
         if (this.shouldBeListening && this.callback) {
+          const delay = this.consecutiveErrors > 2 ? 1000 : 250;
           this.restartTimeout = setTimeout(() => {
             if (this.shouldBeListening && !this.isRunning) {
               this.initAndStartRecognition();
             }
-          }, 300);
+          }, delay);
         }
       };
 
@@ -148,7 +174,7 @@ export class WebSpeechSTTAdapter implements SpeechToTextAdapter {
       this.recognition = recognition;
       recognition.start();
     } catch (e: any) {
-      console.warn('[SignBridge STT] Start attempt note:', e?.message || e);
+      console.warn('[SAMBHAV STT] Start attempt note:', e?.message || e);
       if (this.shouldBeListening) {
         this.restartTimeout = setTimeout(() => {
           if (this.shouldBeListening && !this.isRunning) {
@@ -209,9 +235,16 @@ export class SpeechToTextService {
     senderId: string,
     senderName: string,
     senderType: 'COMMON_USER' | 'ACCESSIBILITY_USER',
-    callback: (event: TranscriptEvent) => void
+    callback: (event: TranscriptEvent) => void,
+    language: string = 'en-IN'
   ): void {
-    this.adapter.start(sessionId, senderId, senderName, senderType, callback);
+    this.adapter.start(sessionId, senderId, senderName, senderType, callback, language);
+  }
+
+  public setLanguage(language: string): void {
+    if (this.adapter.setLanguage) {
+      this.adapter.setLanguage(language);
+    }
   }
 
   public stopRecording(): void {

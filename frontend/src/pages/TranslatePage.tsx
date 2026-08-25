@@ -64,10 +64,15 @@ export const TranslatePage: React.FC = () => {
 
   // Speech & Captions State
   const [isListening, setIsListening] = useState(false);
+  const [speechLang, setSpeechLang] = useState('en-IN');
+  const [micError, setMicError] = useState<string | null>(null);
+  const [isMicSupported, setIsMicSupported] = useState(true);
   const [liveCaption, setLiveCaption] = useState('');
   const [finalTranscript, setFinalTranscript] = useState('');
   const [sessionHistoryLogs, setSessionHistoryLogs] = useState<{ mode: string; text: string; time: string }[]>([]);
   const recognitionRef = useRef<any>(null);
+  const shouldListenRef = useRef(false);
+  const restartTimeoutRef = useRef<any>(null);
 
   // Text Mode State & Word Highlighting
   const [inputText, setInputText] = useState('');
@@ -132,7 +137,7 @@ export const TranslatePage: React.FC = () => {
       });
 
       const sequence: SignSequenceDto = {
-        sequenceId: `trans-${Date.now()}`,
+        sequenceId: `seq-${Date.now()}`,
         sourceSessionId: `session-${Date.now()}`,
         sourceText: text,
         language: 'ISL',
@@ -149,16 +154,47 @@ export const TranslatePage: React.FC = () => {
     } finally {
       setIsProcessing(false);
     }
-  }, []);
+  }, [avatarSpeed]);
 
-  // Initialize Speech Recognition once on mount
-  useEffect(() => {
+  // Safe Continuous Speech Recognition Engine with Auto-Recovery
+  const startContinuousListening = useCallback(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
+    if (!SpeechRecognition) {
+      setIsMicSupported(false);
+      setMicError('Speech recognition is not supported in this browser. Please use Google Chrome, Microsoft Edge, or Safari.');
+      return;
+    }
+
+    shouldListenRef.current = true;
+    setMicError(null);
+
+    if (restartTimeoutRef.current) {
+      clearTimeout(restartTimeoutRef.current);
+      restartTimeoutRef.current = null;
+    }
+
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.onstart = null;
+        recognitionRef.current.onresult = null;
+        recognitionRef.current.onerror = null;
+        recognitionRef.current.onend = null;
+        recognitionRef.current.abort();
+      } catch (e) {}
+      recognitionRef.current = null;
+    }
+
+    try {
       const recognition = new SpeechRecognition();
       recognition.continuous = true;
       recognition.interimResults = true;
-      recognition.lang = 'en-IN';
+      recognition.lang = speechLang || 'en-IN';
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        setIsListening(true);
+        setMicError(null);
+      };
 
       recognition.onresult = (event: any) => {
         let interim = '';
@@ -177,37 +213,96 @@ export const TranslatePage: React.FC = () => {
         }
 
         if (finalStr) {
-          const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          setFinalTranscript(finalStr);
-          setSessionHistoryLogs((prev) => [...prev, { mode: 'SPEECH', text: finalStr, time: timestamp }]);
-          setLiveCaption('');
-          translateTextToSign(finalStr);
+          const cleanFinal = finalStr.trim();
+          if (cleanFinal) {
+            const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            setFinalTranscript(cleanFinal);
+            setSessionHistoryLogs((prev) => [...prev, { mode: 'SPEECH', text: cleanFinal, time: timestamp }]);
+            setLiveCaption('');
+            translateTextToSign(cleanFinal);
+          }
         }
       };
 
       recognition.onerror = (e: any) => {
-        console.warn('Speech recognition warning:', e?.error || e);
-        setIsListening(false);
+        const err = e?.error;
+        console.warn('[SAMBHAV Speech] Error event:', err);
+        if (err === 'not-allowed' || err === 'service-not-allowed') {
+          setMicError('Microphone access was denied. Please allow microphone permission in your browser URL bar.');
+          shouldListenRef.current = false;
+          setIsListening(false);
+          return;
+        }
+
+        // For transient errors like no-speech or network, auto-resume smoothly
+        if (shouldListenRef.current) {
+          if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
+          restartTimeoutRef.current = setTimeout(() => {
+            if (shouldListenRef.current) {
+              startContinuousListening();
+            }
+          }, 400);
+        }
       };
 
       recognition.onend = () => {
         setIsListening(false);
+        // Seamlessly restart if user wants continuous listening
+        if (shouldListenRef.current) {
+          if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
+          restartTimeoutRef.current = setTimeout(() => {
+            if (shouldListenRef.current) {
+              startContinuousListening();
+            }
+          }, 250);
+        }
       };
 
       recognitionRef.current = recognition;
+      recognition.start();
+    } catch (err: any) {
+      console.warn('[SAMBHAV Speech] Start error:', err);
+      if (shouldListenRef.current) {
+        if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
+        restartTimeoutRef.current = setTimeout(() => {
+          if (shouldListenRef.current) {
+            startContinuousListening();
+          }
+        }, 800);
+      }
+    }
+  }, [speechLang, translateTextToSign]);
+
+  const stopContinuousListening = useCallback(() => {
+    shouldListenRef.current = false;
+    setIsListening(false);
+
+    if (restartTimeoutRef.current) {
+      clearTimeout(restartTimeoutRef.current);
+      restartTimeoutRef.current = null;
     }
 
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.onstart = null;
+        recognitionRef.current.onresult = null;
+        recognitionRef.current.onerror = null;
+        recognitionRef.current.onend = null;
+        recognitionRef.current.stop();
+      } catch (e) {}
+      recognitionRef.current = null;
+    }
+  }, []);
+
+  // Cleanup on unmount
+  useEffect(() => {
     return () => {
+      stopContinuousListening();
       if (mediaStreamRef.current) {
         mediaStreamRef.current.getTracks().forEach((t) => t.stop());
       }
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop();
-        } catch (e) {}
-      }
     };
-  }, [translateTextToSign]);
+  }, [stopContinuousListening]);
 
   // Keep videoRef continuously linked to active mediaStream
   useEffect(() => {
@@ -226,6 +321,7 @@ export const TranslatePage: React.FC = () => {
     setFinalTranscript('');
     setTranslatedText('');
     setActiveStepIndex(-1);
+    setMicError(null);
 
     try {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -242,18 +338,11 @@ export const TranslatePage: React.FC = () => {
         }
       }
     } catch (err) {
-      console.warn('Camera/mic access unavailable. Operating in software mode.', err);
-      setCameraActive(false);
-      setMicActive(false);
+      console.warn('Camera/mic hardware track access note:', err);
     }
 
-    if (recognitionRef.current && activeMode === 'SPEECH_TO_ISL') {
-      try {
-        recognitionRef.current.start();
-        setIsListening(true);
-      } catch (e) {
-        console.warn('Could not auto-start speech recognition:', e);
-      }
+    if (activeMode === 'SPEECH_TO_ISL') {
+      startContinuousListening();
     }
   };
 
@@ -283,39 +372,24 @@ export const TranslatePage: React.FC = () => {
       },
     ]);
 
-    // Manage speech recognition without stopping hardware media tracks
+    // Manage continuous speech recognition without stopping hardware media tracks
     if (newMode === 'SPEECH_TO_ISL') {
-      if (recognitionRef.current && !isListening) {
-        try {
-          recognitionRef.current.start();
-          setIsListening(true);
-        } catch (e) {}
-      }
+      startContinuousListening();
     } else {
-      if (recognitionRef.current && isListening) {
-        try {
-          recognitionRef.current.stop();
-          setIsListening(false);
-        } catch (e) {}
-      }
+      stopContinuousListening();
     }
 
     setActiveMode(newMode);
   };
 
   const stopMediaStream = () => {
+    stopContinuousListening();
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach((track) => track.stop());
       mediaStreamRef.current = null;
     }
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {}
-    }
     setCameraActive(false);
     setMicActive(false);
-    setIsListening(false);
   };
 
   const handleStopCommunication = () => {
@@ -335,23 +409,14 @@ export const TranslatePage: React.FC = () => {
     setCurrentSequence(null);
     setSavedSuccess(false);
     setActiveStepIndex(-1);
+    setMicError(null);
   };
 
   const toggleListening = () => {
-    if (!recognitionRef.current) {
-      alert('Speech recognition is not supported in this browser. Please use Google Chrome or Microsoft Edge.');
-      return;
-    }
-    if (isListening) {
-      recognitionRef.current.stop();
-      setIsListening(false);
+    if (isListening || shouldListenRef.current) {
+      stopContinuousListening();
     } else {
-      try {
-        recognitionRef.current.start();
-        setIsListening(true);
-      } catch (e) {
-        console.warn('Speech recognition toggle start error:', e);
-      }
+      startContinuousListening();
     }
   };
 
@@ -729,42 +794,123 @@ export const TranslatePage: React.FC = () => {
               {/* ========================================================= */}
               {activeMode === 'SPEECH_TO_ISL' && (
                 <>
-                  <div className="flex-1 bg-white rounded-2xl p-4 border border-[#e0e3e5] shadow-sm flex flex-col justify-between min-h-0">
-                    <div className="flex items-center justify-between border-b border-[#e0e3e5] pb-2 shrink-0">
-                      <span className="text-xs font-bold uppercase tracking-wider text-[#8f4e00] flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-[18px]">subtitles</span>
-                        Speech Live Captions Stream
-                      </span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        isListening ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {isListening ? '● Mic Streaming' : 'Mic Active'}
-                      </span>
+                  <div className="flex-1 bg-white dark:bg-[#1a202c] rounded-2xl p-4 border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col justify-between min-h-0">
+                    <div className="flex items-center justify-between border-b border-[#e0e3e5] dark:border-[#2d3133] pb-2 shrink-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold uppercase tracking-wider text-[#8f4e00] dark:text-[#ffb77a] flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-[18px]">subtitles</span>
+                          Speech Live Captions Stream
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {/* Language Selector */}
+                        <select
+                          value={speechLang}
+                          onChange={(e) => {
+                            setSpeechLang(e.target.value);
+                            if (isListening || shouldListenRef.current) {
+                              setTimeout(() => startContinuousListening(), 50);
+                            }
+                          }}
+                          className="bg-white dark:bg-[#0d121d] border border-[#e0e3e5] dark:border-[#2d3133] text-[11px] font-bold text-[#181c1e] dark:text-white rounded-lg px-2 py-1 outline-none cursor-pointer"
+                        >
+                          <option value="en-IN">🇮🇳 English (India)</option>
+                          <option value="en-US">🇺🇸 English (US)</option>
+                          <option value="hi-IN">🇮🇳 Hindi (हिन्दी)</option>
+                        </select>
+
+                        {/* Status Badge */}
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1.5 ${
+                          isListening
+                            ? 'bg-green-100 dark:bg-green-950/80 text-green-700 dark:text-green-300 border border-green-300'
+                            : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
+                        }`}>
+                          <span className={`w-2 h-2 rounded-full ${isListening ? 'bg-green-500 animate-ping' : 'bg-gray-400'}`} />
+                          {isListening ? 'Live Listening' : 'Mic Paused'}
+                        </span>
+                      </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto my-2 p-3 bg-[#f7fafc] rounded-xl border border-[#e0e3e5]">
-                      <p className={`font-semibold leading-relaxed text-[#181c1e] ${
+                    {/* Microphone Permission / Support Error Notice */}
+                    {(micError || !isMicSupported) && (
+                      <div className="my-2 p-2.5 bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 rounded-xl text-xs text-amber-900 dark:text-amber-200 flex items-center justify-between gap-2 shrink-0">
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-amber-600 text-[18px]">warning</span>
+                          <span>{micError || 'Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.'}</span>
+                        </div>
+                        {isMicSupported && (
+                          <button
+                            type="button"
+                            onClick={() => startContinuousListening()}
+                            className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[10px] font-bold shrink-0 cursor-pointer"
+                          >
+                            Retry Mic
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Captions Output Display */}
+                    <div className="flex-1 overflow-y-auto my-2 p-3 bg-[#f7fafc] dark:bg-[#0d121d] rounded-xl border border-[#e0e3e5] dark:border-[#2d3133] flex flex-col justify-center">
+                      <p className={`font-semibold leading-relaxed text-[#181c1e] dark:text-white ${
                         captionFontSize === 'lg' ? 'text-xl' : captionFontSize === 'md' ? 'text-base' : 'text-sm'
                       }`}>
                         {liveCaption ? (
-                          <span className="text-[#fe9832] font-bold">{liveCaption}</span>
+                          <span className="text-[#fe9832] font-bold flex items-center gap-2">
+                            <span className="material-symbols-outlined text-[18px] animate-pulse text-[#fe9832]">graphic_eq</span>
+                            {liveCaption}
+                          </span>
                         ) : finalTranscript ? (
-                          <span>{finalTranscript}</span>
+                          <span className="text-[#030813] dark:text-white font-medium">{finalTranscript}</span>
                         ) : (
-                          <span className="text-[#45474c]/50 italic">
-                            Spoken speech and live captions stream here in real-time...
+                          <span className="text-[#45474c]/60 dark:text-[#828796] italic flex items-center gap-2 justify-center text-center">
+                            <span className="material-symbols-outlined text-[20px] opacity-70">mic</span>
+                            {isListening ? 'Listening... Speak into your microphone now' : 'Click "Resume Mic" to begin speech recognition'}
                           </span>
                         )}
                       </p>
                     </div>
 
+                    {/* Quick Spoken Phrase Bar (Fallback & Testing) */}
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const val = inputText.trim();
+                        if (!val) return;
+                        const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        setFinalTranscript(val);
+                        setSessionHistoryLogs((prev) => [...prev, { mode: 'SPEECH', text: val, time: timestamp }]);
+                        setLiveCaption('');
+                        translateTextToSign(val);
+                        setInputText('');
+                      }}
+                      className="pt-2 flex items-center gap-2 border-t border-[#e0e3e5] dark:border-[#2d3133] shrink-0"
+                    >
+                      <input
+                        type="text"
+                        value={inputText}
+                        onChange={(e) => setInputText(e.target.value)}
+                        placeholder="Or type speech phrase to translate (e.g. 'Hello welcome')..."
+                        className="flex-1 px-3 py-1.5 text-xs bg-white dark:bg-[#0d121d] border border-[#e0e3e5] dark:border-[#2d3133] text-[#181c1e] dark:text-white rounded-xl outline-none focus:border-[#fe9832]"
+                      />
+                      <button
+                        type="submit"
+                        disabled={!inputText.trim()}
+                        className="px-3 py-1.5 bg-[#4046A8] hover:bg-[#353A8F] disabled:opacity-40 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">send</span>
+                        <span>Send</span>
+                      </button>
+                    </form>
+
                     {finalTranscript && (
-                      <div className="flex items-center justify-between pt-1 shrink-0">
-                        <span className="text-[11px] text-[#45474c]">Voice Transcription Logged</span>
+                      <div className="flex items-center justify-between pt-2 shrink-0">
+                        <span className="text-[11px] text-[#45474c] dark:text-[#828796]">Voice Transcription Logged</span>
                         <button
                           onClick={() => speak(finalTranscript)}
                           disabled={speaking}
-                          className="px-3 py-1 bg-[#e0e3e5] hover:bg-[#c6c6cc] text-[#030813] rounded-lg text-xs font-bold flex items-center gap-1"
+                          className="px-3 py-1 bg-[#e0e3e5] dark:bg-[#2d3133] hover:bg-[#c6c6cc] text-[#030813] dark:text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer"
                         >
                           <span className="material-symbols-outlined text-[14px]">volume_up</span>
                           <span>Speak Aloud</span>
@@ -773,22 +919,30 @@ export const TranslatePage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Speech Controls */}
-                  <div className="bg-white rounded-2xl p-4 border border-[#e0e3e5] shadow-sm shrink-0 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-9 h-9 rounded-lg bg-[#fe9832]/10 text-[#fe9832] flex items-center justify-center">
-                        <span className="material-symbols-outlined text-[20px]">mic</span>
+                  {/* Speech Controls Bar */}
+                  <div className="bg-white dark:bg-[#1a202c] rounded-2xl p-4 border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm shrink-0 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${
+                        isListening
+                          ? 'bg-green-100 dark:bg-green-950/80 text-green-700 dark:text-green-400'
+                          : 'bg-[#fe9832]/10 text-[#fe9832]'
+                      }`}>
+                        <span className="material-symbols-outlined text-[20px]">
+                          {isListening ? 'mic' : 'mic_off'}
+                        </span>
                       </div>
                       <div>
-                        <p className="text-xs font-bold text-[#181c1e]">Continuous Speech Recognition</p>
-                        <p className="text-[11px] text-[#45474c]">Speak freely to continuously translate into ISL signs</p>
+                        <p className="text-xs font-bold text-[#181c1e] dark:text-white">Continuous Speech Recognition</p>
+                        <p className="text-[11px] text-[#45474c] dark:text-[#828796]">
+                          {isListening ? 'Microphone is active with auto-recovery' : 'Microphone is paused'}
+                        </p>
                       </div>
                     </div>
                     <button
                       onClick={toggleListening}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm ${
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
                         isListening
-                          ? 'bg-red-500 hover:bg-red-600 text-white'
+                          ? 'bg-red-600 hover:bg-red-700 text-white'
                           : 'bg-[#fe9832] hover:bg-[#e8872b] text-[#683700]'
                       }`}
                     >
