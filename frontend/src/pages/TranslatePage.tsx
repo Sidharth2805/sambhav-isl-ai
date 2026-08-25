@@ -90,13 +90,30 @@ export const TranslatePage: React.FC = () => {
   const [captionFontSize, setCaptionFontSize] = useState<'sm' | 'md' | 'lg'>('lg');
   const [avatarSpeed, setAvatarSpeed] = useState<number>(1.25);
   const [autoSpeakGestures] = useState(true);
+  const [autoReadOutChat, setAutoReadOutChat] = useState(true);
+  const [isChatScrolledUp, setIsChatScrolledUp] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const chatScrollContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // Auto-scroll to bottom of conversation history
+  // Auto-scroll to bottom only if user hasn't scrolled up
   useEffect(() => {
+    if (!isChatScrolledUp) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [textMessages, isChatScrolledUp]);
+
+  // Handle user manual scroll in chat window
+  const handleChatScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    const isNearBottom = target.scrollHeight - target.scrollTop - target.clientHeight < 60;
+    setIsChatScrolledUp(!isNearBottom);
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    setIsChatScrolledUp(false);
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [textMessages, liveCaption]);
+  }, []);
 
   // Fast Instant Sign Tokenizer & Sequencer
   const translateTextToSign = useCallback((text: string, messageId?: string) => {
@@ -445,6 +462,11 @@ export const TranslatePage: React.FC = () => {
 
     // Trigger instant avatar sign translation
     translateTextToSign(trimmed, msgId);
+
+    // Automatically read out the chat if enabled
+    if (autoReadOutChat) {
+      speak(trimmed);
+    }
   };
 
   const handleSimulateGestureRecognition = (phrase: string) => {
@@ -961,30 +983,53 @@ export const TranslatePage: React.FC = () => {
               {activeMode === 'TEXT_TO_ISL' && (
                 <>
                   {/* Stretched Text Conversation History with Live Green Word Sync */}
-                  <div className="flex-1 bg-white rounded-2xl p-4 border border-[#e0e3e5] shadow-sm flex flex-col justify-between min-h-0">
-                    <div className="flex items-center justify-between border-b border-[#e0e3e5] pb-2 shrink-0">
-                      <span className="text-xs font-bold uppercase tracking-wider text-[#012700] flex items-center gap-1.5">
+                  <div className="relative flex-1 bg-white dark:bg-[#1a202c] rounded-2xl p-4 border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col justify-between min-h-0">
+                    <div className="flex items-center justify-between border-b border-[#e0e3e5] dark:border-[#2d3133] pb-2 shrink-0">
+                      <span className="text-xs font-bold uppercase tracking-wider text-[#012700] dark:text-[#8dfc75] flex items-center gap-1.5">
                         <span className="material-symbols-outlined text-[18px]">chat</span>
                         Text Conversation & Translation History
                       </span>
-                      <span className="text-[10px] text-[#45474c] font-semibold">
-                        {textMessages.filter((m) => m.sender !== 'system').length} Messages
-                      </span>
+                      
+                      <div className="flex items-center gap-3">
+                        {/* Auto-Read Out Toggle */}
+                        <label className="flex items-center gap-1.5 cursor-pointer select-none bg-[#f1f4f6] dark:bg-[#0d121d] px-2.5 py-1 rounded-lg border border-[#e0e3e5] dark:border-[#2d3133]">
+                          <input
+                            type="checkbox"
+                            checked={autoReadOutChat}
+                            onChange={(e) => setAutoReadOutChat(e.target.checked)}
+                            className="w-3.5 h-3.5 accent-[#4046A8] rounded cursor-pointer"
+                          />
+                          <span className="flex items-center gap-1 text-[11px] font-bold text-[#4046A8] dark:text-[#fe9832]">
+                            <span className="material-symbols-outlined text-[14px]">
+                              {autoReadOutChat ? 'volume_up' : 'volume_off'}
+                            </span>
+                            Auto-Read Out
+                          </span>
+                        </label>
+
+                        <span className="text-[10px] text-[#45474c] dark:text-[#828796] font-semibold">
+                          {textMessages.filter((m) => m.sender !== 'system').length} Messages
+                        </span>
+                      </div>
                     </div>
 
-                    {/* Messages Scroll View */}
-                    <div className="flex-1 overflow-y-auto my-2 p-3 bg-[#f7fafc] rounded-xl border border-[#e0e3e5] flex flex-col gap-3">
+                    {/* Messages Scroll View (Supports Scrolling Up & History Browsing) */}
+                    <div
+                      ref={chatScrollContainerRef}
+                      onScroll={handleChatScroll}
+                      className="relative flex-1 overflow-y-auto my-2 p-3 bg-[#f7fafc] dark:bg-[#0d121d] rounded-xl border border-[#e0e3e5] dark:border-[#2d3133] flex flex-col gap-3"
+                    >
                       {textMessages.length === 0 ? (
-                        <div className="my-auto text-center p-6 text-[#45474c]/60 flex flex-col items-center gap-2">
-                          <span className="material-symbols-outlined text-3xl text-[#c6c6cc]">edit_note</span>
+                        <div className="my-auto text-center p-6 text-[#45474c]/60 dark:text-[#828796] flex flex-col items-center gap-2">
+                          <span className="material-symbols-outlined text-3xl text-[#c6c6cc] dark:text-gray-600">edit_note</span>
                           <p className="text-xs font-semibold">No messages entered yet.</p>
-                          <p className="text-[11px]">Type any sentence below to watch the avatar animate ISL signs and turn words green in sync.</p>
+                          <p className="text-[11px]">Type any sentence below to watch the avatar animate ISL signs and hear speech read out aloud.</p>
                         </div>
                       ) : (
                         textMessages.map((msg) => {
                           if (msg.sender === 'system') {
                             return (
-                              <div key={msg.id} className="self-center my-1 px-3 py-1 bg-[#e0e3e5]/80 rounded-full text-[10px] font-bold text-[#45474c] flex items-center gap-1">
+                              <div key={msg.id} className="self-center my-1 px-3 py-1 bg-[#e0e3e5]/80 dark:bg-slate-800 rounded-full text-[10px] font-bold text-[#45474c] dark:text-[#828796] flex items-center gap-1">
                                 <span className="material-symbols-outlined text-[12px]">swap_horiz</span>
                                 <span>{msg.text} &bull; {msg.timestamp}</span>
                               </div>
@@ -996,7 +1041,7 @@ export const TranslatePage: React.FC = () => {
                           return (
                             <div
                               key={msg.id}
-                              className="self-end max-w-[90%] bg-white p-3.5 rounded-2xl rounded-tr-sm border border-[#e0e3e5] shadow-sm flex flex-col gap-1.5"
+                              className="self-end max-w-[90%] bg-white dark:bg-[#1a202c] p-3.5 rounded-2xl rounded-tr-sm border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col gap-2"
                             >
                               {/* Word by word rendering with synchronized GREEN highlight */}
                               <div className={`flex flex-wrap items-center gap-1.5 ${
@@ -1013,8 +1058,8 @@ export const TranslatePage: React.FC = () => {
                                         isCurrentlyActive
                                           ? 'bg-green-500 text-white font-black scale-110 shadow-md ring-2 ring-green-400'
                                           : isCompleted
-                                          ? 'bg-emerald-100 text-emerald-800 font-bold border border-emerald-300'
-                                          : 'text-[#181c1e] font-medium'
+                                          ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-700'
+                                          : 'text-[#181c1e] dark:text-white font-medium'
                                       }`}
                                     >
                                       {word}
@@ -1023,19 +1068,35 @@ export const TranslatePage: React.FC = () => {
                                 })}
                               </div>
 
-                              <div className="flex items-center justify-between text-[10px] text-[#45474c] pt-1 border-t border-[#e0e3e5]/60">
-                                <span className="flex items-center gap-1">
-                                  <span className="font-bold text-[#012700] uppercase text-[9px] bg-[#dde2f3] px-1.5 py-0.2 rounded">Text</span>
-                                  <span>{msg.timestamp}</span>
-                                </span>
-                                {isSigningThisMsg ? (
-                                  <span className="text-green-600 font-bold flex items-center gap-1 animate-pulse">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                                    Signing Word {activeStepIndex + 1}/{msg.words.length} ({avatarSpeed}x)
+                              {/* Message Footer with Timestamp and Read Aloud Button */}
+                              <div className="flex items-center justify-between text-[10px] text-[#45474c] dark:text-[#828796] pt-1.5 border-t border-[#e0e3e5]/60 dark:border-[#2d3133]">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-[#012700] dark:text-[#8dfc75] uppercase text-[9px] bg-[#dde2f3] dark:bg-slate-800 px-1.5 py-0.2 rounded">
+                                    {msg.mode}
                                   </span>
-                                ) : (
-                                  <span className="text-gray-400">Translated</span>
-                                )}
+                                  <span>{msg.timestamp}</span>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  {isSigningThisMsg ? (
+                                    <span className="text-green-600 dark:text-green-400 font-bold flex items-center gap-1 animate-pulse">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                                      Signing {activeStepIndex + 1}/{msg.words.length}
+                                    </span>
+                                  ) : null}
+
+                                  {/* Dedicated Per-Message Speak / Read Aloud Button */}
+                                  <button
+                                    type="button"
+                                    onClick={() => speak(msg.text)}
+                                    disabled={speaking}
+                                    title="Read message aloud"
+                                    className="px-2 py-0.5 bg-[#f1f4f6] dark:bg-slate-800 hover:bg-[#fe9832]/20 dark:hover:bg-[#fe9832]/30 text-[#0C1322] dark:text-white rounded-md text-[10px] font-bold transition flex items-center gap-1 cursor-pointer border border-[#e0e3e5] dark:border-[#2d3133]"
+                                  >
+                                    <span className="material-symbols-outlined text-[13px] text-[#4046A8] dark:text-[#fe9832]">volume_up</span>
+                                    <span>Read Aloud</span>
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           );
@@ -1044,9 +1105,21 @@ export const TranslatePage: React.FC = () => {
                       <div ref={messagesEndRef} />
                     </div>
 
+                    {/* Floating Scroll to Bottom / Latest Button */}
+                    {isChatScrolledUp && (
+                      <button
+                        type="button"
+                        onClick={scrollToBottom}
+                        className="absolute bottom-20 right-8 px-3 py-1.5 bg-[#4046A8] hover:bg-[#353A8F] text-white text-xs font-bold rounded-full shadow-xl flex items-center gap-1.5 transition-all animate-bounce cursor-pointer z-30"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">arrow_downward</span>
+                        <span>Jump to Latest</span>
+                      </button>
+                    )}
+
                     {/* Instant Status */}
                     {activeSigningMessageId && activeStepIndex >= 0 && (
-                      <div className="flex items-center justify-between pt-1 shrink-0 text-xs text-green-700 font-bold">
+                      <div className="flex items-center justify-between pt-1 shrink-0 text-xs text-green-700 dark:text-green-400 font-bold">
                         <span className="flex items-center gap-1">
                           <span className="material-symbols-outlined text-[14px] animate-spin">sync</span>
                           Synchronized Green Text Highlighting Active ({avatarSpeed}x speed)
@@ -1056,18 +1129,34 @@ export const TranslatePage: React.FC = () => {
                   </div>
 
                   {/* Text Input Panel */}
-                  <form onSubmit={handleSendTextMessage} className="bg-white rounded-2xl p-3 border border-[#e0e3e5] shadow-sm shrink-0 flex gap-2">
+                  <form onSubmit={handleSendTextMessage} className="bg-white dark:bg-[#1a202c] rounded-2xl p-3 border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm shrink-0 flex items-center gap-2">
                     <input
                       type="text"
                       placeholder="Type a sentence (e.g. 'Hello welcome to our accessible office')..."
                       value={inputText}
                       onChange={(e) => setInputText(e.target.value)}
-                      className="flex-1 px-4 py-2.5 bg-[#f7fafc] border border-[#c6c6cc] rounded-xl text-xs sm:text-sm text-[#181c1e] focus:border-[#fe9832] outline-none"
+                      className="flex-1 px-4 py-2.5 bg-[#f7fafc] dark:bg-[#0d121d] border border-[#c6c6cc] dark:border-[#2d3133] rounded-xl text-xs sm:text-sm text-[#181c1e] dark:text-white focus:border-[#fe9832] outline-none"
                     />
+
+                    <button
+                      type="button"
+                      onClick={() => setAutoReadOutChat(!autoReadOutChat)}
+                      title={autoReadOutChat ? 'Auto-Read Out is ON (Click to disable)' : 'Auto-Read Out is OFF (Click to enable)'}
+                      className={`p-2.5 rounded-xl border transition-all flex items-center justify-center cursor-pointer ${
+                        autoReadOutChat
+                          ? 'bg-[#4046A8]/10 text-[#4046A8] dark:bg-[#fe9832]/20 dark:text-[#fe9832] border-[#4046A8]/30 dark:border-[#fe9832]/40'
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-400 border-gray-300 dark:border-gray-700'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-[18px]">
+                        {autoReadOutChat ? 'volume_up' : 'volume_off'}
+                      </span>
+                    </button>
+
                     <button
                       type="submit"
                       disabled={isProcessing || !inputText.trim()}
-                      className="px-5 py-2.5 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 shadow-sm"
+                      className="px-5 py-2.5 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-40"
                     >
                       <span>Sign Text</span>
                       <span className="material-symbols-outlined text-[16px]">send</span>
