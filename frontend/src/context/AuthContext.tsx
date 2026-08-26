@@ -49,25 +49,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Attempt token refresh on app mount (browser refresh restore)
   useEffect(() => {
     const restoreSession = async () => {
-      try {
-        const refreshData = await apiRequest('/api/auth/refresh', 'POST', null, null, 2500);
-        if (refreshData && refreshData.accessToken) {
-          const freshToken = refreshData.accessToken;
-          setAccessToken(freshToken);
+      const maxAttempts = 2;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          // Use a generous timeout to survive Render free-tier cold starts (~30-60s)
+          const refreshData = await apiRequest('/api/auth/refresh', 'POST', null, null, 30000);
+          if (refreshData && refreshData.accessToken) {
+            const freshToken = refreshData.accessToken;
+            setAccessToken(freshToken);
 
-          // Get user details
-          const userData = await apiRequest('/api/auth/me', 'GET', null, freshToken);
-          const savedAvatar = getStoredAvatar(userData?.email || userData?.id);
-          setUser({
-            ...userData,
-            avatarUrl: savedAvatar,
-          });
+            // Get user details
+            const userData = await apiRequest('/api/auth/me', 'GET', null, freshToken, 15000);
+            const savedAvatar = getStoredAvatar(userData?.email || userData?.id);
+            setUser({
+              ...userData,
+              avatarUrl: savedAvatar,
+            });
+            break; // Success — stop retrying
+          }
+        } catch (err) {
+          // On first attempt failure, retry once more after a short delay
+          if (attempt < maxAttempts) {
+            await new Promise((r) => setTimeout(r, 2000));
+          }
+          // Otherwise safe to ignore; user is simply unauthenticated
         }
-      } catch (err) {
-        // Safe to ignore on startup; user is simply unauthenticated
-      } finally {
-        setInitializing(false);
       }
+      setInitializing(false);
     };
     restoreSession();
   }, []);
