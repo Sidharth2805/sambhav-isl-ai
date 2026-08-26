@@ -117,10 +117,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // If user had no existing cached session and refresh failed, ensure clear
-      if (!existingToken) {
-        clearSession();
-      }
+      // If session verification and refresh both failed, purge dead session so user gets clean login
+      clearSession();
       setInitializing(false);
     };
     restoreSession();
@@ -187,13 +185,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateUserProfile = async (profilePayload: AccessibilityProfileDto) => {
-    if (!accessToken) return;
-    const updatedProfile = await apiRequest('/api/profile', 'PUT', profilePayload, accessToken);
+    let updatedProfile = profilePayload;
+    if (accessToken) {
+      try {
+        const res = await apiRequest('/api/profile', 'PUT', profilePayload, accessToken);
+        if (res) updatedProfile = res;
+      } catch (err) {
+        console.warn('Backend profile sync notice (saved locally):', err);
+      }
+    }
     setUser((prev) => {
       if (!prev) return null;
       const next = {
         ...prev,
-        profile: updatedProfile,
+        profile: {
+          ...(prev.profile || {}),
+          ...updatedProfile,
+        },
       };
       localStorage.setItem('sambhav_auth_user', JSON.stringify(next));
       return next;

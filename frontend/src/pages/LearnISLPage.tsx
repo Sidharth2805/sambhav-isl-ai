@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 interface VideoLesson {
   id: string;
@@ -12,6 +13,7 @@ interface VideoLesson {
 }
 
 export const LearnISLPage: React.FC = () => {
+  const navigate = useNavigate();
   const [activeVideo, setActiveVideo] = useState<VideoLesson | null>(null);
   const [lessons, setLessons] = useState<VideoLesson[]>([
     {
@@ -133,6 +135,40 @@ export const LearnISLPage: React.FC = () => {
           </div>
         </div>
       </header>
+
+      {/* Cultural ISL Spotlight Banner */}
+      <div className="bg-gradient-to-r from-[#030813] via-[#0d172a] to-[#122316] p-5 sm:p-6 rounded-3xl border border-[#e0e3e5] dark:border-white/10 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-white relative overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#ff9933] via-white to-[#138808]" />
+        
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-[24px] shrink-0 border border-white/20">
+            🇮🇳
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-bold text-white tracking-tight">
+                National Anthem & Song in ISL
+              </h2>
+              <span className="px-2 py-0.5 bg-[#fe9832]/20 text-[#fe9832] border border-[#fe9832]/30 rounded-full text-[10px] font-bold">
+                Cultural ISL
+              </span>
+            </div>
+            <p className="text-xs text-white/70 mt-0.5">
+              Experience Jana Gana Mana & Vande Mataram rendered with verified Indian Sign Language gestures.
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={() => navigate('/cultural-isl')}
+          className="self-stretch sm:self-auto px-4 py-2.5 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shrink-0 shadow-sm group"
+        >
+          <span>Explore Cultural ISL</span>
+          <span className="material-symbols-outlined text-[16px] group-hover:translate-x-0.5 transition-transform">
+            arrow_forward
+          </span>
+        </button>
+      </div>
 
       {/* Video Lessons Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

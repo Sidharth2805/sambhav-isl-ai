@@ -278,14 +278,19 @@ export const LandingPage: React.FC = () => {
                   </div>
 
                   {/* Live Caption Bar */}
-                  <div className="bg-[#0C1322] text-white p-3 rounded-xl flex items-center justify-between text-xs font-mono">
-                    <div className="flex items-center space-x-2 truncate">
-                      <span className="text-green-400 font-bold">CC:</span>
-                      <span className="truncate text-slate-300">Live subtitles stream active in real-time...</span>
+                  <div className="bg-gradient-to-r from-[#080d19] via-[#0f172a] to-[#131d31] border border-white/15 p-3 rounded-2xl flex items-center justify-between text-xs font-mono text-white shadow-md">
+                    <div className="flex items-center space-x-2.5 truncate">
+                      <span className="px-2 py-0.5 rounded-md bg-[#fe9832] text-[#4a2400] font-black text-[10px] tracking-wider shadow-xs">
+                        CC
+                      </span>
+                      <span className="truncate text-slate-200 text-[11px] font-sans font-medium">
+                        Live subtitles & ISL gloss stream active...
+                      </span>
                     </div>
-                    <span className="text-[9px] bg-green-500/20 text-green-300 px-1.5 py-0.5 rounded font-bold">
-                      LIVE
-                    </span>
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-[#8dfc75] text-[9px] font-bold shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#8dfc75] animate-pulse" />
+                      <span>LIVE</span>
+                    </div>
                   </div>
 
                   {/* Quick Action Buttons */}
@@ -786,10 +791,11 @@ export const LandingPage: React.FC = () => {
                   We are a passionate team of engineers, designers, and accessibility advocates dedicated to bridging the communication gap. Together, we combine our expertise in AI and deep understanding of the Deaf community to create Sambhav.
                 </p>
               </div>
-              <div className="relative rounded-2xl sm:rounded-3xl shadow-md border-3 border-white/60 max-w-lg mx-auto lg:max-w-none">
+              {/* #DjMahi - Replace team image here */}
+              <div className="relative rounded-2xl sm:rounded-3xl shadow-md border-3 border-white/60 max-w-lg mx-auto lg:max-w-none overflow-hidden group">
                 <img
                   alt="Sambhav Team"
-                  className="w-full h-auto object-cover rounded-2xl sm:rounded-3xl"
+                  className="w-full h-auto object-cover rounded-2xl sm:rounded-3xl transition-transform duration-300 group-hover:scale-105"
                   src="https://lh3.googleusercontent.com/aida-public/AB6AXuAR619udVh9TPr_uBuvwKPp2bMl9fMZ_hXnbJ4MnlpkFWGtRfwx9tW25FuZH3JJ5eI8O14ezBV9oXODCaXqYCJMPykR0gpQSUJTQ4wwt8c_Fwn0NjuhKkjibExPA5coorqz0UWbIqyLkQO9LRxq59cJv-PzxnhoRA7kOqGwbAmsMQ5S-SjPuqoyuepDUr5V5c-IdxuJizQ1iu8Tz1B8jr1dsYdo4H8NUWqLL1GxN2QW4xuqDXMrb7XSDH1Qitk4eUMT9Q"
                 />
               </div>
@@ -902,128 +908,132 @@ export const LandingPage: React.FC = () => {
       {/* ========================================================================= */}
       <footer className="bg-[#E4E1DC]/95 border-t border-[#D0CCC5] pt-12 sm:pt-14 pb-8 text-left">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-6 gap-8 sm:gap-10 mb-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 sm:gap-10 mb-12">
             
-            <div className="md:col-span-2">
+            {/* Column 1: Brand & Contact Info */}
+            <div className="sm:col-span-2 lg:col-span-2 space-y-4">
               <button
                 type="button"
                 onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                className="flex items-center space-x-2.5 mb-4 cursor-pointer text-left"
+                className="flex items-center space-x-2.5 cursor-pointer text-left group"
               >
                 <img
                   alt="SAMBHAV Circular Logo Icon"
-                  className="h-8 w-8 rounded-full object-contain border border-[#D0CCC5]"
+                  className="h-9 w-9 rounded-full object-contain border border-[#D0CCC5] group-hover:scale-105 transition-transform"
                   src="https://lh3.googleusercontent.com/aida-public/AB6AXuBTg0HBcA_4tr0W91LDkwqOnVSfSNqNLfncEA1PPwyGzu5JLTBXpp_wsXkZjo9tzLvf4KFNyaXk060fIQSGUovqRqh34LlLcrxxAUa5VojHfDfu4jRQJGk6QxnzQbHigwRz16MDMj2DwoCRu_i77QAzKuRLVJ8e2mLUwC7-UvMJ_JB5sui2SpIRfZM5c9yAP4gD3yTYgJBzlXm_PtIyr70gHi3MkHGC95pbUZ_Mid5Kj_my4OpeXflK15WPybnDecsYaov545CM4kLxeQ"
                 />
                 <span className="text-xl font-bold tracking-tight text-[#0C1322] font-headline">Sambhav</span>
               </button>
-              <p className="text-xs sm:text-sm text-[#475569] mb-4 leading-relaxed max-w-sm">
-                Helping students and teachers communicate easily in classrooms and learning centers.
+              <p className="text-xs sm:text-sm text-[#475569] leading-relaxed max-w-sm">
+                Empowering two-way accessible communication for classrooms, healthcare, and everyday life with AI-powered Indian Sign Language.
               </p>
-              <div className="mb-6">
-                <p className="text-[10px] font-semibold text-gray-500 mb-2 uppercase tracking-widest">Connect with us</p>
-                <div className="flex flex-col space-y-2">
-                  <a className="flex items-center text-xs sm:text-sm text-[#475569] hover:text-[#4046A8] transition-colors" href="https://linkedin.com" target="_blank" rel="noopener noreferrer">
-                    <svg className="w-3.5 h-3.5 mr-1.5" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"></path></svg>
+              
+              <div className="pt-2">
+                <p className="text-[10px] font-bold text-gray-500 mb-2 uppercase tracking-widest">Connect with us</p>
+                <div className="flex items-center space-x-4">
+                  <a className="flex items-center text-xs text-[#475569] hover:text-[#4046A8] transition-colors" href="https://linkedin.com" target="_blank" rel="noopener noreferrer">
+                    <svg className="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"></path></svg>
                     LinkedIn
                   </a>
-                  <a className="flex items-center text-xs sm:text-sm text-[#475569] hover:text-[#4046A8] transition-colors" href="https://instagram.com" target="_blank" rel="noopener noreferrer">
-                    <span className="material-symbols-outlined text-base mr-2">photo_camera</span>
+                  <a className="flex items-center text-xs text-[#475569] hover:text-[#4046A8] transition-colors" href="https://instagram.com" target="_blank" rel="noopener noreferrer">
+                    <span className="material-symbols-outlined text-base mr-1">photo_camera</span>
                     Instagram
                   </a>
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <div className="space-y-0.5">
-                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">LOCATION</p>
-                  <p className="text-xs sm:text-sm text-[#475569] leading-relaxed max-w-xs">Institute of Technical Education &amp; Research, Jagamara, Bhubaneswar - 751030</p>
-                </div>
+
+              <div className="pt-2 border-t border-[#D0CCC5]/60">
+                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-0.5">LOCATION</p>
+                <p className="text-xs text-[#475569] leading-relaxed">Institute of Technical Education &amp; Research, Jagamara, Bhubaneswar - 751030</p>
               </div>
             </div>
 
-            {/* Product Links */}
-            <div>
+            {/* Column 2: Product */}
+            <div className="space-y-3">
               <h3 className="text-xs font-bold text-gray-500 tracking-widest uppercase mb-3 sm:mb-4">Product</h3>
               <ul className="space-y-2.5">
                 <li>
-                  <button type="button" onClick={() => scrollTo('how-it-works-section')} className="text-xs sm:text-sm text-[#475569] hover:text-[#0C1322] cursor-pointer">
-                    How it Works ?
+                  <button type="button" onClick={() => scrollTo('how-it-works-section')} className="text-xs sm:text-sm text-[#475569] hover:text-[#0C1322] cursor-pointer transition-colors">
+                    How it Works?
                   </button>
                 </li>
                 <li>
-                  <button type="button" onClick={() => navigate('/explore')} className="text-xs sm:text-sm text-[#475569] hover:text-[#0C1322] cursor-pointer">
-                    Community
+                  <button type="button" onClick={() => navigate('/dashboard')} className="text-xs sm:text-sm text-[#475569] hover:text-[#0C1322] cursor-pointer transition-colors">
+                    Community Hub
                   </button>
                 </li>
                 <li>
-                  <button type="button" onClick={() => navigate('/history')} className="text-xs sm:text-sm text-[#475569] hover:text-[#0C1322] cursor-pointer">
+                  <button type="button" onClick={() => navigate('/dashboard')} className="text-xs sm:text-sm text-[#475569] hover:text-[#0C1322] cursor-pointer transition-colors">
                     Testimonials
+                  </button>
+                </li>
+                <li>
+                  <button type="button" onClick={() => navigate('/cultural-isl')} className="text-xs sm:text-sm text-[#475569] hover:text-[#0C1322] cursor-pointer transition-colors">
+                    Cultural ISL
                   </button>
                 </li>
               </ul>
             </div>
 
-            {/* Solutions Links */}
-            <div>
+            {/* Column 3: Solutions */}
+            <div className="space-y-3">
               <h3 className="text-xs font-bold text-gray-500 tracking-widest uppercase mb-3 sm:mb-4">Solutions</h3>
               <ul className="space-y-2.5">
                 <li>
-                  <button type="button" onClick={() => navigate('/learn-isl')} className="text-xs sm:text-sm text-[#475569] hover:text-[#0C1322] cursor-pointer">
-                    Educational Institutions
+                  <button type="button" onClick={() => navigate('/learn-isl')} className="text-xs sm:text-sm text-[#475569] hover:text-[#0C1322] cursor-pointer transition-colors">
+                    Educational Learning
                   </button>
                 </li>
                 <li>
-                  <button type="button" onClick={() => navigate('/explore')} className="text-xs sm:text-sm text-[#475569] hover:text-[#0C1322] cursor-pointer">
+                  <button type="button" onClick={() => navigate('/dashboard')} className="text-xs sm:text-sm text-[#475569] hover:text-[#0C1322] cursor-pointer transition-colors">
                     Public Services
                   </button>
                 </li>
                 <li>
-                  <button type="button" onClick={() => navigate('/communicate')} className="text-xs sm:text-sm text-[#475569] hover:text-[#0C1322] cursor-pointer">
-                    Healthcare
+                  <button type="button" onClick={() => navigate('/communicate')} className="text-xs sm:text-sm text-[#475569] hover:text-[#0C1322] cursor-pointer transition-colors">
+                    Healthcare Calling
                   </button>
                 </li>
                 <li>
-                  <button type="button" onClick={() => navigate('/translate')} className="text-xs sm:text-sm text-[#475569] hover:text-[#0C1322] cursor-pointer">
-                    Enterprise
+                  <button type="button" onClick={() => navigate('/translate')} className="text-xs sm:text-sm text-[#475569] hover:text-[#0C1322] cursor-pointer transition-colors">
+                    Enterprise Translation
                   </button>
                 </li>
                 <li>
-                  <button type="button" onClick={() => navigate('/dashboard')} className="text-xs sm:text-sm text-[#475569] hover:text-[#0C1322] cursor-pointer">
+                  <button type="button" onClick={() => navigate('/dashboard')} className="text-xs sm:text-sm text-[#475569] hover:text-[#0C1322] cursor-pointer transition-colors">
                     Digital Platforms
                   </button>
                 </li>
               </ul>
             </div>
 
-            {/* Resources Links */}
-            <div>
+            {/* Column 4: Resources & Company */}
+            <div className="space-y-3">
               <h3 className="text-xs font-bold text-gray-500 tracking-widest uppercase mb-3 sm:mb-4">Resources</h3>
               <ul className="space-y-2.5">
                 <li>
-                  <button type="button" onClick={() => navigate('/learn-isl')} className="text-xs sm:text-sm text-[#475569] hover:text-[#0C1322] cursor-pointer">
-                    ISL Learning
+                  <button type="button" onClick={() => navigate('/learn-isl')} className="text-xs sm:text-sm text-[#475569] hover:text-[#0C1322] cursor-pointer transition-colors">
+                    ISL Learning Portal
                   </button>
                 </li>
                 <li>
-                  <button type="button" onClick={() => scrollTo('problem-section')} className="text-xs sm:text-sm text-[#475569] hover:text-[#0C1322] cursor-pointer">
-                    Challenges People Face
+                  <button type="button" onClick={() => navigate('/news')} className="text-xs sm:text-sm text-[#475569] hover:text-[#0C1322] cursor-pointer transition-colors">
+                    Accessible News
                   </button>
                 </li>
-              </ul>
-            </div>
-
-            {/* Company Links */}
-            <div>
-              <h3 className="text-xs font-bold text-gray-500 tracking-widest uppercase mb-3 sm:mb-4">Company</h3>
-              <ul className="space-y-2.5">
                 <li>
-                  <button type="button" onClick={() => scrollTo('problem-section')} className="text-xs sm:text-sm text-[#475569] hover:text-[#0C1322] cursor-pointer">
+                  <button type="button" onClick={() => scrollTo('problem-section')} className="text-xs sm:text-sm text-[#475569] hover:text-[#0C1322] cursor-pointer transition-colors">
                     Our Mission
                   </button>
                 </li>
                 <li>
-                  <button type="button" onClick={() => scrollTo('contact-section')} className="text-xs sm:text-sm text-[#475569] hover:text-[#0C1322] cursor-pointer">
+                  <button type="button" onClick={() => scrollTo('contact-section')} className="text-xs sm:text-sm text-[#475569] hover:text-[#0C1322] cursor-pointer transition-colors">
                     Contact Us
+                  </button>
+                </li>
+                <li>
+                  <button type="button" onClick={() => navigate('/help')} className="text-xs sm:text-sm text-[#475569] hover:text-[#0C1322] cursor-pointer transition-colors">
+                    Help &amp; Support
                   </button>
                 </li>
               </ul>

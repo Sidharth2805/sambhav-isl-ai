@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useAccessibility } from '../hooks/useAccessibility';
 
 export const LoginPage: React.FC = () => {
   const { login } = useAuth();
+  const { theme, toggleTheme } = useAccessibility();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
@@ -41,6 +43,16 @@ export const LoginPage: React.FC = () => {
     },
   ];
 
+  // Auto-fill remembered email if "Keep me signed in" was enabled previously
+  useEffect(() => {
+    const isRemembered = localStorage.getItem('sambhav_remember_me') === 'true';
+    const savedEmail = localStorage.getItem('sambhav_remembered_email') || '';
+    if (isRemembered && savedEmail) {
+      setRememberMe(true);
+      setEmail(savedEmail);
+    }
+  }, []);
+
   // Auto-cycle through all 3 images smoothly in order when not hovered
   useEffect(() => {
     if (isHovered) return;
@@ -60,6 +72,16 @@ export const LoginPage: React.FC = () => {
     setError(null);
     try {
       await login(email, password);
+
+      // Handle "Keep me signed in on this device"
+      if (rememberMe) {
+        localStorage.setItem('sambhav_remember_me', 'true');
+        localStorage.setItem('sambhav_remembered_email', email);
+      } else {
+        localStorage.removeItem('sambhav_remember_me');
+        localStorage.removeItem('sambhav_remembered_email');
+      }
+
       navigate('/dashboard');
     } catch (err: any) {
       setError(err?.message || 'Invalid email or password.');
@@ -69,12 +91,12 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="bg-[#f7fafc] dark:bg-[#030813] min-h-screen flex text-[#181c1e] dark:text-[#f7fafc] font-['Inter',sans-serif]">
+    <div className="bg-[#f7fafc] dark:bg-[#030813] min-h-screen flex text-[#181c1e] dark:text-[#f7fafc] font-['Inter',sans-serif] transition-colors duration-200">
       {/* Split Screen Container */}
       <div className="flex w-full min-h-screen">
         
-        {/* Left Side: Visual Storytelling & High-Res ISL Hover Animation */}
-        <div className="hidden lg:flex w-1/2 flex-col justify-between p-12 relative overflow-hidden bg-[#1a202c]">
+        {/* Left Side: Visual Storytelling & High-Res ISL Animation */}
+        <div className="hidden lg:flex w-1/2 flex-col justify-between p-12 relative overflow-hidden bg-gradient-to-br from-[#121824] via-[#1a202c] to-[#0f172a] text-white">
           {/* Decorative Background Glow */}
           <div className="absolute -top-24 -left-24 w-96 h-96 bg-[#fe9832]/10 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-[#8dfc75]/10 rounded-full blur-3xl pointer-events-none" />
@@ -99,7 +121,7 @@ export const LoginPage: React.FC = () => {
             </p>
           </div>
 
-          {/* High-Resolution ISL Gesture Interactive Frame (Zero Blank Space) */}
+          {/* High-Resolution ISL Gesture Interactive Frame */}
           <div
             className="relative z-10 w-full max-w-md mx-auto my-auto py-2"
             onMouseEnter={() => setIsHovered(true)}
@@ -118,63 +140,89 @@ export const LoginPage: React.FC = () => {
                 >
                   <img
                     className="w-full h-full object-cover object-top"
-                    alt={img.title}
+                    alt={`ISL Sign Gesture for ${img.title}`}
                     src={img.src}
+                    loading="lazy"
                   />
-                  {/* Subtle Floating Sign Label */}
-                  <div className="absolute bottom-3 left-3 px-3 py-1.5 bg-black/70 backdrop-blur-md rounded-full text-xs font-bold text-white border border-white/10 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-[#fe9832] animate-ping" />
-                    <span>Sign: <strong className="text-[#fe9832]">{img.title}</strong></span>
-                  </div>
+                  {/* Subtle Gradient Shadow */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
                 </div>
               ))}
-            </div>
 
-            {/* Interactive Hover / Click Gesture Chips */}
-            <div className="grid grid-cols-3 gap-2 mt-3.5">
-              {gestureImages.map((img, idx) => {
-                const isActive = idx === activeImageIndex;
-                return (
-                  <button
-                    key={img.id}
-                    type="button"
-                    onMouseEnter={() => {
-                      setActiveImageIndex(idx);
-                      setIsHovered(true);
-                    }}
-                    onClick={() => setActiveImageIndex(idx)}
-                    className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border ${
-                      isActive
-                        ? 'bg-[#fe9832] text-[#683700] border-[#fe9832] shadow-md scale-105'
-                        : 'bg-white/5 hover:bg-white/15 text-[#c1c6d7] hover:text-white border-white/10'
-                    }`}
-                  >
-                    <span>{img.title}</span>
-                  </button>
-                );
-              })}
-            </div>
+              {/* Bottom Caption Pill with live icon */}
+              <div className="absolute bottom-3 left-3 right-3 z-20 flex items-center justify-between pointer-events-none">
+                <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/15 text-white shadow-md">
+                  <span className="material-symbols-outlined text-[#fe9832] text-[18px]">
+                    {gestureImages[activeImageIndex].icon}
+                  </span>
+                  <div>
+                    <p className="text-xs font-bold tracking-wide">
+                      Sign: &quot;{gestureImages[activeImageIndex].title}&quot;
+                    </p>
+                    <p className="text-[10px] text-[#c1c6d7]">
+                      {gestureImages[activeImageIndex].description}
+                    </p>
+                  </div>
+                </div>
 
-            {/* Helper tooltip */}
-            <p className="text-[11px] text-center text-[#828796] mt-2">
-              Hover over any button to preview the ISL gesture sign
-            </p>
+                {/* 3-Dot Interactive / Auto-cycle Indicators */}
+                <div className="flex items-center gap-1.5 pointer-events-auto bg-black/40 backdrop-blur-md px-2 py-1.5 rounded-full border border-white/10">
+                  {gestureImages.map((dot, dIdx) => (
+                    <button
+                      key={dot.id}
+                      type="button"
+                      onClick={() => setActiveImageIndex(dIdx)}
+                      className={`h-2 rounded-full transition-all duration-300 ${
+                        dIdx === activeImageIndex
+                          ? 'w-5 bg-[#fe9832]'
+                          : 'w-2 bg-white/40 hover:bg-white/70'
+                      }`}
+                      aria-label={`View sign ${dot.title}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="relative z-10 text-xs text-[#828796] flex items-center justify-between border-t border-white/10 pt-4">
-            <span>SAMBHAV ISL AI Platform</span>
-            <span>Accessibility First</span>
+          {/* Left Footer Badges */}
+          <div className="relative z-10 flex items-center justify-between text-xs text-[#828796] border-t border-white/10 pt-4">
+            <span className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-[16px] text-[#8dfc75]">verified_user</span>
+              <span>ISLRTC Standard Compliant</span>
+            </span>
+            <span className="text-[11px] font-mono">v2.4.0 • Accessible Web</span>
           </div>
         </div>
 
-        {/* Right Side: Login Form */}
-        <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-10 md:p-12 bg-[#f7fafc] dark:bg-[#030813] relative">
+        {/* Right Side: Clean Login Form */}
+        <div className="w-full lg:w-1/2 flex flex-col justify-center px-6 sm:px-12 xl:px-16 py-12 bg-white dark:bg-[#030813] transition-colors relative">
           
-          <div className="w-full max-w-md bg-white dark:bg-[#1a202c] p-6 sm:p-10 rounded-2xl shadow-lg border border-[#e0e3e5] dark:border-[#2d3133]">
-            
-            {/* Mobile Logo */}
-            <div className="lg:hidden flex justify-center mb-6">
-              <Link to="/" className="flex items-center gap-2">
+          {/* Top Header Controls (Home Link & Theme Toggle) */}
+          <div className="absolute top-6 right-6 flex items-center gap-3">
+            <button
+              onClick={toggleTheme}
+              className="w-10 h-10 rounded-xl bg-[#f1f4f6] dark:bg-[#151c28] border border-[#e0e3e5] dark:border-[#243044] text-[#030813] dark:text-white hover:text-[#fe9832] flex items-center justify-center transition-all shadow-xs"
+              title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
+              aria-label="Toggle Theme"
+            >
+              <span className="material-symbols-outlined text-[20px]">
+                {theme === 'light' ? 'dark_mode' : 'light_mode'}
+              </span>
+            </button>
+
+            <Link
+              to="/"
+              className="text-xs font-bold text-[#45474c] dark:text-[#c1c6d7] hover:text-[#fe9832] transition-colors"
+            >
+              ← Back to Home
+            </Link>
+          </div>
+
+          <div className="w-full max-w-md mx-auto">
+            {/* Mobile Branding Logo */}
+            <div className="flex lg:hidden items-center gap-2.5 mb-8">
+              <Link to="/" className="flex items-center gap-2.5">
                 <img
                   alt="SAMBHAV Logo"
                   className="h-10 w-10 object-contain rounded-full shadow-sm"
@@ -188,8 +236,8 @@ export const LoginPage: React.FC = () => {
 
             {/* Form Header */}
             <div className="mb-6">
-              <h2 className="text-2xl font-bold text-[#030813] dark:text-white tracking-tight">Log In</h2>
-              <p className="text-xs text-[#45474c] dark:text-[#828796] mt-1">
+              <h2 className="text-2xl sm:text-3xl font-black text-[#030813] dark:text-white tracking-tight">Log In</h2>
+              <p className="text-xs sm:text-sm text-[#45474c] dark:text-[#828796] mt-1">
                 Access your SAMBHAV dashboard and real-time workspaces.
               </p>
             </div>
@@ -222,7 +270,7 @@ export const LoginPage: React.FC = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@example.com"
-                    className="w-full pl-10 pr-4 py-2.5 bg-[#f7fafc] dark:bg-[#030813] border border-[#c6c6cc] dark:border-[#2d3133] rounded-xl text-xs text-[#030813] dark:text-white focus:border-[#fe9832] outline-none transition-colors"
+                    className="w-full pl-10 pr-4 py-3 bg-[#f7fafc] dark:bg-[#151c28] border border-[#c6c6cc] dark:border-[#243044] rounded-xl text-xs sm:text-sm text-[#030813] dark:text-white focus:border-[#fe9832] outline-none transition-colors"
                   />
                 </div>
               </div>
@@ -251,7 +299,7 @@ export const LoginPage: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
-                    className="w-full pl-10 pr-10 py-2.5 bg-[#f7fafc] dark:bg-[#030813] border border-[#c6c6cc] dark:border-[#2d3133] rounded-xl text-xs text-[#030813] dark:text-white focus:border-[#fe9832] outline-none transition-colors"
+                    className="w-full pl-10 pr-10 py-3 bg-[#f7fafc] dark:bg-[#151c28] border border-[#c6c6cc] dark:border-[#243044] rounded-xl text-xs sm:text-sm text-[#030813] dark:text-white focus:border-[#fe9832] outline-none transition-colors"
                   />
                   <button
                     type="button"
@@ -267,7 +315,7 @@ export const LoginPage: React.FC = () => {
               </div>
 
               {/* Remember Me */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 pt-1">
                 <input
                   id="remember"
                   type="checkbox"
@@ -275,7 +323,7 @@ export const LoginPage: React.FC = () => {
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="w-4 h-4 rounded text-[#fe9832] focus:ring-[#fe9832] cursor-pointer"
                 />
-                <label htmlFor="remember" className="text-xs text-[#45474c] dark:text-[#c1c6d7] cursor-pointer select-none">
+                <label htmlFor="remember" className="text-xs text-[#45474c] dark:text-[#c1c6d7] cursor-pointer select-none font-medium">
                   Keep me signed in on this device
                 </label>
               </div>
@@ -284,7 +332,7 @@ export const LoginPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="mt-2 w-full py-3 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] font-bold text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                className="mt-2 w-full py-3.5 bg-gradient-to-r from-[#fe9832] to-[#e8872b] hover:brightness-110 text-[#542900] font-black text-xs sm:text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.99]"
               >
                 {loading ? (
                   <span className="material-symbols-outlined text-[18px] animate-spin">sync</span>
@@ -298,15 +346,15 @@ export const LoginPage: React.FC = () => {
             </form>
 
             {/* Footer Registration Link */}
-            <div className="mt-6 pt-5 border-t border-[#e0e3e5] dark:border-[#2d3133] text-center text-xs text-[#45474c] dark:text-[#828796]">
-              Don't have an account?{' '}
-              <Link to="/register" className="text-[#fe9832] font-bold hover:underline">
-                Create Account
-              </Link>
+            <div className="mt-8 pt-6 border-t border-[#e0e3e5] dark:border-[#243044] text-center">
+              <p className="text-xs text-[#45474c] dark:text-[#828796]">
+                Don&apos;t have an account yet?{' '}
+                <Link to="/register" className="font-bold text-[#fe9832] hover:underline">
+                  Create an account
+                </Link>
+              </p>
             </div>
-
           </div>
-
         </div>
 
       </div>

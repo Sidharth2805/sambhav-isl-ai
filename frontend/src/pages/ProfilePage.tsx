@@ -20,7 +20,7 @@ export const ProfilePage: React.FC = () => {
   // Profile preferences
   const profile = user?.profile;
   const [language, setLanguage] = useState(profile?.preferredLanguage || 'English');
-  const [signLanguage, setSignLanguage] = useState(profile?.preferredSignLanguage || 'ISL');
+  const signLanguage = 'ISL';
   const [commPreference, setCommPreference] = useState(profile?.communicationPreference || 'text');
   const [needs, setNeeds] = useState<string[]>(profile?.accessibilityNeeds || []);
   
@@ -432,26 +432,17 @@ export const ProfilePage: React.FC = () => {
                   id="pref-lang"
                   value={language}
                   onChange={(e) => setLanguage(e.target.value)}
-                  className="min-h-[38px] px-3 rounded-xl border border-[#c6c6cc] dark:border-[#2d3133] bg-[#f7fafc] dark:bg-[#030813] text-[#030813] dark:text-white font-semibold outline-none text-xs"
+                  className="min-h-[38px] px-3 rounded-xl border border-[#c6c6cc] dark:border-[#2d3133] bg-[#f7fafc] dark:bg-[#030813] text-[#030813] dark:text-white font-semibold outline-none text-xs focus:border-[#fe9832]"
                 >
                   <option value="English">English</option>
-                  <option value="Hindi">Hindi</option>
-                  <option value="Tamil">Tamil</option>
-                  <option value="Bengali">Bengali</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-1">
-                <label htmlFor="pref-sign" className="font-bold text-[#181c1e] dark:text-white">Preferred Sign Language</label>
-                <select
-                  id="pref-sign"
-                  value={signLanguage}
-                  onChange={(e) => setSignLanguage(e.target.value)}
-                  className="min-h-[38px] px-3 rounded-xl border border-[#c6c6cc] dark:border-[#2d3133] bg-[#f7fafc] dark:bg-[#030813] text-[#030813] dark:text-white font-semibold outline-none text-xs"
-                >
-                  <option value="ISL">Indian Sign Language (ISL)</option>
-                  <option value="ASL">American Sign Language (ASL)</option>
-                  <option value="BSL">British Sign Language (BSL)</option>
+                  <option value="Hindi">Hindi (हिंदी)</option>
+                  <option value="Bengali">Bengali (বাংলা)</option>
+                  <option value="Tamil">Tamil (தமிழ்)</option>
+                  <option value="Telugu">Telugu (తెలుగు)</option>
+                  <option value="Marathi">Marathi (मराठी)</option>
+                  <option value="Gujarati">Gujarati (ગુજરાતી)</option>
+                  <option value="Kannada">Kannada (ಕನ್ನಡ)</option>
+                  <option value="Odia">Odia (ଓଡ଼ିଆ)</option>
                 </select>
               </div>
 
@@ -461,10 +452,10 @@ export const ProfilePage: React.FC = () => {
                   id="pref-comm"
                   value={commPreference}
                   onChange={(e) => setCommPreference(e.target.value)}
-                  className="min-h-[38px] px-3 rounded-xl border border-[#c6c6cc] dark:border-[#2d3133] bg-[#f7fafc] dark:bg-[#030813] text-[#030813] dark:text-white font-semibold outline-none text-xs"
+                  className="min-h-[38px] px-3 rounded-xl border border-[#c6c6cc] dark:border-[#2d3133] bg-[#f7fafc] dark:bg-[#030813] text-[#030813] dark:text-white font-semibold outline-none text-xs focus:border-[#fe9832]"
                 >
                   <option value="text">Text Conversational Input</option>
-                  <option value="sign">Sign Language Gestures</option>
+                  <option value="sign">Indian Sign Language (ISL) Avatar</option>
                   <option value="speech">Spoken Audio Output</option>
                 </select>
               </div>

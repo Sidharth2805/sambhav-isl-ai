@@ -28,10 +28,17 @@ interface DeafUserWorkspaceProps {
   videoDevices: MediaDeviceInfo[];
   activeVideoDeviceId?: string;
   setActiveVideoDevice: (id: string) => void;
+  speakerDevices?: MediaDeviceInfo[];
+  activeSpeakerDeviceId?: string;
+  setActiveSpeakerDevice?: (id: string) => void;
   showMicDevices: boolean;
   setShowMicDevices: (val: boolean) => void;
   showCameraDevices: boolean;
   setShowCameraDevices: (val: boolean) => void;
+  showSpeakerDevices?: boolean;
+  setShowSpeakerDevices?: (val: boolean) => void;
+  speakerVolume?: number;
+  setSpeakerVolume?: (vol: number) => void;
 
   localTrack: any;
   primaryRemoteTrack: any;
@@ -71,10 +78,17 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
   videoDevices,
   activeVideoDeviceId,
   setActiveVideoDevice,
+  speakerDevices = [],
+  activeSpeakerDeviceId,
+  setActiveSpeakerDevice,
   showMicDevices,
   setShowMicDevices,
   showCameraDevices,
   setShowCameraDevices,
+  showSpeakerDevices = false,
+  setShowSpeakerDevices,
+  speakerVolume = 80,
+  setSpeakerVolume,
 
   localTrack,
   primaryRemoteTrack,
@@ -137,103 +151,104 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
 
   const speedOptions = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 
+  // Custom Read-on-Demand State
+  const [localCustomSequence, setLocalCustomSequence] = useState<any | null>(null);
+  const [activeReadingMessageId, setActiveReadingMessageId] = useState<string | null>(null);
+
+  // Helper to convert any text into a 3D Sign Sequence on demand
+  const handleReadMessageInSign = (text: string, msgId?: string) => {
+    if (!text || !text.trim()) return;
+    const words = text.trim().split(/\s+/);
+    const stepDuration = 450;
+    const steps = words.map((word, index) => {
+      const clean = word.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+      return {
+        sequenceIndex: index,
+        conceptId: clean,
+        displayToken: clean || word,
+        durationMs: stepDuration,
+        confidence: 0.98,
+        asset: null,
+        resolutionStatus: 'FOUND',
+        sourceConcept: word,
+      };
+    });
+
+    const seq = {
+      sequenceId: `seq-demand-${Date.now()}`,
+      sourceSessionId: 'local',
+      sourceText: text,
+      language: 'ISL',
+      createdAt: Date.now(),
+      steps,
+      totalDurationMs: steps.length * stepDuration,
+      overallConfidence: 0.98,
+      status: 'READY',
+    };
+
+    if (msgId) {
+      setActiveReadingMessageId(msgId);
+    }
+    setLocalCustomSequence(seq);
+  };
+
+  // Helper to read any text aloud in voice via Text-to-Speech (TTS)
+  const handleSpeakMessageAloud = (text: string) => {
+    if (!text || !text.trim()) return;
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
   // Caption Font Size Selector
   const [captionFontSize, setCaptionFontSize] = useState<'sm' | 'base' | 'lg'>('base');
 
   const isRemoteSpeaking = Object.keys(interimTranscripts).length > 0;
 
   return (
-    <div className="w-full h-[calc(100vh-140px)] md:h-[calc(100vh-115px)] flex flex-col gap-3.5 min-h-0 select-none font-['Inter',sans-serif] overflow-hidden">
+    <div className="w-full h-[calc(100vh-90px)] md:h-[calc(100vh-75px)] flex flex-col justify-between gap-2 select-none font-['Inter',sans-serif] overflow-hidden">
       
       {/* Screen Sharing Notification */}
       {screenShareState && (
-        <div className="bg-emerald-500 text-white text-xs font-bold px-4 py-1.5 rounded-full shadow-md z-50 flex items-center justify-center gap-2 animate-pulse mx-auto">
+        <div className="bg-emerald-500 text-white text-xs font-bold px-4 py-1 rounded-full shadow-md z-50 flex items-center justify-center gap-2 animate-pulse mx-auto flex-shrink-0">
           <span className="w-2 h-2 rounded-full bg-white animate-ping" />
           <span>Screen Sharing is Active</span>
         </div>
       )}
 
-      {/* Top Header Bar */}
-      <header className="bg-white dark:bg-[#1a202c] px-4 py-2 rounded-2xl border border-[#e0e3e5] dark:border-[#2d3133] flex items-center justify-between shadow-sm flex-shrink-0">
-        <div className="flex items-center gap-2.5">
-          <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#45474c] dark:text-[#828796]">
-            Room Code
-          </span>
-          <span className="font-mono text-base font-black text-[#fe9832] tracking-widest">
-            {roomCode}
-          </span>
-          <button
-            type="button"
-            onClick={handleCopyCode}
-            className="px-2.5 py-1 bg-[#f1f4f6] dark:bg-[#2d3133] hover:bg-[#e0e3e5] text-[#030813] dark:text-white rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 active:scale-95"
-            aria-label="Copy Room Code"
-          >
-            <span className="material-symbols-outlined text-[14px]">{copied ? 'check' : 'content_copy'}</span>
-            <span>{copied ? 'Copied' : 'Copy'}</span>
-          </button>
-        </div>
-
-        {/* Speed Controls Selector & Connection Badge */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 bg-[#f1f4f6] dark:bg-[#030813] p-1 rounded-xl border border-[#e0e3e5] dark:border-[#2d3133]">
-            <span className="text-[10px] font-bold text-[#45474c] dark:text-[#828796] pl-1.5 pr-1">Speed:</span>
-            {speedOptions.map((spd) => (
-              <button
-                key={spd}
-                type="button"
-                onClick={() => setAvatarSpeed(spd)}
-                className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all duration-200 ${
-                  avatarSpeed === spd
-                    ? 'bg-[#fe9832] text-[#683700] shadow-sm scale-105'
-                    : 'text-[#45474c] dark:text-[#828796] hover:text-[#030813] dark:hover:text-white'
-                }`}
-              >
-                {spd}x
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span
-              className={`w-2.5 h-2.5 rounded-full ${
-                connectionState === LkConnectionState.Connected
-                  ? 'bg-green-500 animate-pulse'
-                  : 'bg-amber-500'
-              }`}
-              aria-hidden="true"
-            />
-            <span className="text-xs font-bold text-[#030813] dark:text-white">
-              {getConnectionStatusText()}
-            </span>
-          </div>
-        </div>
-      </header>
-
-      {/* Main 2-Column Calling Arena */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3.5 min-h-0 h-full overflow-hidden">
+      {/* Main 2-Column Calling Arena (Shifted to Very Top - Fits Screen Perfectly) */}
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-2.5">
         
         {/* ========================================================= */}
         {/* LEFT COLUMN: 3D ISL Signing Avatar Screen                 */}
         {/* ========================================================= */}
-        <section className="lg:col-span-6 bg-white dark:bg-[#030813] rounded-[24px] border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col relative overflow-hidden h-full min-h-0">
-          <div className="absolute top-3 left-3 z-10 flex items-center gap-2">
-            <span className="px-3 py-1 bg-black/60 dark:bg-black/60 backdrop-blur-md border border-white/10 text-white rounded-full text-[10px] font-bold flex items-center gap-1.5 shadow">
+        <section className="lg:col-span-6 bg-white dark:bg-[#030813] rounded-2xl border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col relative overflow-hidden h-full min-h-0">
+          <div className="absolute top-2.5 left-3 z-10 flex items-center gap-2">
+            <span className="px-2.5 py-0.5 bg-black/60 backdrop-blur-md border border-white/10 text-white rounded-full text-[10px] font-bold flex items-center gap-1.5 shadow">
               <span className="w-2 h-2 rounded-full bg-[#fe9832] animate-pulse" />
-              <span>ISL 3D Avatar Translation</span>
+              <span>{localCustomSequence ? 'Reading Selected Message in Sign...' : 'ISL 3D Avatar Translation'}</span>
             </span>
 
             {recoveryState === 'RECOVERING' && (
-              <span className="px-2.5 py-1 bg-amber-500/80 backdrop-blur-md text-black rounded-full text-[10px] font-bold flex items-center gap-1 animate-pulse">
+              <span className="px-2 py-0.5 bg-amber-500/80 backdrop-blur-md text-black rounded-full text-[10px] font-bold flex items-center gap-1 animate-pulse">
                 <span className="material-symbols-outlined text-[12px] animate-spin">sync</span>
-                <span>Syncing gestures...</span>
+                <span>Syncing...</span>
               </span>
             )}
           </div>
 
           <div className="flex-1 w-full h-full flex items-center justify-center relative overflow-hidden">
             <SignSequencePlayer
-              sequence={activeSequence}
-              onComplete={onSequenceComplete}
+              sequence={localCustomSequence || activeSequence}
+              onComplete={() => {
+                setLocalCustomSequence(null);
+                setActiveReadingMessageId(null);
+                if (onSequenceComplete) onSequenceComplete();
+              }}
               playbackSpeed={avatarSpeed}
             />
           </div>
@@ -247,22 +262,22 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
           onMouseMove={resetCameraControlsTimer}
           onMouseEnter={resetCameraControlsTimer}
           onTouchStart={resetCameraControlsTimer}
-          className="lg:col-span-6 bg-[#030813] rounded-[24px] border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col relative overflow-hidden h-full min-h-0 group"
+          className="lg:col-span-6 bg-[#030813] rounded-2xl border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col relative overflow-hidden h-full min-h-0 group"
         >
 
           {primaryRemoteTrack ? (
             <VideoTrack trackRef={primaryRemoteTrack as any} className="w-full h-full object-cover" />
           ) : (
-            <div className="w-full h-full text-center flex flex-col items-center justify-center gap-3 p-6 text-[#828796]">
-              <span className="material-symbols-outlined text-[48px] text-[#fe9832] animate-pulse">videocam</span>
+            <div className="w-full h-full text-center flex flex-col items-center justify-center gap-2 p-4 text-[#828796]">
+              <span className="material-symbols-outlined text-[36px] sm:text-[44px] text-[#fe9832] animate-pulse">videocam</span>
               <span className="text-xs font-bold uppercase tracking-wider text-white">Remote Camera Inactive</span>
-              <span className="text-[11px] text-[#828796]">Waiting for hearing participant to join...</span>
+              <span className="text-[10px] text-[#828796]">Waiting for hearing participant to join...</span>
             </div>
           )}
 
           {/* Screen Share Tag */}
           {primaryRemoteTrack?.source === Track.Source.ScreenShare && (
-            <div className="absolute top-3 left-3 bg-emerald-500 text-white text-[10px] font-bold px-3 py-1 rounded-full shadow z-10 flex items-center gap-1.5 animate-pulse">
+            <div className="absolute top-2.5 left-3 bg-emerald-500 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow z-10 flex items-center gap-1.5 animate-pulse">
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
               <span>Viewing Screen Share</span>
             </div>
@@ -275,21 +290,21 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
             localTrack={localTrack}
           />
 
-          {/* Floating Premium Action Bar (Smooth 3-Second Hover Fade & Micro-Interactions) */}
+          {/* Floating Action Controls */}
           <footer
-            className={`absolute bottom-3 inset-x-3 z-40 bg-white/95 dark:bg-[#030813]/85 backdrop-blur-2xl border border-[#e0e3e5] dark:border-white/15 px-3 py-2 rounded-2xl flex items-center justify-between shadow-xl transition-all duration-300 transform ${
+            className={`absolute bottom-2.5 inset-x-2.5 z-40 bg-white/95 dark:bg-[#030813]/85 backdrop-blur-2xl border border-[#e0e3e5] dark:border-white/15 px-2.5 py-1.5 rounded-2xl flex items-center justify-between shadow-xl transition-all duration-300 transform ${
               internalControlsVisible
                 ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto'
                 : 'opacity-0 translate-y-3 scale-95 pointer-events-none'
             }`}
           >
-            <div className="flex items-center gap-2">
-              {/* Mic Toggle & Device Selector Capsule */}
-              <div className="relative flex items-center bg-[#f1f4f6] dark:bg-white/10 hover:bg-[#e0e3e5] dark:hover:bg-white/15 rounded-2xl border border-[#e0e3e5] dark:border-white/10 transition-all shadow-sm">
+            <div className="flex items-center gap-1.5">
+              {/* Mic Toggle */}
+              <div className="relative flex items-center bg-[#f1f4f6] dark:bg-white/10 hover:bg-[#e0e3e5] dark:hover:bg-white/15 rounded-xl border border-[#e0e3e5] dark:border-white/10 transition-all shadow-sm">
                 <button
                   type="button"
                   onClick={handleToggleMic}
-                  className={`h-10 px-3 rounded-l-2xl transition-all duration-200 flex items-center gap-1.5 active:scale-95 ${
+                  className={`h-8 sm:h-9 px-2.5 rounded-l-xl transition-all duration-200 flex items-center gap-1 active:scale-95 ${
                     micState
                       ? 'text-[#030813] dark:text-white hover:text-green-600 dark:hover:text-green-400'
                       : 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md'
@@ -297,7 +312,7 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
                   aria-label={micState ? 'Mute microphone' : 'Unmute microphone'}
                   title={micState ? 'Mute Microphone' : 'Unmute Microphone'}
                 >
-                  <span className="material-symbols-outlined text-[18px]">
+                  <span className="material-symbols-outlined text-[16px]">
                     {micState ? 'mic' : 'mic_off'}
                   </span>
                 </button>
@@ -308,16 +323,15 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
                     setShowMicDevices(!showMicDevices);
                     setShowCameraDevices(false);
                   }}
-                  className="h-10 px-2 rounded-r-2xl border-l border-[#e0e3e5] dark:border-white/15 hover:bg-[#e0e3e5] dark:hover:bg-white/20 text-[#030813] dark:text-white transition-all active:scale-95"
-                  aria-label="Select microphone device"
+                  className="h-8 sm:h-9 px-1.5 rounded-r-xl border-l border-[#e0e3e5] dark:border-white/15 hover:bg-[#e0e3e5] dark:hover:bg-white/20 text-[#030813] dark:text-white transition-all active:scale-95"
                 >
-                  <span className={`material-symbols-outlined text-[15px] transition-transform duration-200 ${showMicDevices ? 'rotate-180 text-[#fe9832]' : ''}`}>
+                  <span className={`material-symbols-outlined text-[14px] ${showMicDevices ? 'rotate-180 text-[#fe9832]' : ''}`}>
                     expand_less
                   </span>
                 </button>
 
                 {showMicDevices && (
-                  <div className="absolute bottom-12 left-0 bg-white dark:bg-[#1a202c] border border-[#e0e3e5] dark:border-white/15 rounded-2xl shadow-2xl p-2 w-60 z-50 flex flex-col gap-1 max-h-44 overflow-y-auto text-xs text-[#030813] dark:text-white animate-scaleUp">
+                  <div className="absolute bottom-11 left-0 bg-white dark:bg-[#1a202c] border border-[#e0e3e5] dark:border-white/15 rounded-2xl shadow-2xl p-2 w-56 z-50 flex flex-col gap-1 max-h-40 overflow-y-auto text-xs text-[#030813] dark:text-white animate-scaleUp">
                     <div className="text-[10px] font-bold text-[#828796] uppercase px-1.5 py-0.5">Microphones</div>
                     {audioDevices.map((d) => (
                       <button
@@ -326,7 +340,7 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
                           setActiveAudioDevice(d.deviceId);
                           setShowMicDevices(false);
                         }}
-                        className={`text-left p-2 rounded-xl text-xs truncate transition-colors ${
+                        className={`text-left p-1.5 rounded-lg text-xs truncate transition-colors ${
                           activeAudioDeviceId === d.deviceId ? 'bg-[#fe9832] text-[#683700] font-bold' : 'hover:bg-[#f1f4f6] dark:hover:bg-white/10'
                         }`}
                       >
@@ -337,12 +351,12 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
                 )}
               </div>
 
-              {/* Camera Toggle & Device Selector Capsule */}
-              <div className="relative flex items-center bg-[#f1f4f6] dark:bg-white/10 hover:bg-[#e0e3e5] dark:hover:bg-white/15 rounded-2xl border border-[#e0e3e5] dark:border-white/10 transition-all shadow-sm">
+              {/* Camera Toggle */}
+              <div className="relative flex items-center bg-[#f1f4f6] dark:bg-white/10 hover:bg-[#e0e3e5] dark:hover:bg-white/15 rounded-xl border border-[#e0e3e5] dark:border-white/10 transition-all shadow-sm">
                 <button
                   type="button"
                   onClick={handleToggleCamera}
-                  className={`h-10 px-3 rounded-l-2xl transition-all duration-200 flex items-center gap-1.5 active:scale-95 ${
+                  className={`h-8 sm:h-9 px-2.5 rounded-l-xl transition-all duration-200 flex items-center gap-1 active:scale-95 ${
                     cameraState
                       ? 'text-[#030813] dark:text-white hover:text-green-600 dark:hover:text-green-400'
                       : 'bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md'
@@ -350,7 +364,7 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
                   aria-label={cameraState ? 'Turn off camera' : 'Turn on camera'}
                   title={cameraState ? 'Turn off camera' : 'Turn on camera'}
                 >
-                  <span className="material-symbols-outlined text-[18px]">
+                  <span className="material-symbols-outlined text-[16px]">
                     {cameraState ? 'videocam' : 'videocam_off'}
                   </span>
                 </button>
@@ -361,16 +375,15 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
                     setShowCameraDevices(!showCameraDevices);
                     setShowMicDevices(false);
                   }}
-                  className="h-10 px-2 rounded-r-2xl border-l border-[#e0e3e5] dark:border-white/15 hover:bg-[#e0e3e5] dark:hover:bg-white/20 text-[#030813] dark:text-white transition-all active:scale-95"
-                  aria-label="Select camera device"
+                  className="h-8 sm:h-9 px-1.5 rounded-r-xl border-l border-[#e0e3e5] dark:border-white/15 hover:bg-[#e0e3e5] dark:hover:bg-white/20 text-[#030813] dark:text-white transition-all active:scale-95"
                 >
-                  <span className={`material-symbols-outlined text-[15px] transition-transform duration-200 ${showCameraDevices ? 'rotate-180 text-[#fe9832]' : ''}`}>
+                  <span className={`material-symbols-outlined text-[14px] ${showCameraDevices ? 'rotate-180 text-[#fe9832]' : ''}`}>
                     expand_less
                   </span>
                 </button>
 
                 {showCameraDevices && (
-                  <div className="absolute bottom-12 left-0 bg-white dark:bg-[#1a202c] border border-[#e0e3e5] dark:border-white/15 rounded-2xl shadow-2xl p-2 w-60 z-50 flex flex-col gap-1 max-h-44 overflow-y-auto text-xs text-[#030813] dark:text-white animate-scaleUp">
+                  <div className="absolute bottom-11 left-0 bg-white dark:bg-[#1a202c] border border-[#e0e3e5] dark:border-white/15 rounded-2xl shadow-2xl p-2 w-56 z-50 flex flex-col gap-1 max-h-40 overflow-y-auto text-xs text-[#030813] dark:text-white animate-scaleUp">
                     <div className="text-[10px] font-bold text-[#828796] uppercase px-1.5 py-0.5">Cameras</div>
                     {videoDevices.map((d) => (
                       <button
@@ -379,7 +392,7 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
                           setActiveVideoDevice(d.deviceId);
                           setShowCameraDevices(false);
                         }}
-                        className={`text-left p-2 rounded-xl text-xs truncate transition-colors ${
+                        className={`text-left p-1.5 rounded-lg text-xs truncate transition-colors ${
                           activeVideoDeviceId === d.deviceId ? 'bg-[#fe9832] text-[#683700] font-bold' : 'hover:bg-[#f1f4f6] dark:hover:bg-white/10'
                         }`}
                       >
@@ -394,16 +407,98 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
               <button
                 type="button"
                 onClick={handleToggleScreen}
-                className={`h-10 px-3 rounded-2xl border transition-all duration-200 flex items-center justify-center active:scale-95 ${
+                className={`h-8 sm:h-9 px-2.5 rounded-xl border transition-all duration-200 flex items-center justify-center active:scale-95 ${
                   screenShareState
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/30 font-bold border-transparent'
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md font-bold border-transparent'
                     : 'bg-[#f1f4f6] dark:bg-white/10 hover:bg-[#e0e3e5] dark:hover:bg-white/20 text-[#030813] dark:text-white border-[#e0e3e5] dark:border-white/10'
                 }`}
-                aria-label="Toggle Screen Sharing"
-                title={screenShareState ? 'Stop Screen Sharing' : 'Share Screen'}
+                title="Screen Share"
               >
-                <span className="material-symbols-outlined text-[18px]">present_to_all</span>
+                <span className="material-symbols-outlined text-[16px]">present_to_all</span>
               </button>
+
+              {/* Speaker / Output Audio Device Selector */}
+              <div className="relative flex items-center bg-[#f1f4f6] dark:bg-white/10 hover:bg-[#e0e3e5] dark:hover:bg-white/15 rounded-xl border border-[#e0e3e5] dark:border-white/10 transition-all shadow-sm">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (setShowSpeakerDevices) {
+                      setShowSpeakerDevices(!showSpeakerDevices);
+                      setShowMicDevices(false);
+                      setShowCameraDevices(false);
+                    }
+                  }}
+                  className="h-8 sm:h-9 px-2.5 rounded-l-xl transition-all duration-200 flex items-center gap-1 active:scale-95 text-[#030813] dark:text-white"
+                  title="Audio Output (Speakers / Bluetooth Headphones)"
+                >
+                  <span className="material-symbols-outlined text-[16px]">
+                    {speakerVolume === 0 ? 'volume_off' : speakerVolume > 50 ? 'volume_up' : 'volume_down'}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (setShowSpeakerDevices) {
+                      setShowSpeakerDevices(!showSpeakerDevices);
+                      setShowMicDevices(false);
+                      setShowCameraDevices(false);
+                    }
+                  }}
+                  className="h-8 sm:h-9 px-1.5 rounded-r-xl border-l border-[#e0e3e5] dark:border-white/15 hover:bg-[#e0e3e5] dark:hover:bg-white/20 text-[#030813] dark:text-white transition-all active:scale-95"
+                >
+                  <span className={`material-symbols-outlined text-[14px] ${showSpeakerDevices ? 'rotate-180 text-[#fe9832]' : ''}`}>
+                    expand_less
+                  </span>
+                </button>
+
+                {showSpeakerDevices && (
+                  <div className="absolute bottom-11 left-0 bg-white dark:bg-[#1a202c] border border-[#e0e3e5] dark:border-white/15 rounded-2xl shadow-2xl p-2.5 w-64 z-50 flex flex-col gap-2 max-h-56 overflow-y-auto text-xs text-[#030813] dark:text-white animate-scaleUp">
+                    <div className="text-[10px] font-bold text-[#828796] uppercase px-1">Audio Output Devices</div>
+                    
+                    {/* Volume Slider */}
+                    <div className="p-2 bg-[#f8fafc] dark:bg-white/5 rounded-xl flex items-center gap-2 border border-[#e0e3e5] dark:border-white/10">
+                      <span className="material-symbols-outlined text-[15px] text-[#fe9832]">volume_up</span>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={speakerVolume}
+                        onChange={(e) => setSpeakerVolume && setSpeakerVolume(Number(e.target.value))}
+                        className="flex-1 accent-[#fe9832] h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg cursor-pointer"
+                      />
+                      <span className="text-[10px] font-bold w-7 text-right">{speakerVolume}%</span>
+                    </div>
+
+                    {/* Output Hardware List */}
+                    <div className="flex flex-col gap-1">
+                      {speakerDevices.length > 0 ? (
+                        speakerDevices.map((d) => (
+                          <button
+                            key={d.deviceId}
+                            onClick={() => {
+                              if (setActiveSpeakerDevice) setActiveSpeakerDevice(d.deviceId);
+                              if (setShowSpeakerDevices) setShowSpeakerDevices(false);
+                            }}
+                            className={`text-left p-1.5 rounded-lg text-xs truncate transition-colors flex items-center gap-1.5 ${
+                              activeSpeakerDeviceId === d.deviceId ? 'bg-[#fe9832] text-[#683700] font-bold' : 'hover:bg-[#f1f4f6] dark:hover:bg-white/10'
+                            }`}
+                          >
+                            <span className="material-symbols-outlined text-[14px]">
+                              {d.label?.toLowerCase().includes('bluetooth') || d.label?.toLowerCase().includes('headphone') || d.label?.toLowerCase().includes('airpods') || d.label?.toLowerCase().includes('earbuds') ? 'headphones' : 'speaker'}
+                            </span>
+                            <span className="truncate">{d.label || 'Default Output Device'}</span>
+                          </button>
+                        ))
+                      ) : (
+                        <div className="p-1.5 text-[11px] text-[#828796] italic">
+                          System default speaker active
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* End Call / Leave Button */}
@@ -411,18 +506,18 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
               <button
                 type="button"
                 onClick={onEndCall}
-                className="h-10 px-4 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-500 text-white rounded-2xl text-xs font-extrabold transition-all duration-200 shadow-xl shadow-red-600/30 flex items-center gap-1.5 hover:scale-105 active:scale-95 border border-red-400/30"
+                className="h-8 sm:h-9 px-3 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 text-white rounded-xl text-xs font-extrabold shadow-sm flex items-center gap-1 active:scale-95"
               >
-                <span className="material-symbols-outlined text-[17px]">call_end</span>
-                <span>End Call</span>
+                <span className="material-symbols-outlined text-[15px]">call_end</span>
+                <span>End</span>
               </button>
             ) : (
               <button
                 type="button"
                 onClick={onLeaveCall}
-                className="h-10 px-4 bg-[#f1f4f6] dark:bg-slate-700/80 hover:bg-[#e0e3e5] dark:hover:bg-slate-700 text-[#030813] dark:text-white rounded-2xl text-xs font-bold transition-all duration-200 flex items-center gap-1.5 hover:scale-105 active:scale-95 border border-[#e0e3e5] dark:border-white/10"
+                className="h-8 sm:h-9 px-3 bg-[#f1f4f6] dark:bg-slate-700 hover:bg-[#e0e3e5] text-[#030813] dark:text-white rounded-xl text-xs font-bold flex items-center gap-1 active:scale-95 border border-[#e0e3e5] dark:border-white/10"
               >
-                <span className="material-symbols-outlined text-[17px]">logout</span>
+                <span className="material-symbols-outlined text-[15px]">logout</span>
                 <span>Leave</span>
               </button>
             )}
@@ -431,42 +526,41 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
 
       </div>
 
-      {/* ========================================================================= */}
-      {/* BOTTOM SECTION: Live Subtitles & Captions Deck (Light & Dark Theme)       */}
-      {/* ========================================================================= */}
-      <section className="bg-white dark:bg-[#1a202c] text-[#030813] dark:text-white rounded-[24px] border border-[#e0e3e5] dark:border-[#2d3133] p-3.5 shadow-sm flex flex-col gap-2 h-36 md:h-40 flex-shrink-0 relative overflow-hidden">
+      {/* ========================================================= */}
+      {/* MIDDLE SECTION: Extended Live Subtitles & Captions Deck   */}
+      {/* ========================================================= */}
+      <section className="bg-white dark:bg-[#151c28] text-[#030813] dark:text-white rounded-2xl border border-[#e0e3e5] dark:border-[#243044] p-3 shadow-sm flex flex-col gap-2 h-40 sm:h-44 md:h-48 max-h-[195px] flex-shrink-0 relative overflow-hidden">
         
-        {/* Top Header Deck: Broadcast Live Pill + Visualizer + Font Size Controls */}
-        <div className="flex items-center justify-between border-b border-[#e0e3e5] dark:border-white/10 pb-2 flex-shrink-0">
-          <div className="flex items-center gap-3">
-            <span className="px-2.5 py-0.5 bg-[#fe9832]/15 border border-[#fe9832]/30 text-[#8f4e00] dark:text-[#fe9832] rounded-full text-[10px] font-black tracking-widest uppercase flex items-center gap-1.5 shadow-sm">
-              <span className={`w-2 h-2 rounded-full ${isRemoteSpeaking ? 'bg-green-500 animate-ping' : 'bg-[#fe9832]'}`} />
+        {/* Top Header Deck: Broadcast Live Pill + Font Size Controls */}
+        <div className="flex items-center justify-between border-b border-[#e0e3e5] dark:border-white/10 pb-1.5 flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 bg-[#fe9832]/15 border border-[#fe9832]/30 text-[#8f4e00] dark:text-[#fe9832] rounded-full text-[9px] font-black tracking-wider uppercase flex items-center gap-1">
+              <span className={`w-1.5 h-1.5 rounded-full ${isRemoteSpeaking ? 'bg-green-500 animate-ping' : 'bg-[#fe9832]'}`} />
               <span>LIVE CC</span>
             </span>
 
-            {/* Audio Wave Visualizer Indicator */}
-            <div className="flex items-end gap-0.5 h-3.5 px-1.5" title="Live speech activity indicator">
-              <span className={`w-1 bg-[#fe9832] rounded-full transition-all duration-150 ${isRemoteSpeaking ? 'h-3.5 animate-pulse' : 'h-1.5 opacity-40'}`} />
-              <span className={`w-1 bg-green-500 rounded-full transition-all duration-150 ${isRemoteSpeaking ? 'h-4 animate-pulse' : 'h-2 opacity-40'}`} />
-              <span className={`w-1 bg-[#fe9832] rounded-full transition-all duration-150 ${isRemoteSpeaking ? 'h-2.5 animate-pulse' : 'h-1 opacity-40'}`} />
+            {/* Live speech activity indicator */}
+            <div className="flex items-end gap-0.5 h-3 px-1">
+              <span className={`w-1 bg-[#fe9832] rounded-full transition-all duration-150 ${isRemoteSpeaking ? 'h-3 animate-pulse' : 'h-1 opacity-40'}`} />
+              <span className={`w-1 bg-green-500 rounded-full transition-all duration-150 ${isRemoteSpeaking ? 'h-3.5 animate-pulse' : 'h-1.5 opacity-40'}`} />
             </div>
 
-            <span className="text-[11px] font-bold text-[#45474c] dark:text-[#c1c6d7] tracking-wide hidden sm:inline">
+            <span className="text-[10px] font-semibold text-[#45474c] dark:text-[#828796] hidden sm:inline">
               Real-Time Conversational Subtitles
             </span>
           </div>
 
           {/* Subtitle Font Size Scaler */}
-          <div className="flex items-center gap-1 bg-[#f1f4f6] dark:bg-white/10 p-0.5 rounded-xl border border-[#e0e3e5] dark:border-white/10">
-            <span className="text-[9px] font-bold text-[#828796] pl-1.5 pr-0.5">Text Size:</span>
+          <div className="flex items-center gap-0.5 bg-[#f1f4f6] dark:bg-white/10 p-0.5 rounded-lg border border-[#e0e3e5] dark:border-white/10">
+            <span className="text-[9px] font-bold text-[#828796] pl-1 pr-0.5">Size:</span>
             {(['sm', 'base', 'lg'] as const).map((size) => (
               <button
                 key={size}
                 type="button"
                 onClick={() => setCaptionFontSize(size)}
-                className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all ${
+                className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition-all ${
                   captionFontSize === size
-                    ? 'bg-[#fe9832] text-[#683700] shadow'
+                    ? 'bg-[#fe9832] text-[#542900] shadow-xs font-black'
                     : 'text-[#45474c] dark:text-[#c1c6d7] hover:text-[#030813] dark:hover:text-white'
                 }`}
               >
@@ -476,63 +570,92 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
           </div>
         </div>
 
-        {/* Subtitle Messages Container with Dynamic Typography */}
-        <div className={`flex-1 overflow-y-auto flex flex-col gap-2.5 leading-relaxed pr-2 font-medium custom-scrollbar ${
+        {/* Subtitle Messages Container */}
+        <div className={`flex-1 overflow-y-auto flex flex-col gap-2 leading-relaxed pr-1.5 font-medium custom-scrollbar ${
           captionFontSize === 'sm' ? 'text-xs' : captionFontSize === 'lg' ? 'text-base font-semibold' : 'text-sm'
         }`}>
           {finalTranscripts.map((t) => {
-            const isMe = t.senderId === user?.email || t.senderId === user?.id || t.senderId === user?.name || t.senderName === user?.name || t.senderName === 'Me';
+            const isMe = t.senderId === user?.id || t.senderId === user?.email || (user?.email && t.senderId === user.email.toLowerCase()) || (user?.name && t.senderName === user.name && t.senderId !== 'remote');
+            const isCurrentlyReading = activeReadingMessageId === t.id;
+
             return (
               <div
                 key={t.id}
-                className={`flex items-start gap-2.5 p-2 rounded-2xl transition-all ${
-                  isMe
-                    ? 'bg-[#fe9832]/10 dark:bg-[#fe9832]/15 border border-[#fe9832]/25 dark:border-[#fe9832]/30 self-end max-w-[85%]'
-                    : 'bg-[#f7fafc] dark:bg-white/5 border border-[#e0e3e5] dark:border-white/15 self-start max-w-[90%]'
+                className={`group flex items-start justify-between gap-2 p-2 rounded-xl transition-all ${
+                  isCurrentlyReading
+                    ? 'bg-[#fe9832]/25 dark:bg-[#fe9832]/30 border border-[#fe9832] ring-2 ring-[#fe9832]/40 shadow-sm'
+                    : isMe
+                    ? 'bg-[#fe9832]/10 dark:bg-[#fe9832]/15 border border-[#fe9832]/25 self-end max-w-[88%]'
+                    : 'bg-[#f7fafc] dark:bg-white/5 border border-[#e0e3e5] dark:border-white/15 self-start max-w-[92%]'
                 }`}
               >
-                <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-lg shrink-0 mt-0.5 ${
-                  isMe
-                    ? 'bg-[#fe9832]/25 text-[#8f4e00] dark:text-[#fe9832] border border-[#fe9832]/30'
-                    : 'bg-green-500/20 text-green-800 dark:text-green-300 border border-green-500/30'
-                }`}>
-                  {isMe ? 'You' : (t.senderName || 'Participant')}
-                </span>
-                <span className="text-[#030813] dark:text-white tracking-wide">{t.text}</span>
+                <div className="flex items-start gap-2 flex-1 min-w-0">
+                  <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded shrink-0 mt-0.5 ${
+                    isMe
+                      ? 'bg-[#fe9832]/25 text-[#8f4e00] dark:text-[#fe9832]'
+                      : 'bg-emerald-500/20 text-emerald-800 dark:text-[#8dfc75]'
+                  }`}>
+                    {isMe ? 'You' : (t.senderName || 'Participant')}
+                  </span>
+                  <span className="text-[#030813] dark:text-white tracking-wide break-words flex-1">{t.text}</span>
+                </div>
+
+                {/* Read Actions for this Message */}
+                <div className="flex items-center gap-1 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
+                  <button
+                    type="button"
+                    onClick={() => handleReadMessageInSign(t.text, t.id)}
+                    className="p-1 hover:bg-[#fe9832]/20 rounded-md text-[#fe9832] transition-all active:scale-95"
+                    title="Read this message in 3D ISL Sign Avatar"
+                    aria-label="Read in Sign Avatar"
+                  >
+                    <span className="material-symbols-outlined text-[15px]">sign_language</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSpeakMessageAloud(t.text)}
+                    className="p-1 hover:bg-green-500/20 rounded-md text-green-600 dark:text-green-400 transition-all active:scale-95"
+                    title="Read this message aloud (Voice Audio)"
+                    aria-label="Read Aloud in Voice"
+                  >
+                    <span className="material-symbols-outlined text-[15px]">volume_up</span>
+                  </button>
+                </div>
               </div>
             );
           })}
 
           {/* Live In-Progress Interim Speech Stream */}
           {Object.entries(interimTranscripts).map(([senderId, text]) => {
-            const isMe = senderId === user?.email || senderId === user?.id || senderId === user?.name || senderId === 'me';
+            const isMe = senderId === user?.id || senderId === user?.email || senderId === 'me';
             const senderName = finalTranscripts.find((t) => t.senderId === senderId)?.senderName || 'Participant';
             return (
               <div
                 key={senderId}
-                className={`flex items-start gap-2.5 p-2 rounded-2xl bg-amber-500/10 border border-amber-400/30 animate-pulse max-w-[90%] ${
+                className={`flex items-start gap-2 p-1.5 rounded-xl bg-amber-500/10 border border-amber-400/30 max-w-[90%] ${
                   isMe ? 'self-end' : 'self-start'
                 }`}
               >
-                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-lg bg-amber-400 text-black shrink-0 mt-0.5">
-                  {isMe ? 'You (Speaking...)' : `${senderName} (Speaking...)`}
+                <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-400 text-black shrink-0 mt-0.5">
+                  {isMe ? 'You' : senderName}
                 </span>
-                <span className="text-[#b45309] dark:text-[#fe9832] italic font-semibold">{text}</span>
+                <span className="text-[#b45309] dark:text-[#fe9832] italic text-xs break-words">{text}...</span>
               </div>
             );
           })}
 
           {finalTranscripts.length === 0 && Object.keys(interimTranscripts).length === 0 && (
-            <div className="flex flex-col items-center justify-center my-auto py-2 text-center text-[#828796] gap-1.5">
-              <span className="material-symbols-outlined text-[24px] text-[#fe9832]/60 animate-pulse">hearing</span>
-              <span className="text-xs font-medium">Subtitles will appear here in real-time as words are spoken or signed.</span>
+            <div className="flex items-center justify-center my-auto text-center text-[#828796] gap-1.5 text-xs py-1">
+              <span className="material-symbols-outlined text-[16px] text-[#fe9832]/60 animate-pulse">hearing</span>
+              <span>Subtitles will appear here in real-time. Click 🤟 on any message to read it in 3D Sign.</span>
             </div>
           )}
 
           <div ref={captionsEndRef} />
         </div>
 
-        {/* Quick Message Input for Accessibility / Deaf User */}
+        {/* Quick Reply Form with Read Options */}
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -541,25 +664,107 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
               setTypedResponse('');
             }
           }}
-          className="pt-2 border-t border-[#e0e3e5] dark:border-white/10 flex items-center gap-2 flex-shrink-0"
+          className="pt-1.5 border-t border-[#e0e3e5] dark:border-white/10 flex items-center gap-1.5 flex-shrink-0"
         >
           <input
             type="text"
             value={typedResponse}
             onChange={(e) => setTypedResponse(e.target.value)}
-            placeholder="Type a quick reply (reads aloud in voice to hearing participant)..."
-            className="flex-1 px-3 py-1.5 bg-[#f1f4f6] dark:bg-white/10 border border-[#e0e3e5] dark:border-white/10 rounded-xl text-xs text-[#030813] dark:text-white placeholder-[#828796] focus:outline-none focus:border-[#fe9832]"
+            placeholder="Type a message to read or reply..."
+            className="flex-1 px-3 py-1 bg-[#f1f4f6] dark:bg-white/10 border border-[#e0e3e5] dark:border-white/10 rounded-lg text-xs text-[#030813] dark:text-white placeholder-[#828796] focus:outline-none focus:border-[#fe9832]"
           />
+          
+          {/* Read in Sign Button */}
+          <button
+            type="button"
+            disabled={!typedResponse.trim()}
+            onClick={() => handleReadMessageInSign(typedResponse)}
+            className="px-2.5 py-1 bg-[#f1f4f6] dark:bg-white/10 hover:bg-[#fe9832]/20 text-[#fe9832] rounded-lg text-xs font-bold transition-all disabled:opacity-40 flex items-center gap-1 shrink-0 active:scale-95 border border-[#e0e3e5] dark:border-white/10"
+            title="Read in 3D Sign Avatar"
+          >
+            <span className="material-symbols-outlined text-[14px]">sign_language</span>
+            <span>Read in Sign</span>
+          </button>
+
+          {/* Read in Voice Button */}
+          <button
+            type="button"
+            disabled={!typedResponse.trim()}
+            onClick={() => handleSpeakMessageAloud(typedResponse)}
+            className="px-2 py-1 bg-[#f1f4f6] dark:bg-white/10 hover:bg-green-500/20 text-green-600 dark:text-green-400 rounded-lg text-xs font-bold transition-all disabled:opacity-40 flex items-center gap-1 shrink-0 active:scale-95 border border-[#e0e3e5] dark:border-white/10"
+            title="Read Aloud in Voice"
+          >
+            <span className="material-symbols-outlined text-[14px]">volume_up</span>
+          </button>
+
+          {/* Send Button */}
           <button
             type="submit"
             disabled={!typedResponse.trim()}
-            className="px-3 py-1.5 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] rounded-xl text-xs font-bold transition-all disabled:opacity-40 flex items-center gap-1 shrink-0 active:scale-95"
+            className="px-3 py-1 bg-[#fe9832] hover:bg-[#e8872b] text-[#542900] rounded-lg text-xs font-black transition-all disabled:opacity-40 flex items-center gap-1 shrink-0 active:scale-95 shadow-xs"
           >
-            <span className="material-symbols-outlined text-[15px]">send</span>
-            <span className="hidden sm:inline">Send</span>
+            <span className="material-symbols-outlined text-[14px]">send</span>
+            <span>Send</span>
           </button>
         </form>
       </section>
+
+      {/* ========================================================= */}
+      {/* BOTTOM FOOTER BAR: Unique Room Code + Speed + Status     */}
+      {/* ========================================================= */}
+      <footer className="bg-white dark:bg-[#1a202c] px-3.5 py-1 rounded-xl border border-[#e0e3e5] dark:border-[#2d3133] flex items-center justify-between shadow-xs flex-shrink-0 text-xs h-8">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#45474c] dark:text-[#828796]">
+            Room Code:
+          </span>
+          <span className="font-mono text-xs font-black text-[#fe9832] tracking-wider">
+            {roomCode}
+          </span>
+          <button
+            type="button"
+            onClick={handleCopyCode}
+            className="px-2 py-0.5 bg-[#f1f4f6] dark:bg-[#2d3133] hover:bg-[#e0e3e5] text-[#030813] dark:text-white rounded-md text-[10px] font-bold transition-all flex items-center gap-1 active:scale-95"
+            aria-label="Copy Room Code"
+          >
+            <span className="material-symbols-outlined text-[13px]">{copied ? 'check' : 'content_copy'}</span>
+            <span>{copied ? 'Copied' : 'Copy'}</span>
+          </button>
+        </div>
+
+        {/* Speed Controls Selector */}
+        <div className="flex items-center gap-1 bg-[#f1f4f6] dark:bg-[#030813] px-1.5 py-0.5 rounded-lg border border-[#e0e3e5] dark:border-[#2d3133]">
+          <span className="text-[10px] font-bold text-[#45474c] dark:text-[#828796] pr-0.5">Speed:</span>
+          {speedOptions.map((spd) => (
+            <button
+              key={spd}
+              type="button"
+              onClick={() => setAvatarSpeed(spd)}
+              className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-all ${
+                avatarSpeed === spd
+                  ? 'bg-[#fe9832] text-[#683700] font-black shadow-xs'
+                  : 'text-[#45474c] dark:text-[#828796] hover:text-[#030813] dark:hover:text-white'
+              }`}
+            >
+              {spd}x
+            </button>
+          ))}
+        </div>
+
+        {/* Connection Status Badge */}
+        <div className="flex items-center gap-1.5">
+          <span
+            className={`w-2 h-2 rounded-full ${
+              connectionState === LkConnectionState.Connected
+                ? 'bg-green-500 animate-pulse'
+                : 'bg-amber-500'
+            }`}
+            aria-hidden="true"
+          />
+          <span className="text-[11px] font-bold text-[#030813] dark:text-white">
+            {getConnectionStatusText()}
+          </span>
+        </div>
+      </footer>
 
     </div>
   );

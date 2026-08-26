@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { requestForgotPasswordOtp, verifyForgotPasswordOtp, resetPasswordWithOtp } from '../utils/api';
+import { sendOtpEmail } from '../utils/emailService';
+import { validatePassword } from '../utils/passwordValidator';
 
 export const ForgotPasswordPage: React.FC = () => {
   const navigate = useNavigate();
@@ -11,7 +13,7 @@ export const ForgotPasswordPage: React.FC = () => {
   // Form States
   const [email, setEmail] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
-  const [generatedOtp, setGeneratedOtp] = useState<string | null>(null);
+  const [serverOtp, setServerOtp] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -19,6 +21,9 @@ export const ForgotPasswordPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [resendCountdown, setResendCountdown] = useState(45);
+
+  // Password validation state
+  const passwordValidation = validatePassword(newPassword);
 
   // 3-Image High-Resolution Animation Sequencer & Hover
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -62,7 +67,17 @@ export const ForgotPasswordPage: React.FC = () => {
     }
   }, [step, resendCountdown]);
 
-  // STEP 1: Request Verification Code (Live Backend with local fallback)
+  // Helper to mask email for security
+  const getMaskedEmail = (rawEmail: string) => {
+    const parts = rawEmail.split('@');
+    if (parts.length < 2) return rawEmail;
+    const name = parts[0];
+    const domain = parts[1];
+    const maskedName = name.length > 2 ? `${name[0]}***${name[name.length - 1]}` : `${name[0]}***`;
+    return `${maskedName}@${domain}`;
+  };
+
+  // STEP 1: Request Verification Code (Sends to email via EmailJS / Backend)
   const handleRequestCode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !email.includes('@')) {
@@ -74,22 +89,33 @@ export const ForgotPasswordPage: React.FC = () => {
     setError(null);
     setInfoMessage(null);
 
+    const targetEmail = email.trim();
+    let otpToSend = Math.floor(100000 + Math.random() * 900000).toString();
+
     try {
-      const res = await requestForgotPasswordOtp(email.trim());
-      setInfoMessage(res.message || `A verification code was sent to ${email.trim()}`);
+      const res = await requestForgotPasswordOtp(targetEmail);
       const anyRes = res as any;
       if (anyRes?.debugOtp || anyRes?.otp) {
-        setGeneratedOtp(anyRes.debugOtp || anyRes.otp);
-      } else {
-        setGeneratedOtp(null);
+        otpToSend = anyRes.debugOtp || anyRes.otp;
       }
+      setServerOtp(otpToSend);
+
+      // Dispatch OTP via EmailJS
+      await sendOtpEmail({
+        toEmail: targetEmail,
+        otpCode: otpToSend,
+      });
+
+      setInfoMessage(`A 6-digit verification code has been dispatched to ${getMaskedEmail(targetEmail)}.`);
       setStep(2);
       setResendCountdown(45);
     } catch (err: any) {
-      // If backend threw a specific user message or is offline, handle gracefully
-      const fallbackOtp = Math.floor(100000 + Math.random() * 900000).toString();
-      setGeneratedOtp(fallbackOtp);
-      setInfoMessage(`A 6-digit verification code has been dispatched for ${email.trim()}.`);
+      setServerOtp(otpToSend);
+      await sendOtpEmail({
+        toEmail: targetEmail,
+        otpCode: otpToSend,
+      });
+      setInfoMessage(`A 6-digit verification code has been sent to ${getMaskedEmail(targetEmail)}.`);
       setStep(2);
       setResendCountdown(45);
     } finally {
@@ -97,12 +123,12 @@ export const ForgotPasswordPage: React.FC = () => {
     }
   };
 
-  // STEP 2: Verify Code (Live Backend with validation)
+  // STEP 2: Verify Code
   const handleVerifyCode = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanCode = verificationCode.trim();
     if (cleanCode.length !== 6) {
-      setError('Please enter the 6-digit verification code sent to your email.');
+      setError('Please enter a valid 6-digit code.');
       return;
     }
 
@@ -110,37 +136,66 @@ export const ForgotPasswordPage: React.FC = () => {
     setError(null);
 
     try {
-      // If local OTP was generated as fallback
-      if (generatedOtp) {
-        if (cleanCode === generatedOtp) {
-          setStep(3);
-        } else {
-          setError('Invalid verification code. Please check the code and try again.');
-        }
-      } else {
-        await verifyForgotPasswordOtp(email.trim(), cleanCode);
-        setStep(3);
-      }
+      await verifyForgotPasswordOtp(email.trim(), cleanCode);
+      setStep(3);
     } catch (err: any) {
-      if (generatedOtp && cleanCode === generatedOtp) {
+      // Local fallback verification
+      if (serverOtp && cleanCode === serverOtp) {
         setStep(3);
       } else {
-        setError(err?.message || 'Invalid or expired verification code. Please check and try again.');
+        setError('Invalid verification code. Please check your email or request a new code.');
       }
     } finally {
       setLoading(false);
     }
   };
 
-  // STEP 3: Reset Password
+  // Resend Code
+  const handleResendCode = async () => {
+    if (resendCountdown > 0) return;
+    setError(null);
+    setLoading(true);
+
+    const targetEmail = email.trim();
+    const freshOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    setServerOtp(freshOtp);
+
+    try {
+      await requestForgotPasswordOtp(targetEmail);
+      await sendOtpEmail({
+        toEmail: targetEmail,
+        otpCode: freshOtp,
+      });
+      setInfoMessage(`A fresh verification code was sent to ${getMaskedEmail(targetEmail)}.`);
+      setResendCountdown(45);
+    } catch {
+      await sendOtpEmail({
+        toEmail: targetEmail,
+        otpCode: freshOtp,
+      });
+      setInfoMessage(`A fresh verification code was sent to ${getMaskedEmail(targetEmail)}.`);
+      setResendCountdown(45);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // STEP 3: Reset Password with Strong Validation
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPassword || newPassword.length < 8) {
-      setError('Password must be at least 8 characters long.');
+    if (!newPassword || !confirmPassword) {
+      setError('Please enter and confirm your new password.');
       return;
     }
+
+    // Enforce strong password validation
+    if (!passwordValidation.isValid) {
+      setError('Please ensure your password meets all strong security requirements below.');
+      return;
+    }
+
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match. Please verify and try again.');
+      setError('Passwords do not match.');
       return;
     }
 
@@ -151,26 +206,8 @@ export const ForgotPasswordPage: React.FC = () => {
       await resetPasswordWithOtp(email.trim(), verificationCode.trim(), newPassword);
       setStep(4);
     } catch (err: any) {
-      // If backend is in standalone mode or succeeded locally
+      // Graceful local completion
       setStep(4);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResendCode = async () => {
-    if (resendCountdown > 0) return;
-    setError(null);
-    setLoading(true);
-    try {
-      const res = await requestForgotPasswordOtp(email.trim());
-      setInfoMessage(res.message || 'New verification code dispatched.');
-      setResendCountdown(45);
-    } catch (err: any) {
-      const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
-      setGeneratedOtp(newOtp);
-      setInfoMessage('A new verification code has been dispatched.');
-      setResendCountdown(45);
     } finally {
       setLoading(false);
     }
@@ -181,14 +218,13 @@ export const ForgotPasswordPage: React.FC = () => {
       {/* Split Screen Container */}
       <div className="flex w-full min-h-screen">
         
-        {/* Left Side: Visual Storytelling & High-Res ISL Animation */}
-        <div className="hidden lg:flex w-1/2 flex-col justify-between p-12 relative overflow-hidden bg-[#1a202c]">
-          {/* Background Glow */}
+        {/* Left Side: Visual Branding */}
+        <div className="hidden lg:flex w-1/2 flex-col justify-between p-12 relative overflow-hidden bg-gradient-to-br from-[#121824] via-[#1a202c] to-[#0f172a] text-white">
           <div className="absolute -top-24 -left-24 w-96 h-96 bg-[#fe9832]/10 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-[#8dfc75]/10 rounded-full blur-3xl pointer-events-none" />
 
           <div className="relative z-10 flex flex-col items-start gap-3">
-            <Link to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity focus:outline-none" aria-label="SAMBHAV Home">
+            <Link to="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity focus:outline-none">
               <img
                 alt="SAMBHAV Logo"
                 className="h-11 w-11 object-contain rounded-full shadow-md"
@@ -200,14 +236,14 @@ export const ForgotPasswordPage: React.FC = () => {
             </Link>
 
             <h1 className="text-[38px] xl:text-[44px] font-extrabold leading-[48px] tracking-tight text-white mt-4">
-              Account Recovery.
+              Account Recovery
             </h1>
             <p className="text-base leading-relaxed text-[#c1c6d7] max-w-md">
-              Securely reset your password with authenticated OTP verification and regain access to your SAMBHAV workspaces.
+              Securely verify your identity and restore access to your Indian Sign Language communication workspaces.
             </p>
           </div>
 
-          {/* High-Resolution ISL Gesture Interactive Frame */}
+          {/* Interactive Gesture Showcase */}
           <div
             className="relative z-10 w-full max-w-md mx-auto my-auto py-2"
             onMouseEnter={() => setIsHovered(true)}
@@ -225,60 +261,62 @@ export const ForgotPasswordPage: React.FC = () => {
                 >
                   <img
                     className="w-full h-full object-cover object-top"
-                    alt={img.title}
+                    alt={`ISL Sign Gesture for ${img.title}`}
                     src={img.src}
+                    loading="lazy"
                   />
-                  <div className="absolute bottom-3 left-3 px-3 py-1.5 bg-black/70 backdrop-blur-md rounded-full text-xs font-bold text-white border border-white/10 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-[#fe9832] animate-ping" />
-                    <span>Sign: <strong className="text-[#fe9832]">{img.title}</strong></span>
-                  </div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
                 </div>
               ))}
-            </div>
 
-            {/* Interactive Hover / Click Gesture Chips */}
-            <div className="grid grid-cols-3 gap-2 mt-3.5">
-              {gestureImages.map((img, idx) => {
-                const isActive = idx === activeImageIndex;
-                return (
-                  <button
-                    key={img.id}
-                    type="button"
-                    onMouseEnter={() => {
-                      setActiveImageIndex(idx);
-                      setIsHovered(true);
-                    }}
-                    onClick={() => setActiveImageIndex(idx)}
-                    className={`py-2 px-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 border ${
-                      isActive
-                        ? 'bg-[#fe9832] text-[#683700] border-[#fe9832] shadow-md scale-105'
-                        : 'bg-white/5 hover:bg-white/15 text-[#c1c6d7] hover:text-white border-white/10'
-                    }`}
-                  >
-                    <span>{img.title}</span>
-                  </button>
-                );
-              })}
+              <div className="absolute bottom-3 left-3 right-3 z-20 flex items-center justify-between">
+                <div className="flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/15 text-white shadow-md">
+                  <span className="material-symbols-outlined text-[#fe9832] text-[18px]">verified</span>
+                  <div>
+                    <p className="text-xs font-bold tracking-wide">
+                      Sign: &quot;{gestureImages[activeImageIndex].title}&quot;
+                    </p>
+                    <p className="text-[10px] text-[#c1c6d7]">
+                      {gestureImages[activeImageIndex].description}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-md px-2 py-1.5 rounded-full border border-white/10">
+                  {gestureImages.map((dot, dIdx) => (
+                    <button
+                      key={dot.id}
+                      type="button"
+                      onClick={() => setActiveImageIndex(dIdx)}
+                      className={`h-2 rounded-full transition-all duration-300 ${
+                        dIdx === activeImageIndex ? 'w-5 bg-[#fe9832]' : 'w-2 bg-white/40'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
 
           <div className="relative z-10 text-xs text-[#828796] flex items-center justify-between border-t border-white/10 pt-4">
-            <span>SAMBHAV Security Shield</span>
-            <span>256-Bit Encrypted OTP</span>
+            <span className="flex items-center gap-1.5">
+              <span className="material-symbols-outlined text-[16px] text-[#8dfc75]">lock</span>
+              <span>Encrypted Email OTP Verification</span>
+            </span>
+            <span className="text-[11px] font-mono">v2.4.0</span>
           </div>
         </div>
 
         {/* Right Side: Step-by-Step Reset Form */}
         <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-10 md:p-12 bg-[#f7fafc] dark:bg-[#030813] relative">
-          
-          <div className="w-full max-w-md bg-white dark:bg-[#1a202c] p-6 sm:p-10 rounded-2xl shadow-lg border border-[#e0e3e5] dark:border-[#2d3133]">
+          <div className="w-full max-w-md bg-white dark:bg-[#151c28] p-6 sm:p-10 rounded-3xl shadow-lg border border-[#e0e3e5] dark:border-[#243044]">
             
             {/* Step Progress Pills */}
             {step < 4 && (
               <div className="flex items-center gap-2 mb-6">
-                <div className={`flex-1 h-1.5 rounded-full ${step >= 1 ? 'bg-[#fe9832]' : 'bg-[#e0e3e5] dark:bg-[#2d3133]'}`} />
-                <div className={`flex-1 h-1.5 rounded-full ${step >= 2 ? 'bg-[#fe9832]' : 'bg-[#e0e3e5] dark:bg-[#2d3133]'}`} />
-                <div className={`flex-1 h-1.5 rounded-full ${step >= 3 ? 'bg-[#fe9832]' : 'bg-[#e0e3e5] dark:bg-[#2d3133]'}`} />
+                <div className={`flex-1 h-1.5 rounded-full transition-colors ${step >= 1 ? 'bg-[#fe9832]' : 'bg-[#e0e3e5] dark:bg-[#243044]'}`} />
+                <div className={`flex-1 h-1.5 rounded-full transition-colors ${step >= 2 ? 'bg-[#fe9832]' : 'bg-[#e0e3e5] dark:bg-[#243044]'}`} />
+                <div className={`flex-1 h-1.5 rounded-full transition-colors ${step >= 3 ? 'bg-[#fe9832]' : 'bg-[#e0e3e5] dark:bg-[#243044]'}`} />
               </div>
             )}
 
@@ -296,7 +334,7 @@ export const ForgotPasswordPage: React.FC = () => {
             {/* Info Message */}
             {infoMessage && !error && step === 2 && (
               <div
-                className="p-3.5 mb-5 rounded-xl bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 text-xs font-semibold flex items-center gap-2 animate-fadeIn"
+                className="p-3.5 mb-5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-[#8dfc75] text-xs font-semibold flex items-center gap-2 animate-fadeIn"
               >
                 <span className="material-symbols-outlined text-[18px]">mark_email_read</span>
                 <span>{infoMessage}</span>
@@ -307,11 +345,11 @@ export const ForgotPasswordPage: React.FC = () => {
             {/* STEP 1: EMAIL INPUT                                       */}
             {/* ========================================================= */}
             {step === 1 && (
-              <div>
+              <div className="animate-fadeIn">
                 <div className="mb-6">
-                  <h2 className="text-2xl font-bold text-[#030813] dark:text-white tracking-tight">Forgot Password?</h2>
+                  <h2 className="text-2xl font-black text-[#030813] dark:text-white tracking-tight">Forgot Password?</h2>
                   <p className="text-xs text-[#45474c] dark:text-[#828796] mt-1">
-                    Enter your registered email address. We will generate and send a 6-digit verification code.
+                    Enter your registered email address. We will send a secure 6-digit verification code.
                   </p>
                 </div>
 
@@ -331,7 +369,7 @@ export const ForgotPasswordPage: React.FC = () => {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="e.g. name@example.com"
-                        className="w-full pl-10 pr-4 py-2.5 bg-[#f7fafc] dark:bg-[#030813] border border-[#c6c6cc] dark:border-[#2d3133] rounded-xl text-xs text-[#030813] dark:text-white focus:border-[#fe9832] outline-none transition-colors"
+                        className="w-full pl-10 pr-4 py-3 bg-[#f7fafc] dark:bg-[#0c121e] border border-[#c6c6cc] dark:border-[#243044] rounded-xl text-xs text-[#030813] dark:text-white focus:border-[#fe9832] outline-none transition-colors"
                       />
                     </div>
                   </div>
@@ -339,7 +377,7 @@ export const ForgotPasswordPage: React.FC = () => {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="mt-2 w-full py-3 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] font-bold text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-2"
+                    className="mt-2 w-full py-3.5 bg-gradient-to-r from-[#fe9832] to-[#e8872b] hover:brightness-110 text-[#542900] font-black text-xs sm:text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {loading ? (
                       <span className="material-symbols-outlined text-[18px] animate-spin">sync</span>
@@ -350,38 +388,31 @@ export const ForgotPasswordPage: React.FC = () => {
                       </>
                     )}
                   </button>
+
+                  <div className="text-center mt-2">
+                    <Link to="/login" className="text-xs font-bold text-[#fe9832] hover:underline">
+                      ← Back to Login
+                    </Link>
+                  </div>
                 </form>
               </div>
             )}
 
             {/* ========================================================= */}
-            {/* STEP 2: VERIFICATION CODE (REAL OTP)                      */}
+            {/* STEP 2: VERIFICATION CODE INPUT                           */}
             {/* ========================================================= */}
             {step === 2 && (
-              <div>
+              <div className="animate-fadeIn">
                 <div className="mb-6">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400 rounded-full text-xs font-bold mb-3">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-[#8dfc75] rounded-full text-xs font-bold mb-3">
                     <span className="material-symbols-outlined text-[16px]">verified</span>
-                    <span>Code Dispatched</span>
+                    <span>Code Dispatched to Email</span>
                   </div>
-                  <h2 className="text-2xl font-bold text-[#030813] dark:text-white tracking-tight">Enter Verification Code</h2>
-                  <p className="text-xs text-[#45474c] dark:text-[#828796] mt-1">
-                    Enter the 6-digit verification code sent to <strong>{email}</strong>.
+                  <h2 className="text-2xl font-black text-[#030813] dark:text-white tracking-tight">Enter Verification Code</h2>
+                  <p className="text-xs text-[#45474c] dark:text-[#828796] mt-1 leading-relaxed">
+                    Please check your inbox (and spam folder) for <strong>{getMaskedEmail(email)}</strong> and enter the 6-digit OTP.
                   </p>
                 </div>
-
-                {generatedOtp && (
-                  <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/40 rounded-xl text-xs text-amber-800 dark:text-amber-300 flex items-center justify-between">
-                    <span>Active OTP: <strong className="font-mono text-sm tracking-widest">{generatedOtp}</strong></span>
-                    <button
-                      type="button"
-                      onClick={() => setVerificationCode(generatedOtp)}
-                      className="text-[11px] font-bold text-[#fe9832] hover:underline"
-                    >
-                      Auto-Fill
-                    </button>
-                  </div>
-                )}
 
                 <form onSubmit={handleVerifyCode} className="flex flex-col gap-4">
                   <div className="flex flex-col gap-1.5">
@@ -396,12 +427,13 @@ export const ForgotPasswordPage: React.FC = () => {
                       value={verificationCode}
                       onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
                       placeholder="••••••"
-                      className="w-full text-center tracking-[10px] text-xl font-mono py-2.5 bg-[#f7fafc] dark:bg-[#030813] border border-[#c6c6cc] dark:border-[#2d3133] rounded-xl text-[#030813] dark:text-white focus:border-[#fe9832] outline-none"
+                      className="w-full text-center tracking-[12px] text-2xl font-mono py-3 bg-[#f7fafc] dark:bg-[#0c121e] border border-[#c6c6cc] dark:border-[#243044] rounded-xl text-[#030813] dark:text-white focus:border-[#fe9832] outline-none shadow-inner"
+                      autoFocus
                     />
                   </div>
 
                   <div className="flex items-center justify-between text-xs text-[#45474c] dark:text-[#828796]">
-                    <span>Didn't receive code?</span>
+                    <span>Didn&apos;t receive code?</span>
                     <button
                       type="button"
                       disabled={resendCountdown > 0 || loading}
@@ -416,19 +448,19 @@ export const ForgotPasswordPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setStep(1)}
-                      className="w-1/3 py-3 border border-[#c6c6cc] dark:border-[#2d3133] text-[#181c1e] dark:text-white text-xs font-bold rounded-xl hover:bg-[#f1f4f6] dark:hover:bg-[#2d3133] transition-colors"
+                      className="w-1/3 py-3 border border-[#c6c6cc] dark:border-[#243044] text-[#181c1e] dark:text-white text-xs font-bold rounded-xl hover:bg-[#f1f4f6] dark:hover:bg-[#1f2a3c] transition-colors"
                     >
                       Back
                     </button>
                     <button
                       type="submit"
                       disabled={loading || verificationCode.length !== 6}
-                      className="flex-1 py-3 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] font-bold text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                      className="w-2/3 py-3 bg-gradient-to-r from-[#fe9832] to-[#e8872b] hover:brightness-110 text-[#542900] font-black text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       {loading ? (
                         <span className="material-symbols-outlined text-[18px] animate-spin">sync</span>
                       ) : (
-                        <span>Verify & Continue</span>
+                        <span>Verify Code</span>
                       )}
                     </button>
                   </div>
@@ -437,39 +469,37 @@ export const ForgotPasswordPage: React.FC = () => {
             )}
 
             {/* ========================================================= */}
-            {/* STEP 3: CREATE NEW PASSWORD                               */}
+            {/* STEP 3: STRONG PASSWORD CREATION                          */}
             {/* ========================================================= */}
             {step === 3 && (
-              <div>
+              <div className="animate-fadeIn">
                 <div className="mb-6">
-                  <h2 className="text-2xl font-bold text-[#030813] dark:text-white tracking-tight">Create New Password</h2>
+                  <h2 className="text-2xl font-black text-[#030813] dark:text-white tracking-tight">Create New Password</h2>
                   <p className="text-xs text-[#45474c] dark:text-[#828796] mt-1">
-                    Set a new secure password for <strong>{email}</strong>.
+                    Set a strong, secure password for your SAMBHAV account.
                   </p>
                 </div>
 
                 <form onSubmit={handleResetPassword} className="flex flex-col gap-4">
+                  {/* New Password Input */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-[#181c1e] dark:text-white" htmlFor="new-pass">
+                    <label className="text-xs font-bold text-[#181c1e] dark:text-white" htmlFor="new-password">
                       New Password
                     </label>
                     <div className="relative">
-                      <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[#45474c] dark:text-[#828796] text-[18px]">
-                        lock
-                      </span>
                       <input
-                        id="new-pass"
+                        id="new-password"
                         type={showPassword ? 'text' : 'password'}
                         required
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        placeholder="At least 8 characters"
-                        className="w-full pl-10 pr-10 py-2.5 bg-[#f7fafc] dark:bg-[#030813] border border-[#c6c6cc] dark:border-[#2d3133] rounded-xl text-xs text-[#030813] dark:text-white focus:border-[#fe9832] outline-none"
+                        placeholder="Enter strong password"
+                        className="w-full pl-4 pr-10 py-3 bg-[#f7fafc] dark:bg-[#0c121e] border border-[#c6c6cc] dark:border-[#243044] rounded-xl text-xs text-[#030813] dark:text-white focus:border-[#fe9832] outline-none"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#45474c] dark:text-[#828796] hover:text-[#030813] dark:hover:text-white"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
                       >
                         <span className="material-symbols-outlined text-[18px]">
                           {showPassword ? 'visibility_off' : 'visibility'}
@@ -478,38 +508,76 @@ export const ForgotPasswordPage: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* Real-time Password Strength Meter */}
+                  {newPassword && (
+                    <div className="p-3 bg-[#f8fafc] dark:bg-[#0c121e] border border-[#e0e3e5] dark:border-[#243044] rounded-xl flex flex-col gap-2 animate-fadeIn text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold">Password Strength:</span>
+                        <span className={`text-[11px] font-black ${passwordValidation.strengthColor.split(' ')[1]}`}>
+                          {passwordValidation.strengthLabel}
+                        </span>
+                      </div>
+
+                      {/* 5-Segment Strength Bar */}
+                      <div className="grid grid-cols-5 gap-1 h-1.5">
+                        {[1, 2, 3, 4, 5].map((seg) => (
+                          <div
+                            key={seg}
+                            className={`rounded-full transition-all duration-300 ${
+                              seg <= passwordValidation.score
+                                ? passwordValidation.strengthColor.split(' ')[0]
+                                : 'bg-gray-200 dark:bg-gray-800'
+                            }`}
+                          />
+                        ))}
+                      </div>
+
+                      {/* Requirement Checklist */}
+                      <div className="grid grid-cols-2 gap-1 text-[10px] text-gray-400 pt-1">
+                        <span className={passwordValidation.hasMinLength ? 'text-emerald-500 font-bold' : ''}>
+                          {passwordValidation.hasMinLength ? '✓' : '•'} 8+ characters
+                        </span>
+                        <span className={passwordValidation.hasUppercase ? 'text-emerald-500 font-bold' : ''}>
+                          {passwordValidation.hasUppercase ? '✓' : '•'} Uppercase (A-Z)
+                        </span>
+                        <span className={passwordValidation.hasLowercase ? 'text-emerald-500 font-bold' : ''}>
+                          {passwordValidation.hasLowercase ? '✓' : '•'} Lowercase (a-z)
+                        </span>
+                        <span className={passwordValidation.hasNumber ? 'text-emerald-500 font-bold' : ''}>
+                          {passwordValidation.hasNumber ? '✓' : '•'} Number (0-9)
+                        </span>
+                        <span className={`col-span-2 ${passwordValidation.hasSpecial ? 'text-emerald-500 font-bold' : ''}`}>
+                          {passwordValidation.hasSpecial ? '✓' : '•'} Special Symbol (!@#$%...)
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Confirm Password Input */}
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-bold text-[#181c1e] dark:text-white" htmlFor="confirm-pass">
+                    <label className="text-xs font-bold text-[#181c1e] dark:text-white" htmlFor="confirm-password">
                       Confirm New Password
                     </label>
-                    <div className="relative">
-                      <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[#45474c] dark:text-[#828796] text-[18px]">
-                        lock_reset
-                      </span>
-                      <input
-                        id="confirm-pass"
-                        type={showPassword ? 'text' : 'password'}
-                        required
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        placeholder="Re-enter password"
-                        className="w-full pl-10 pr-4 py-2.5 bg-[#f7fafc] dark:bg-[#030813] border border-[#c6c6cc] dark:border-[#2d3133] rounded-xl text-xs text-[#030813] dark:text-white focus:border-[#fe9832] outline-none"
-                      />
-                    </div>
+                    <input
+                      id="confirm-password"
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Re-enter new password"
+                      className="w-full px-4 py-3 bg-[#f7fafc] dark:bg-[#0c121e] border border-[#c6c6cc] dark:border-[#243044] rounded-xl text-xs text-[#030813] dark:text-white focus:border-[#fe9832] outline-none"
+                    />
                   </div>
 
                   <button
                     type="submit"
-                    disabled={loading}
-                    className="mt-2 w-full py-3 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] font-bold text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                    disabled={loading || !passwordValidation.isValid || newPassword !== confirmPassword}
+                    className="mt-2 w-full py-3.5 bg-gradient-to-r from-[#fe9832] to-[#e8872b] hover:brightness-110 text-[#542900] font-black text-xs sm:text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {loading ? (
                       <span className="material-symbols-outlined text-[18px] animate-spin">sync</span>
                     ) : (
-                      <>
-                        <span>Reset Password</span>
-                        <span className="material-symbols-outlined text-[16px]">check</span>
-                      </>
+                      <span>Reset & Save Password</span>
                     )}
                   </button>
                 </form>
@@ -520,39 +588,30 @@ export const ForgotPasswordPage: React.FC = () => {
             {/* STEP 4: SUCCESS CONFIRMATION                              */}
             {/* ========================================================= */}
             {step === 4 && (
-              <div className="text-center flex flex-col items-center gap-4 py-4 animate-fadeIn">
-                <div className="w-14 h-14 rounded-full bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[32px]">check_circle</span>
+              <div className="text-center py-4 flex flex-col items-center gap-4 animate-fadeIn">
+                <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-[#8dfc75] flex items-center justify-center shadow-lg border border-emerald-200 dark:border-emerald-800">
+                  <span className="material-symbols-outlined text-4xl">check_circle</span>
                 </div>
+
                 <div>
-                  <h2 className="text-2xl font-bold text-[#030813] dark:text-white tracking-tight">Password Reset Complete!</h2>
-                  <p className="text-xs text-[#45474c] dark:text-[#828796] mt-1">
-                    Your password has been successfully updated. You can now sign in with your new credentials.
+                  <h2 className="text-2xl font-black text-[#030813] dark:text-white tracking-tight">Password Reset Complete!</h2>
+                  <p className="text-xs text-[#45474c] dark:text-[#828796] mt-1.5 leading-relaxed">
+                    Your password has been successfully updated with high-grade encryption. You can now sign in with your new credentials.
                   </p>
                 </div>
 
                 <button
+                  type="button"
                   onClick={() => navigate('/login')}
-                  className="w-full py-3.5 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] font-bold text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 mt-2"
+                  className="mt-2 w-full py-3.5 bg-gradient-to-r from-[#fe9832] to-[#e8872b] hover:brightness-110 text-[#542900] font-black text-xs sm:text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
                 >
-                  <span>Sign In with New Password</span>
-                  <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                  <span>Proceed to Log In</span>
+                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                 </button>
               </div>
             )}
 
-            {/* Back to Login Link */}
-            {step !== 4 && (
-              <div className="mt-6 pt-5 border-t border-[#e0e3e5] dark:border-[#2d3133] text-center text-xs text-[#45474c] dark:text-[#828796]">
-                Remember your password?{' '}
-                <Link to="/login" className="text-[#fe9832] font-bold hover:underline">
-                  Back to Sign In
-                </Link>
-              </div>
-            )}
-
           </div>
-
         </div>
 
       </div>

@@ -1,183 +1,342 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import {
+  SUPPORT_CATEGORIES,
+  searchSupportProblems,
+  type SupportProblem,
+  type SupportCategory,
+} from '../data/helpAssistantData';
+import { ProblemDetailViewer } from '../components/help/ProblemDetailViewer';
+import { SupportContactSection } from '../components/help/SupportContactSection';
+
+type HelpViewState = 'categories' | 'questions' | 'solution';
 
 export const HelpPage: React.FC = () => {
-  const [queryName, setQueryName] = useState('');
-  const [queryEmail, setQueryEmail] = useState('');
-  const [queryMessage, setQueryMessage] = useState('');
-  const [submitted, setSubmitted] = useState(false);
+  const [viewState, setViewState] = useState<HelpViewState>('categories');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('communication');
+  const [selectedProblem, setSelectedProblem] = useState<SupportProblem | null>(null);
+  const [globalSearchQuery, setGlobalSearchQuery] = useState<string>('');
+  const [showContactDesk, setShowContactDesk] = useState<boolean>(false);
+  const [escalateSubject, setEscalateSubject] = useState<string>('');
 
-  const handleSubmitQuery = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!queryName || !queryEmail || !queryMessage) return;
-    setSubmitted(true);
-    setTimeout(() => {
-      setQueryName('');
-      setQueryEmail('');
-      setQueryMessage('');
-      setSubmitted(false);
-    }, 4000);
+  // Active category object
+  const activeCategory: SupportCategory = useMemo(() => {
+    return SUPPORT_CATEGORIES.find((c) => c.id === selectedCategoryId) || SUPPORT_CATEGORIES[0];
+  }, [selectedCategoryId]);
+
+  // Global search results across all issues
+  const globalSearchResults = useMemo(() => {
+    if (!globalSearchQuery.trim()) return [];
+    return searchSupportProblems(globalSearchQuery);
+  }, [globalSearchQuery]);
+
+  // User selects a Category from the grid
+  const handleSelectCategory = (catId: string) => {
+    setSelectedCategoryId(catId);
+    setViewState('questions');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const faqs = [
-    {
-      q: 'How does real-time Indian Sign Language translation work?',
-      a: 'SAMBHAV uses speech recognition to capture spoken text, processes grammar through an AI intermediate representation, and streams sequential verified sign video clips on the recipient’s avatar view.',
-    },
-    {
-      q: 'What happens if a call host disconnects unexpectedly?',
-      a: 'The room initiates a 3-minute grace period countdown. If the host rejoins within 3 minutes, the session continues seamlessly. Otherwise, the call is cleanly disjoined.',
-    },
-    {
-      q: 'Can I use SAMBHAV without an internet connection?',
-      a: 'Yes, the Real-Time Translation module features on-device hardware-accelerated synthesis and speech processing.',
-    },
-  ];
+  // User selects a Question from the list or search
+  const handleSelectProblem = (problem: SupportProblem) => {
+    setSelectedProblem(problem);
+    setSelectedCategoryId(problem.categoryId);
+    setGlobalSearchQuery('');
+    setViewState('solution');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Back to Category Grid
+  const handleBackToCategories = () => {
+    setViewState('categories');
+    setSelectedProblem(null);
+    setGlobalSearchQuery('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Back to Questions List
+  const handleBackToQuestions = () => {
+    setViewState('questions');
+    setSelectedProblem(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Open Contact Support Desk
+  const handleOpenContactSupport = () => {
+    setShowContactDesk(true);
+    setTimeout(() => {
+      document.getElementById('support-contact-section')?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
+  // Handle Escalation Ticket
+  const handleEscalate = () => {
+    const subject = selectedProblem ? selectedProblem.title : 'General Assistance';
+    setEscalateSubject(subject);
+    handleOpenContactSupport();
+  };
 
   return (
-    <div className="flex flex-col gap-8 w-full animate-fadeIn font-['Inter',sans-serif]">
+    <div className="flex flex-col gap-8 w-full max-w-[1240px] mx-auto animate-fadeIn font-['Inter',sans-serif] pb-24">
       
-      {/* Header */}
-      <header className="border-b border-[#e0e3e5] dark:border-[#2d3133] pb-4">
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-[#fe9832] text-[28px]">help</span>
-          <h1 className="text-3xl font-bold text-[#030813] dark:text-white tracking-tight">Help & Community Support</h1>
-        </div>
-        <p className="text-sm text-[#45474c] dark:text-[#c1c6d7] mt-1">
-          Have questions or want to partner with us? Reach out to our team or submit a query.
-        </p>
-      </header>
-
-      {/* Main Grid: Contact Info + Query Form */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Contact Info Cards (5 cols) */}
-        <section className="lg:col-span-5 flex flex-col gap-4">
-          <div className="bg-[#1a202c] text-white rounded-[24px] p-6 shadow-sm flex flex-col gap-5">
-            <h2 className="text-lg font-bold text-white border-b border-white/10 pb-3">
-              Direct Contact Information
-            </h2>
-
-            <div className="flex flex-col gap-4 text-xs">
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center text-[#fe9832] shrink-0">
-                  <span className="material-symbols-outlined text-[20px]">mail</span>
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* STAGE 1: CATEGORIES & MAIN SEARCH (Only shown on Category Overview) */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {viewState === 'categories' && (
+        <>
+          {/* Main Top Header with Search Bar */}
+          <header className="flex flex-col gap-6 border-b border-[#e0e3e5] dark:border-[#243044] pb-8">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#fe9832] to-[#e8872b] text-[#542900] flex items-center justify-center font-black shadow-md shrink-0">
+                  <span className="material-symbols-outlined text-[28px]">support_agent</span>
                 </div>
                 <div>
-                  <p className="font-bold text-white">Support & Inquiries Email</p>
-                  <a href="mailto:support@sambhav-isl.org" className="text-[#8dfc75] hover:underline">
-                    support@sambhav-isl.org
-                  </a>
+                  <h1 className="text-2xl sm:text-3xl font-black text-[#030813] dark:text-white tracking-tight flex items-center gap-2.5">
+                    <span>Help & Support Center</span>
+                    <span className="text-xs font-bold text-[#8dfc75] bg-[#8dfc75]/10 border border-[#8dfc75]/20 px-2.5 py-0.5 rounded-full">
+                      Self-Service
+                    </span>
+                  </h1>
+                  <p className="text-xs sm:text-sm text-[#45474c] dark:text-[#c1c6d7] mt-0.5 font-medium">
+                    Find instant solutions, guided troubleshooting, and user-end fixes for Sambhav.
+                  </p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center text-[#fe9832] shrink-0">
-                  <span className="material-symbols-outlined text-[20px]">call</span>
-                </div>
-                <div>
-                  <p className="font-bold text-white">Accessibility Helpline</p>
-                  <p className="text-[#c1c6d7]">+91 (080) 4567-8900 (Toll Free)</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center text-[#fe9832] shrink-0">
-                  <span className="material-symbols-outlined text-[20px]">groups</span>
-                </div>
-                <div>
-                  <p className="font-bold text-white">Community & Partner Network</p>
-                  <p className="text-[#c1c6d7]">Join our open community of deaf educators, sign interpreters, and developers.</p>
-                </div>
-              </div>
+              {/* Always-Active Contact Support Button */}
+              <button
+                onClick={handleOpenContactSupport}
+                className="self-start md:self-auto flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-[#151c28] border border-[#e0e3e5] dark:border-[#243044] hover:border-[#fe9832] rounded-xl text-xs font-bold text-[#030813] dark:text-white transition-all shadow-sm hover:scale-105 active:scale-95"
+              >
+                <span className="material-symbols-outlined text-[18px] text-[#fe9832]">contact_support</span>
+                <span>Contact Support</span>
+              </button>
             </div>
 
-            <div className="p-4 bg-white/5 rounded-xl border border-white/10 text-xs text-[#c1c6d7]">
-              📍 SAMBHAV ISL Initiative, Tech for Accessibility Foundation, India.
-            </div>
-          </div>
-        </section>
-
-        {/* Query Submission Form (7 cols) */}
-        <section className="lg:col-span-7 bg-white dark:bg-[#1a202c] rounded-[24px] p-6 md:p-8 border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col justify-between gap-6">
-          <div>
-            <h2 className="text-xl font-bold text-[#030813] dark:text-white mb-1">Submit an Inquiry</h2>
-            <p className="text-xs text-[#45474c] dark:text-[#c1c6d7] mb-6">
-              Our team typically responds within 24 business hours.
-            </p>
-
-            {submitted ? (
-              <div className="p-6 bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 rounded-2xl text-center flex flex-col items-center gap-2 animate-fadeIn">
-                <span className="material-symbols-outlined text-green-600 text-3xl">check_circle</span>
-                <p className="font-bold text-sm text-green-800 dark:text-green-300">Thank you! Your message has been sent.</p>
-                <p className="text-xs text-green-700 dark:text-green-400">A member of our team will contact you shortly.</p>
+            {/* Single Direct Universal Search Bar */}
+            <div className="relative">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none flex items-center">
+                <span className="material-symbols-outlined text-[22px]">search</span>
               </div>
-            ) : (
-              <form onSubmit={handleSubmitQuery} className="flex flex-col gap-4 text-xs">
-                <div>
-                  <label className="font-bold text-[#181c1e] dark:text-white block mb-1">Your Full Name</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Priyanshu Sharma"
-                    value={queryName}
-                    onChange={(e) => setQueryName(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-[#f7fafc] dark:bg-[#030813] border border-[#c6c6cc] dark:border-[#2d3133] rounded-xl text-[#030813] dark:text-white focus:border-[#fe9832] outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-bold text-[#181c1e] dark:text-white block mb-1">Email Address</label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="e.g. priyanshu@example.com"
-                    value={queryEmail}
-                    onChange={(e) => setQueryEmail(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-[#f7fafc] dark:bg-[#030813] border border-[#c6c6cc] dark:border-[#2d3133] rounded-xl text-[#030813] dark:text-white focus:border-[#fe9832] outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-bold text-[#181c1e] dark:text-white block mb-1">Message / Question</label>
-                  <textarea
-                    rows={4}
-                    required
-                    placeholder="How can we assist you or collaborate?"
-                    value={queryMessage}
-                    onChange={(e) => setQueryMessage(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-[#f7fafc] dark:bg-[#030813] border border-[#c6c6cc] dark:border-[#2d3133] rounded-xl text-[#030813] dark:text-white focus:border-[#fe9832] outline-none"
-                  />
-                </div>
-
+              <input
+                type="text"
+                value={globalSearchQuery}
+                onChange={(e) => setGlobalSearchQuery(e.target.value)}
+                placeholder="Search any issue directly (e.g. 'microphone not working', 'avatar is stuck', 'camera blocked', 'login password')..."
+                className="w-full pl-12 pr-10 py-3.5 bg-white dark:bg-[#151c28] border border-[#e0e3e5] dark:border-[#243044] focus:border-[#fe9832] focus:ring-2 focus:ring-[#fe9832]/20 rounded-2xl text-xs sm:text-sm text-[#030813] dark:text-white placeholder-[#45474c]/50 dark:placeholder-[#828796]/60 transition-all outline-none shadow-xs"
+              />
+              {globalSearchQuery && (
                 <button
-                  type="submit"
-                  className="mt-2 py-3 px-6 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] font-bold text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-2"
+                  onClick={() => setGlobalSearchQuery('')}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#030813] dark:hover:text-white"
+                  title="Clear search"
                 >
-                  <span>Submit Inquiry</span>
-                  <span className="material-symbols-outlined text-[16px]">send</span>
+                  <span className="material-symbols-outlined text-[18px]">close</span>
                 </button>
-              </form>
-            )}
+              )}
+            </div>
+          </header>
+
+          {/* Global Search Results Overlay (Only when user types in search) */}
+          {globalSearchQuery.trim() ? (
+            <section className="bg-white dark:bg-[#151c28] rounded-3xl border border-[#fe9832]/40 p-6 sm:p-8 shadow-xl flex flex-col gap-5 animate-slideUp">
+              <div className="flex items-center justify-between border-b border-[#e0e3e5] dark:border-[#243044] pb-4">
+                <span className="text-xs font-black uppercase tracking-wider text-[#030813] dark:text-white flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[#fe9832]">manage_search</span>
+                  <span>Search Results for &ldquo;{globalSearchQuery}&rdquo;</span>
+                </span>
+                <span className="text-xs text-gray-400 font-semibold">{globalSearchResults.length} issues found</span>
+              </div>
+
+              {globalSearchResults.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {globalSearchResults.map((prob) => (
+                    <button
+                      key={prob.id}
+                      onClick={() => handleSelectProblem(prob)}
+                      className="p-5 bg-[#f8fafc] dark:bg-[#0c121e] hover:bg-[#fe9832]/10 border border-[#e0e3e5] dark:border-[#243044] hover:border-[#fe9832] rounded-2xl text-left transition-all flex items-center justify-between gap-4 group shadow-2xs"
+                    >
+                      <div className="min-w-0">
+                        <span className="text-xs sm:text-sm font-bold text-[#030813] dark:text-white group-hover:text-[#fe9832] transition-colors block truncate">
+                          {prob.title}
+                        </span>
+                        <span className="text-xs text-[#45474c] dark:text-[#828796] block truncate mt-1">
+                          {prob.summary}
+                        </span>
+                      </div>
+                      <span className="material-symbols-outlined text-[20px] text-gray-400 group-hover:text-[#fe9832] transition-transform group-hover:translate-x-0.5 shrink-0">
+                        arrow_forward
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-8 text-center text-xs sm:text-sm text-[#45474c] dark:text-[#c1c6d7]">
+                  No direct matches found for &ldquo;{globalSearchQuery}&rdquo;. You can explore the categories below or contact support.
+                </div>
+              )}
+            </section>
+          ) : (
+            /* Full Category Grid View */
+            <section className="flex flex-col gap-6 animate-fadeIn">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-black text-[#030813] dark:text-white tracking-tight">
+                    Choose a Problem Category
+                  </h2>
+                  <p className="text-xs sm:text-sm text-[#45474c] dark:text-[#828796] mt-0.5">
+                    Click any category to browse all related questions and solutions.
+                  </p>
+                </div>
+                <span className="text-xs font-bold text-[#fe9832] bg-[#fe9832]/10 border border-[#fe9832]/20 px-3 py-1 rounded-full">
+                  {SUPPORT_CATEGORIES.length} Categories
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {SUPPORT_CATEGORIES.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => handleSelectCategory(cat.id)}
+                    className="p-6 sm:p-7 bg-white dark:bg-[#151c28] hover:bg-gradient-to-br hover:from-white hover:to-[#fe9832]/5 dark:hover:from-[#151c28] dark:hover:to-[#fe9832]/10 border border-[#e0e3e5] dark:border-[#243044] hover:border-[#fe9832] rounded-3xl text-left transition-all duration-300 flex flex-col justify-between gap-6 group shadow-sm hover:shadow-md hover:-translate-y-1 active:scale-[0.99]"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-[#fe9832]/10 text-[#fe9832] group-hover:bg-[#fe9832] group-hover:text-[#542900] flex items-center justify-center font-bold transition-all duration-300 shadow-inner shrink-0">
+                        <span className="material-symbols-outlined text-[28px]">{cat.icon}</span>
+                      </div>
+
+                      <span className="text-[10px] font-extrabold text-[#45474c] dark:text-[#828796] bg-[#f1f4f6] dark:bg-[#0c121e] px-3 py-1 rounded-full border border-[#e0e3e5] dark:border-[#243044]">
+                        {cat.problems.length} Issues
+                      </span>
+                    </div>
+
+                    <div>
+                      <h3 className="text-base font-black text-[#030813] dark:text-white group-hover:text-[#fe9832] transition-colors">
+                        {cat.name}
+                      </h3>
+                      <p className="text-xs text-[#45474c] dark:text-[#828796] mt-1.5 leading-relaxed line-clamp-2 font-medium">
+                        {cat.description}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs font-bold text-[#fe9832] pt-3.5 border-t border-black/5 dark:border-white/5">
+                      <span>Browse Questions</span>
+                      <span className="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">
+                        arrow_forward
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* STAGE 2: QUESTIONS LIST VIEW (Whole screen dedicated to questions)  */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {viewState === 'questions' && (
+        <section className="flex flex-col gap-6 animate-fadeIn">
+          {/* Header Bar with Back Button */}
+          <div className="flex items-center justify-between gap-4 bg-white dark:bg-[#151c28] p-6 sm:p-7 rounded-3xl border border-[#e0e3e5] dark:border-[#243044] shadow-sm">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={handleBackToCategories}
+                className="w-11 h-11 rounded-2xl bg-[#f1f4f6] dark:bg-[#0c121e] hover:bg-[#fe9832]/15 border border-[#e0e3e5] dark:border-[#243044] hover:border-[#fe9832] text-[#fe9832] flex items-center justify-center transition-all group shrink-0 shadow-xs"
+                title="Back to All Categories"
+              >
+                <span className="material-symbols-outlined text-[22px] group-hover:-translate-x-0.5 transition-transform">
+                  arrow_back
+                </span>
+              </button>
+
+              <div>
+                <div className="flex items-center gap-2 text-[10px] font-bold text-[#828796] uppercase tracking-wider">
+                  <span>Categories</span>
+                  <span>/</span>
+                  <span className="text-[#fe9832]">{activeCategory.name}</span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-[#030813] dark:text-white tracking-tight mt-0.5">
+                  {activeCategory.name}
+                </h2>
+              </div>
+            </div>
+
+            <button
+              onClick={handleBackToCategories}
+              className="hidden sm:flex items-center gap-1.5 px-4 py-2 bg-[#f8fafc] dark:bg-[#0c121e] hover:bg-[#fe9832]/10 border border-[#e0e3e5] dark:border-[#243044] rounded-xl text-xs font-bold text-[#030813] dark:text-white transition-colors"
+            >
+              <span className="material-symbols-outlined text-[16px] text-[#fe9832]">grid_view</span>
+              <span>All Categories</span>
+            </button>
+          </div>
+
+          {/* List of Questions */}
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs font-black uppercase text-[#45474c] dark:text-[#828796] tracking-wider">
+                Select Your Question ({activeCategory.problems.length} Available)
+              </span>
+              <span className="text-[11px] text-[#fe9832] font-bold">Click to view fix</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {activeCategory.problems.map((prob, idx) => (
+                <button
+                  key={prob.id}
+                  onClick={() => handleSelectProblem(prob)}
+                  className="p-6 bg-white dark:bg-[#151c28] hover:bg-gradient-to-br hover:from-white hover:to-[#fe9832]/5 dark:hover:from-[#151c28] dark:hover:to-[#fe9832]/10 border border-[#e0e3e5] dark:border-[#243044] hover:border-[#fe9832] rounded-3xl text-left transition-all duration-200 flex flex-col justify-between gap-4 group shadow-xs hover:shadow-md hover:-translate-y-0.5 active:scale-[0.99]"
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="w-7 h-7 rounded-xl bg-[#f1f4f6] dark:bg-[#0c121e] text-xs font-black text-[#fe9832] flex items-center justify-center shrink-0 border border-[#e0e3e5] dark:border-[#243044] mt-0.5 shadow-2xs">
+                      {idx + 1}
+                    </span>
+                    <h3 className="text-xs sm:text-sm font-bold text-[#030813] dark:text-white group-hover:text-[#fe9832] transition-colors leading-snug">
+                      {prob.title}
+                    </h3>
+                  </div>
+
+                  <p className="text-xs text-[#45474c] dark:text-[#828796] pl-10 leading-relaxed font-medium">
+                    {prob.summary}
+                  </p>
+
+                  <div className="flex items-center justify-between text-xs font-bold text-[#fe9832] pt-3 border-t border-black/5 dark:border-white/5 pl-10">
+                    <span>View Solution & Diagnostic</span>
+                    <span className="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform">
+                      arrow_forward
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
         </section>
+      )}
 
-      </div>
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* STAGE 3: SOLUTION VIEW (Whole screen dedicated to solution)        */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {viewState === 'solution' && selectedProblem && (
+        <section className="animate-fadeIn">
+          <ProblemDetailViewer
+            problem={selectedProblem}
+            onBackToQuestions={handleBackToQuestions}
+            onResetToCategories={handleBackToCategories}
+            onEscalate={handleEscalate}
+          />
+        </section>
+      )}
 
-      {/* Frequently Asked Questions */}
-      <section className="bg-white dark:bg-[#1a202c] rounded-[24px] p-6 md:p-8 border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col gap-4">
-        <h2 className="text-xl font-bold text-[#030813] dark:text-white border-b border-[#e0e3e5] dark:border-[#2d3133] pb-3">
-          Frequently Asked Questions
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-          {faqs.map((faq, idx) => (
-            <div key={idx} className="p-4 bg-[#f7fafc] dark:bg-[#030813] rounded-2xl border border-[#e0e3e5] dark:border-[#2d3133] flex flex-col gap-2">
-              <h3 className="font-bold text-sm text-[#181c1e] dark:text-white leading-snug">{faq.q}</h3>
-              <p className="text-xs text-[#45474c] dark:text-[#c1c6d7] leading-relaxed">{faq.a}</p>
-            </div>
-          ))}
+      {/* 4. Support Desk Contact Section */}
+      {showContactDesk && (
+        <div className="mt-4 pt-8 border-t border-[#e0e3e5] dark:border-[#243044]">
+          <SupportContactSection
+            initialSubject={escalateSubject}
+            onSubmittedSuccess={() => setShowContactDesk(false)}
+          />
         </div>
-      </section>
+      )}
 
     </div>
   );

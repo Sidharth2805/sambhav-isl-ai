@@ -103,7 +103,27 @@ export const OnlineSessionPage: React.FC = () => {
       setLoading(true);
       setError(null);
       setConnectionError(null);
-      const data = await getSession(sessionId, accessToken);
+      
+      let data: CommunicationSessionDto | null = null;
+      let lastErr: any = null;
+
+      // Auto-retry session fetching up to 3 times for cold-starts/network blips
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          data = await getSession(sessionId, accessToken);
+          if (data) break;
+        } catch (err: any) {
+          lastErr = err;
+          if (attempt < 3) {
+            await new Promise((res) => setTimeout(res, 800 * attempt));
+          }
+        }
+      }
+
+      if (!data) {
+        throw lastErr || new Error('Failed to retrieve online session details.');
+      }
+
       setSession(data);
 
       // Auto-activate session if not already active
@@ -118,12 +138,26 @@ export const OnlineSessionPage: React.FC = () => {
         }
       }
 
-      try {
-        const credentials = await getLiveKitToken(sessionId, accessToken);
+      // Acquire LiveKit Token with 3 resilient retry attempts
+      let credentials: LiveKitTokenResponseDto | null = null;
+      let credLastErr: any = null;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          credentials = await getLiveKitToken(sessionId, accessToken);
+          if (credentials && credentials.token) break;
+        } catch (credErr: any) {
+          credLastErr = credErr;
+          if (attempt < 3) {
+            await new Promise((res) => setTimeout(res, 800 * attempt));
+          }
+        }
+      }
+
+      if (credentials) {
         setLkCredentials(credentials);
-      } catch (credErr: any) {
-        console.error('[SignBridge Debug] LiveKit token acquisition failed:', credErr);
-        setConnectionError(credErr?.message || 'Unable to connect to the LiveKit video service.');
+      } else {
+        console.error('[SignBridge Debug] LiveKit token acquisition failed after retries:', credLastErr);
+        setConnectionError(credLastErr?.message || 'Unable to connect to the LiveKit video service.');
       }
     } catch (err: any) {
       console.error('[SignBridge Debug] fetchSessionDetails caught error:', err);
@@ -325,8 +359,8 @@ const ActiveCallWorkspace: React.FC<ActiveCallWorkspaceProps> = ({
   onLeaveCall: _onLeaveCall,
   showSettings: _showSettings,
   setShowSettings: _setShowSettings,
-  speakerVolume: _speakerVolume,
-  setSpeakerVolume: _setSpeakerVolume,
+  speakerVolume,
+  setSpeakerVolume,
   initialCamera,
   initialMic,
   user,
@@ -467,10 +501,75 @@ const ActiveCallWorkspace: React.FC<ActiveCallWorkspaceProps> = ({
     }
   }, [localParticipant, initialCamera, initialMic]);
 
-  const { devices: audioDevices, activeDeviceId: activeAudioDeviceId, setActiveMediaDevice: setActiveAudioDevice } = useMediaDeviceSelect({ kind: 'audioinput' });
-  const { devices: videoDevices, activeDeviceId: activeVideoDeviceId, setActiveMediaDevice: setActiveVideoDevice } = useMediaDeviceSelect({ kind: 'videoinput' });
+  const senderIdentity = localParticipant?.identity || user?.email || user?.id || 'me';
+  const senderDisplayName = user?.name || user?.email || 'Me';
+  const senderAccountType = user?.accountType || 'COMMON_USER';
+
+  const { devices: audioDevices, activeDeviceId: activeAudioDeviceId, setActiveMediaDevice: setActiveAudioDeviceRaw } = useMediaDeviceSelect({ kind: 'audioinput' });
+  const { devices: videoDevices, activeDeviceId: activeVideoDeviceId, setActiveMediaDevice: setActiveVideoDeviceRaw } = useMediaDeviceSelect({ kind: 'videoinput' });
+  const { devices: speakerDevices, activeDeviceId: activeSpeakerDeviceId, setActiveMediaDevice: setActiveSpeakerDeviceRaw } = useMediaDeviceSelect({ kind: 'audiooutput' });
+
   const [showMicDevices, setShowMicDevices] = useState(false);
   const [showCameraDevices, setShowCameraDevices] = useState(false);
+  const [showSpeakerDevices, setShowSpeakerDevices] = useState(false);
+
+  const setActiveAudioDevice = useCallback(async (deviceId: string) => {
+    try {
+      if (room) {
+        await room.switchActiveDevice('audioinput', deviceId);
+      }
+      await setActiveAudioDeviceRaw(deviceId);
+
+      // Re-bind STT recognition to active microphone stream
+      const stt = SpeechToTextService.getInstance();
+      if (micState && connectionState === LkConnectionState.Connected) {
+        stt.stopRecording();
+        setTimeout(() => {
+          stt.startRecording(
+            sessionId,
+            senderIdentity,
+            senderDisplayName,
+            senderAccountType,
+            (event: TranscriptEvent) => {
+              transcriptCallbackRef.current(event);
+            }
+          );
+        }, 300);
+      }
+    } catch (err) {
+      console.warn('[SignBridge] Audio device switch note:', err);
+    }
+  }, [room, setActiveAudioDeviceRaw, micState, connectionState, sessionId, senderIdentity, senderDisplayName, senderAccountType]);
+
+  const setActiveVideoDevice = useCallback(async (deviceId: string) => {
+    try {
+      if (room) {
+        await room.switchActiveDevice('videoinput', deviceId);
+      }
+      await setActiveVideoDeviceRaw(deviceId);
+    } catch (err) {
+      console.warn('[SignBridge] Video device switch note:', err);
+    }
+  }, [room, setActiveVideoDeviceRaw]);
+
+  const setActiveSpeakerDevice = useCallback(async (deviceId: string) => {
+    try {
+      if (room) {
+        await room.switchActiveDevice('audiooutput', deviceId);
+      }
+      await setActiveSpeakerDeviceRaw(deviceId);
+
+      // Apply sinkId to all audio elements on document if supported
+      const audios = document.querySelectorAll('audio');
+      audios.forEach((audio: any) => {
+        if (typeof audio.setSinkId === 'function') {
+          audio.setSinkId(deviceId).catch((e: any) => console.warn('setSinkId note:', e));
+        }
+      });
+    } catch (err) {
+      console.warn('[SignBridge] Speaker output device switch note:', err);
+    }
+  }, [room, setActiveSpeakerDeviceRaw]);
 
   const [controlsVisible, setControlsVisible] = useState(true);
   const hideTimeoutRef = useRef<any>(null);
@@ -583,10 +682,6 @@ const ActiveCallWorkspace: React.FC<ActiveCallWorkspaceProps> = ({
       }
     }
   };
-
-  const senderIdentity = localParticipant?.identity || user?.email || user?.id || 'me';
-  const senderDisplayName = user?.name || user?.email || 'Me';
-  const senderAccountType = user?.accountType || 'COMMON_USER';
 
   useEffect(() => {
     const stt = SpeechToTextService.getInstance();
@@ -747,10 +842,17 @@ const ActiveCallWorkspace: React.FC<ActiveCallWorkspaceProps> = ({
     videoDevices,
     activeVideoDeviceId,
     setActiveVideoDevice,
+    speakerDevices,
+    activeSpeakerDeviceId,
+    setActiveSpeakerDevice,
     showMicDevices,
     setShowMicDevices,
     showCameraDevices,
     setShowCameraDevices,
+    showSpeakerDevices,
+    setShowSpeakerDevices,
+    speakerVolume,
+    setSpeakerVolume,
 
     localTrack,
     primaryRemoteTrack,

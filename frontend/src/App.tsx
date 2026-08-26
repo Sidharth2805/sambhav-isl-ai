@@ -23,6 +23,7 @@ import { LearnISLPage } from './pages/LearnISLPage';
 import { ExplorePage } from './pages/ExplorePage';
 import { HelpPage } from './pages/HelpPage';
 import { NewsPage } from './pages/NewsPage';
+import { CulturalISLPage } from './pages/CulturalISLPage';
 
 const OnlineSessionPage = lazy(() => import('./pages/OnlineSessionPage'));
 
@@ -78,6 +79,7 @@ const App: React.FC = () => {
                 {/* Core Navigation Routes */}
                 <Route path="/translate" element={<TranslatePage />} />
                 <Route path="/learn-isl" element={<LearnISLPage />} />
+                <Route path="/cultural-isl" element={<CulturalISLPage />} />
                 <Route path="/learn" element={<Navigate to="/learn-isl" replace />} />
                 <Route path="/learning" element={<Navigate to="/learn-isl" replace />} />
                 <Route path="/isl-learn" element={<Navigate to="/learn-isl" replace />} />

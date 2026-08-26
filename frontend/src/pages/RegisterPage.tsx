@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { validatePassword } from '../utils/passwordValidator';
 
 export const RegisterPage: React.FC = () => {
   const { registerUser } = useAuth();
@@ -18,9 +19,12 @@ export const RegisterPage: React.FC = () => {
   const [accountType, setAccountType] = useState<'COMMON_USER' | 'ACCESSIBILITY_USER'>('COMMON_USER');
   const [selectedNeeds, setSelectedNeeds] = useState<string[]>([]);
 
+  // Password validation
+  const passwordValidation = validatePassword(password);
+
   // Preferences Defaults
   const [preferredLanguage, _setPreferredLanguage] = useState('English');
-  const [preferredSignLanguage, setPreferredSignLanguage] = useState('ISL');
+  const preferredSignLanguage = 'ISL';
   const [communicationPreference, setCommunicationPreference] = useState('text');
 
   // UI state
@@ -67,8 +71,8 @@ export const RegisterPage: React.FC = () => {
         setError('Please fill in all required fields.');
         return;
       }
-      if (password.length < 8) {
-        setError('Password must be at least 8 characters long.');
+      if (!passwordValidation.isValid) {
+        setError('Password must meet all strong security requirements (uppercase, lowercase, number, symbol, 8+ chars).');
         return;
       }
       if (password !== confirmPassword) {
@@ -383,6 +387,51 @@ export const RegisterPage: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Real-time Password Strength Meter */}
+                {password && (
+                  <div className="p-3 bg-[#f8fafc] dark:bg-[#0c121e] border border-[#e0e3e5] dark:border-[#243044] rounded-xl flex flex-col gap-2 animate-fadeIn text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold">Password Strength:</span>
+                      <span className={`text-[11px] font-black ${passwordValidation.strengthColor.split(' ')[1]}`}>
+                        {passwordValidation.strengthLabel}
+                      </span>
+                    </div>
+
+                    {/* 5-Segment Strength Bar */}
+                    <div className="grid grid-cols-5 gap-1 h-1.5">
+                      {[1, 2, 3, 4, 5].map((seg) => (
+                        <div
+                          key={seg}
+                          className={`rounded-full transition-all duration-300 ${
+                            seg <= passwordValidation.score
+                              ? passwordValidation.strengthColor.split(' ')[0]
+                              : 'bg-gray-200 dark:bg-gray-800'
+                          }`}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Requirement Checklist */}
+                    <div className="grid grid-cols-2 gap-1 text-[10px] text-gray-400 pt-1">
+                      <span className={passwordValidation.hasMinLength ? 'text-emerald-500 font-bold' : ''}>
+                        {passwordValidation.hasMinLength ? '✓' : '•'} 8+ characters
+                      </span>
+                      <span className={passwordValidation.hasUppercase ? 'text-emerald-500 font-bold' : ''}>
+                        {passwordValidation.hasUppercase ? '✓' : '•'} Uppercase (A-Z)
+                      </span>
+                      <span className={passwordValidation.hasLowercase ? 'text-emerald-500 font-bold' : ''}>
+                        {passwordValidation.hasLowercase ? '✓' : '•'} Lowercase (a-z)
+                      </span>
+                      <span className={passwordValidation.hasNumber ? 'text-emerald-500 font-bold' : ''}>
+                        {passwordValidation.hasNumber ? '✓' : '•'} Number (0-9)
+                      </span>
+                      <span className={`col-span-2 ${passwordValidation.hasSpecial ? 'text-emerald-500 font-bold' : ''}`}>
+                        {passwordValidation.hasSpecial ? '✓' : '•'} Special Symbol (!@#$%...)
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Show password checkbox */}
                 <div className="flex items-center gap-2">
                   <input
@@ -519,31 +568,17 @@ export const RegisterPage: React.FC = () => {
                   ))}
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 mt-1">
-                  <div className="flex flex-col gap-1">
-                    <label className="font-bold text-[#181c1e] dark:text-white">Preferred Sign Language</label>
-                    <select
-                      value={preferredSignLanguage}
-                      onChange={(e) => setPreferredSignLanguage(e.target.value)}
-                      className="px-3 py-2 bg-[#f7fafc] dark:bg-[#030813] border border-[#c6c6cc] dark:border-[#2d3133] rounded-xl text-[#030813] dark:text-white font-semibold outline-none"
-                    >
-                      <option value="ISL">Indian Sign Language (ISL)</option>
-                      <option value="ASL">American Sign Language (ASL)</option>
-                    </select>
-                  </div>
-
-                  <div className="flex flex-col gap-1">
-                    <label className="font-bold text-[#181c1e] dark:text-white">Primary Input Mode</label>
-                    <select
-                      value={communicationPreference}
-                      onChange={(e) => setCommunicationPreference(e.target.value)}
-                      className="px-3 py-2 bg-[#f7fafc] dark:bg-[#030813] border border-[#c6c6cc] dark:border-[#2d3133] rounded-xl text-[#030813] dark:text-white font-semibold outline-none"
-                    >
-                      <option value="text">Text Input</option>
-                      <option value="sign">Sign Gestures</option>
-                      <option value="speech">Speech Audio</option>
-                    </select>
-                  </div>
+                <div className="flex flex-col gap-1 mt-1">
+                  <label className="font-bold text-[#181c1e] dark:text-white">Primary Input Mode</label>
+                  <select
+                    value={communicationPreference}
+                    onChange={(e) => setCommunicationPreference(e.target.value)}
+                    className="px-3 py-2 bg-[#f7fafc] dark:bg-[#030813] border border-[#c6c6cc] dark:border-[#2d3133] rounded-xl text-[#030813] dark:text-white font-semibold outline-none"
+                  >
+                    <option value="text">Text Input</option>
+                    <option value="sign">Indian Sign Language (ISL) Gestures &amp; Avatar</option>
+                    <option value="speech">Speech Audio</option>
+                  </select>
                 </div>
 
                 <div className="flex gap-3 mt-2">

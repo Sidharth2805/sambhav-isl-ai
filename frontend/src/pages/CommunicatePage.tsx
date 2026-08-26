@@ -105,18 +105,18 @@ export const CommunicatePage: React.FC = () => {
   // ============================================================
 
   const fetchCallsHistory = useCallback(async () => {
+    if (!accessToken) {
+      setCallsLoading(false);
+      return;
+    }
+
     try {
       setCallsLoading(true);
-
       const sessions = await getSessions(accessToken);
-
-      const onlineSessions = sessions.filter(
-        (session) => session.mode === 'ONLINE'
-      );
-
+      const onlineSessions = Array.isArray(sessions) ? sessions.filter((s) => s.mode === 'ONLINE') : [];
       setRecentCalls(onlineSessions);
     } catch (err: any) {
-      console.error('Failed to load recent calls:', err);
+      console.warn('[Communicate Lobby] Recent calls note:', err?.message || err);
     } finally {
       setCallsLoading(false);
     }
@@ -146,6 +146,11 @@ export const CommunicatePage: React.FC = () => {
   // ============================================================
 
   const handleStartCall = async () => {
+    if (!accessToken) {
+      navigate('/login?redirect=/communicate');
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -173,12 +178,15 @@ export const CommunicatePage: React.FC = () => {
       });
     } catch (err: any) {
       console.error('Failed to start call:', err);
-
-      setError(
-        err?.message ||
-          "Couldn't initialize the video call. Please check your connection."
-      );
-
+      const isAuthIssue = err?.message?.includes('expired') || err?.message?.includes('denied') || err?.message?.includes('permission') || err?.message?.includes('status 403');
+      if (isAuthIssue) {
+        setError('Your login session has expired. Please log in again to launch the video call.');
+      } else {
+        setError(
+          err?.message ||
+            "Couldn't initialize the video call. Please ensure your backend connection is active."
+        );
+      }
       setLoading(false);
     }
   };

@@ -50,7 +50,13 @@ export async function apiRequest(
     const data = text ? JSON.parse(text) : null;
 
     if (!response.ok) {
-      const errorMsg = data?.message || data?.error || (typeof data === 'string' ? data : 'Request failed. Please check your network connection.');
+      if (response.status === 401) {
+        throw new Error('Your session has expired or you are not logged in. Please sign in to continue.');
+      }
+      if (response.status === 403) {
+        throw new Error('Access denied. You do not have permission for this action.');
+      }
+      const errorMsg = data?.message || data?.error || (typeof data === 'string' ? data : `Request failed with status ${response.status}. Please check your connection.`);
       throw new Error(errorMsg);
     }
 
@@ -58,6 +64,9 @@ export async function apiRequest(
   } catch (err: any) {
     if (err?.name === 'AbortError') {
       throw new Error('Server took too long to respond. Please try again.');
+    }
+    if (err?.message === 'Failed to fetch' || err?.message?.includes('NetworkError')) {
+      throw new Error('Cannot reach server. Please ensure the backend service is active.');
     }
     throw err;
   } finally {

@@ -26,7 +26,7 @@ export const Dashboard: React.FC = () => {
       hoverBorder: 'hover:border-[#fe9832]',
       image: 'https://images.unsplash.com/photo-1588196749597-9ff075ee6b5b?auto=format&fit=crop&w=600&q=80',
       badge: 'Live',
-      badgeColor: 'bg-green-500',
+      badgeColor: 'bg-emerald-500',
       route: '/communicate',
     },
     {
@@ -77,6 +77,7 @@ export const Dashboard: React.FC = () => {
       category: 'Education & Policy',
       date: 'Today',
       image: 'https://images.unsplash.com/photo-1577495508048-b635879837f1?auto=format&fit=crop&w=600&q=80',
+      summary: 'Standardized ISL sign syntax approved for 5,000+ national schools.',
     },
     {
       id: 'news-2',
@@ -84,11 +85,20 @@ export const Dashboard: React.FC = () => {
       category: 'Tech & Platform',
       date: 'Yesterday',
       image: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=600&q=80',
+      summary: 'Edge-optimized WebGL avatar rendering with zero external cloud lag.',
+    },
+    {
+      id: 'news-3',
+      title: 'ISLRTC Announces 2,000 New Technical Sign Glosses for Higher Education',
+      category: 'Linguistics & STEM',
+      date: '2 Days Ago',
+      image: 'https://images.unsplash.com/photo-1516321497487-e288fb19713f?auto=format&fit=crop&w=600&q=80',
+      summary: 'Official technical signs for computer science, robotics, and engineering.',
     },
   ];
 
   return (
-    <div className="flex flex-col gap-8 w-full animate-fadeIn font-['Inter',sans-serif]">
+    <div className="flex flex-col gap-8 w-full max-w-[1240px] mx-auto animate-fadeIn font-['Inter',sans-serif] pb-16">
 
       {/* Header Section */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -106,8 +116,8 @@ export const Dashboard: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Bento Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* Main Bento Grid: Equal Column Length */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
 
         {/* Left: Feature Cards (8 cols) */}
         <section className="lg:col-span-8 flex flex-col gap-4">
@@ -121,7 +131,7 @@ export const Dashboard: React.FC = () => {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
             {featureCards.map((card) => (
               <div
                 key={card.id}
@@ -130,7 +140,7 @@ export const Dashboard: React.FC = () => {
                 tabIndex={0}
                 role="button"
                 aria-label={card.title}
-                className={`group bg-white dark:bg-[#1a202c] rounded-[24px] shadow-sm hover:shadow-lg hover:-translate-y-1 cursor-pointer flex flex-col border border-[#e0e3e5] dark:border-[#2d3133] ${card.hoverBorder} transition-all duration-200 overflow-hidden`}
+                className={`group bg-white dark:bg-[#151c28] rounded-[24px] shadow-sm hover:shadow-lg hover:-translate-y-1 cursor-pointer flex flex-col border border-[#e0e3e5] dark:border-[#243044] ${card.hoverBorder} transition-all duration-200 overflow-hidden`}
               >
                 {/* Image Banner */}
                 <div className="relative h-36 overflow-hidden rounded-t-[24px]">
@@ -140,30 +150,41 @@ export const Dashboard: React.FC = () => {
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     loading="lazy"
                   />
-                  {/* Gradient overlay */}
                   <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/60" />
-                  {/* Badge */}
                   <span className={`absolute top-3 left-3 ${card.badgeColor} text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow`}>
                     {card.badge}
                   </span>
                 </div>
 
                 {/* Content */}
-                <div className="p-5 flex flex-col gap-3 flex-1">
-                  <div className="flex items-center gap-3">
-                    <div className={`${card.iconBg} ${card.iconColor} w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm`}>
-                      <span className="material-symbols-outlined text-[20px]">{card.icon}</span>
+                <div className="p-5 flex flex-col gap-2.5 flex-1 justify-between">
+                  <div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className={`${card.iconBg} ${card.iconColor} w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm`}>
+                        <span className="material-symbols-outlined text-[20px]">{card.icon}</span>
+                      </div>
+                      <h4 className="text-base font-bold text-[#181c1e] dark:text-white group-hover:text-[#fe9832] transition-colors">
+                        {card.title}
+                      </h4>
                     </div>
-                    <h4 className="text-base font-bold text-[#181c1e] dark:text-white">{card.title}</h4>
+                    <p className="text-xs text-[#45474c] dark:text-[#828796] leading-relaxed font-medium">
+                      {card.desc}
+                    </p>
                   </div>
-                  <p className="text-sm text-[#45474c] dark:text-[#c1c6d7] leading-relaxed">{card.desc}</p>
+
+                  <div className="flex items-center justify-between text-xs font-bold text-[#fe9832] pt-2 border-t border-black/5 dark:border-white/5">
+                    <span>Open Feature</span>
+                    <span className="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform">
+                      arrow_forward
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Right: News (4 cols) */}
+        {/* Right: News (4 cols) - Equalized Height Container */}
         <section className="lg:col-span-4 flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-bold text-[#030813] dark:text-white flex items-center gap-2">
@@ -178,40 +199,44 @@ export const Dashboard: React.FC = () => {
             </button>
           </div>
 
-          <div className="bg-white dark:bg-[#1a202c] rounded-[24px] p-5 shadow-sm border border-[#e0e3e5] dark:border-[#2d3133] flex flex-col gap-4">
-            {latestNews.map((item) => (
-              <div
-                key={item.id}
-                onClick={() => navigate('/news')}
-                className="group cursor-pointer flex flex-col gap-2.5 pb-4 border-b border-[#e0e3e5] dark:border-[#2d3133] last:border-0 last:pb-0 hover:opacity-95 transition-all"
-              >
-                <div className="w-full h-36 rounded-xl overflow-hidden relative shadow-sm border border-[#e0e3e5] dark:border-[#2d3133]">
-                  <img
-                    src={item.image}
-                    alt={item.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <span className="absolute top-2 left-2 px-2.5 py-0.5 bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold rounded-full">
-                    {item.category}
-                  </span>
+          <div className="bg-white dark:bg-[#151c28] rounded-[24px] p-5 shadow-sm border border-[#e0e3e5] dark:border-[#243044] flex flex-col justify-between gap-3.5 flex-1">
+            <div className="flex flex-col gap-3.5 divide-y divide-[#e0e3e5] dark:divide-[#243044]">
+              {latestNews.map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => navigate('/news')}
+                  className="group cursor-pointer flex gap-3 pt-3.5 first:pt-0 hover:opacity-95 transition-all"
+                >
+                  <div className="w-20 h-20 sm:w-22 sm:h-22 rounded-2xl overflow-hidden relative shadow-xs border border-[#e0e3e5] dark:border-[#243044] shrink-0">
+                    <img
+                      src={item.image}
+                      alt={item.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  </div>
+                  <div className="flex flex-col justify-between min-w-0">
+                    <div>
+                      <span className="text-[10px] font-bold text-[#fe9832] uppercase tracking-wider block">
+                        {item.category}
+                      </span>
+                      <h4 className="text-xs font-bold text-[#181c1e] dark:text-white line-clamp-2 group-hover:text-[#fe9832] transition-colors leading-snug mt-0.5">
+                        {item.title}
+                      </h4>
+                    </div>
+                    <span className="text-[10px] text-[#45474c] dark:text-[#828796] font-medium">
+                      {item.date}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-sm font-bold text-[#181c1e] dark:text-white line-clamp-2 group-hover:text-[#fe9832] transition-colors leading-snug">
-                    {item.title}
-                  </h4>
-                  <span className="text-[11px] text-[#45474c] dark:text-[#828796] font-medium mt-1 inline-block">
-                    {item.date}
-                  </span>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
 
             <button
               onClick={() => navigate('/news')}
-              className="w-full py-2.5 mt-1 bg-[#f1f4f6] dark:bg-[#2d3133] hover:bg-[#e0e3e5] dark:hover:bg-[#3d4346] text-[#030813] dark:text-white rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+              className="w-full py-3 bg-[#f8fafc] dark:bg-[#0c121e] hover:bg-[#fe9832]/10 border border-[#e0e3e5] dark:border-[#243044] text-[#030813] dark:text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 mt-2"
             >
-              <span>Explore Accessibility News</span>
-              <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+              <span>Explore All Accessibility News</span>
+              <span className="material-symbols-outlined text-[16px] text-[#fe9832]">arrow_forward</span>
             </button>
           </div>
         </section>

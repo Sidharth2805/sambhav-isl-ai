@@ -80,6 +80,11 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<UserResponse> me() {
+        if (SecurityContextHolder.getContext().getAuthentication() == null ||
+            SecurityContextHolder.getContext().getAuthentication().getPrincipal() == null ||
+            "anonymousUser".equals(SecurityContextHolder.getContext().getAuthentication().getPrincipal())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         String email = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));

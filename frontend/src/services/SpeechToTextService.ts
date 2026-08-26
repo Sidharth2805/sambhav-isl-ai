@@ -105,25 +105,34 @@ export class WebSpeechSTTAdapter implements SpeechToTextAdapter {
           return;
         }
 
-        // For benign pauses (no-speech, audio-capture, aborted, network), smoothly recover
+        // 'no-speech' is normal silence when the speaker pauses; do NOT back off
+        if (err === 'no-speech') {
+          this.consecutiveErrors = 0;
+          return;
+        }
+
+        if (err === 'aborted') {
+          return;
+        }
+
         this.consecutiveErrors++;
         if (this.consecutiveErrors > 5) {
-          // Add backoff to prevent fast retry spinning
           if (this.restartTimeout) clearTimeout(this.restartTimeout);
           this.restartTimeout = setTimeout(() => {
             if (this.shouldBeListening) {
               this.consecutiveErrors = 0;
               this.initAndStartRecognition();
             }
-          }, 2000);
+          }, 1000);
         }
       };
 
       recognition.onend = () => {
         this.isRunning = false;
-        // If user still has mic ON, smoothly resume recognition after browser pause
+        // If user still has mic ON, smoothly and instantly resume recognition after pause
         if (this.shouldBeListening && this.callback) {
-          const delay = this.consecutiveErrors > 2 ? 1000 : 250;
+          if (this.restartTimeout) clearTimeout(this.restartTimeout);
+          const delay = this.consecutiveErrors > 3 ? 500 : 50;
           this.restartTimeout = setTimeout(() => {
             if (this.shouldBeListening && !this.isRunning) {
               this.initAndStartRecognition();

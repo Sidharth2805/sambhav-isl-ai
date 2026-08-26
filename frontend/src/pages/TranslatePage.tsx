@@ -793,8 +793,8 @@ export const TranslatePage: React.FC = () => {
                 )}
               </div>
 
-              {/* Self Camera PiP View (Subtle corner - Always ON) */}
-              <div className="absolute bottom-3 right-3 w-28 h-20 sm:w-36 sm:h-24 bg-black rounded-xl overflow-hidden border border-white/30 shadow-lg">
+              {/* Live Presenter Camera Window (Elegantly positioned top-right with clear status) */}
+              <div className="absolute top-3 right-3 w-32 h-24 sm:w-40 sm:h-28 bg-[#0a0f1d] rounded-2xl overflow-hidden border border-white/25 shadow-2xl z-20 transition-all hover:scale-105 group">
                 <video
                   ref={videoRef}
                   autoPlay
@@ -802,9 +802,13 @@ export const TranslatePage: React.FC = () => {
                   muted
                   className="w-full h-full object-cover transform -scale-x-100"
                 />
-                <span className="absolute bottom-1 left-1.5 px-1 py-0.2 bg-black/60 text-white text-[9px] font-bold rounded">
-                  {cameraActive ? 'Camera Live' : 'Camera Feed'}
-                </span>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+                <div className="absolute bottom-1.5 left-2 right-2 flex items-center justify-between pointer-events-none">
+                  <span className="flex items-center gap-1 text-[9px] font-bold text-white bg-black/60 px-1.5 py-0.5 rounded-md backdrop-blur-xs">
+                    <span className={`w-1.5 h-1.5 rounded-full ${cameraActive ? 'bg-[#8dfc75] animate-pulse' : 'bg-gray-400'}`} />
+                    <span>{cameraActive ? 'Presenter Live' : 'Camera Off'}</span>
+                  </span>
+                </div>
               </div>
             </div>
 
