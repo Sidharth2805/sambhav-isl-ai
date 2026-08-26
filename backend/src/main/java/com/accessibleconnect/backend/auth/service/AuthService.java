@@ -232,7 +232,7 @@ public class AuthService {
         ResponseCookie cookie = ResponseCookie.from("refreshToken", value)
                 .httpOnly(true)
                 .secure(true) // require HTTPS
-                .sameSite("Strict") // CSRF mitigation
+                .sameSite("None") // required for cross-origin credentials on Render
                 .path("/api/auth") // only sent to auth controllers
                 .maxAge(maxAge)
                 .build();

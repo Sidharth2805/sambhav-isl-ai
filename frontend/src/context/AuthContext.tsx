@@ -36,9 +36,21 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<UserResponseDto | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [initializing, setInitializing] = useState<boolean>(true);
+  const [user, setUser] = useState<UserResponseDto | null>(() => {
+    try {
+      const saved = localStorage.getItem('sambhav_auth_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [accessToken, setAccessToken] = useState<string | null>(() => {
+    return localStorage.getItem('sambhav_access_token') || null;
+  });
+  // If we already have a cached user/token in localStorage, we aren't blocked on initialization
+  const [initializing, setInitializing] = useState<boolean>(() => {
+    return !localStorage.getItem('sambhav_access_token') && !localStorage.getItem('sambhav_auth_user');
+  });
 
   // Helper to load stored custom avatar
   const getStoredAvatar = (userIdOrEmail?: string) => {
@@ -46,34 +58,68 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return localStorage.getItem(`sambhav_avatar_${userIdOrEmail}`) || localStorage.getItem('sambhav_current_avatar') || '';
   };
 
-  // Attempt token refresh on app mount (browser refresh restore)
+  // Helper to sync user state and localStorage
+  const persistSession = (token: string, userData: UserResponseDto) => {
+    setAccessToken(token);
+    setUser(userData);
+    localStorage.setItem('sambhav_access_token', token);
+    localStorage.setItem('sambhav_auth_user', JSON.stringify(userData));
+  };
+
+  const clearSession = () => {
+    setAccessToken(null);
+    setUser(null);
+    localStorage.removeItem('sambhav_access_token');
+    localStorage.removeItem('sambhav_auth_user');
+  };
+
+  // Attempt token refresh and verification on app mount (browser refresh restore)
   useEffect(() => {
     const restoreSession = async () => {
+      const existingToken = localStorage.getItem('sambhav_access_token');
+      
+      // 1. If we have a cached token, verify it with /api/auth/me first
+      if (existingToken) {
+        try {
+          const userData = await apiRequest('/api/auth/me', 'GET', null, existingToken, 10000);
+          if (userData && userData.id) {
+            const savedAvatar = getStoredAvatar(userData?.email || userData?.id);
+            const userWithAvatar = { ...userData, avatarUrl: savedAvatar };
+            persistSession(existingToken, userWithAvatar);
+            setInitializing(false);
+            return;
+          }
+        } catch (meErr: any) {
+          // If token expired or invalid, fall through to refresh flow
+          console.warn('[SignBridge Auth] Token verification failed, trying refresh...', meErr);
+        }
+      }
+
+      // 2. Refresh flow via HttpOnly cookie
       const maxAttempts = 2;
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
-          // Use a generous timeout to survive Render free-tier cold starts (~30-60s)
           const refreshData = await apiRequest('/api/auth/refresh', 'POST', null, null, 30000);
           if (refreshData && refreshData.accessToken) {
             const freshToken = refreshData.accessToken;
-            setAccessToken(freshToken);
-
-            // Get user details
             const userData = await apiRequest('/api/auth/me', 'GET', null, freshToken, 15000);
             const savedAvatar = getStoredAvatar(userData?.email || userData?.id);
-            setUser({
-              ...userData,
-              avatarUrl: savedAvatar,
-            });
-            break; // Success — stop retrying
+            const userWithAvatar = { ...userData, avatarUrl: savedAvatar };
+            persistSession(freshToken, userWithAvatar);
+            setInitializing(false);
+            return;
           }
-        } catch (err) {
-          // On first attempt failure, retry once more after a short delay
+        } catch (err: any) {
+          // If 401/403 explicit unauthorized, token is dead
           if (attempt < maxAttempts) {
             await new Promise((r) => setTimeout(r, 2000));
           }
-          // Otherwise safe to ignore; user is simply unauthenticated
         }
+      }
+
+      // If user had no existing cached session and refresh failed, ensure clear
+      if (!existingToken) {
+        clearSession();
       }
       setInitializing(false);
     };
@@ -84,15 +130,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // 1. Authenticate user credentials
     const loginData = await apiRequest('/api/auth/login', 'POST', { email, password });
     const token = loginData.accessToken;
-    setAccessToken(token);
 
     // 2. Fetch authenticated user record
     const userData = await apiRequest('/api/auth/me', 'GET', null, token);
     const savedAvatar = getStoredAvatar(userData?.email || userData?.id);
-    setUser({
+    const userWithAvatar = {
       ...userData,
       avatarUrl: savedAvatar,
-    });
+    };
+    persistSession(token, userWithAvatar);
   };
 
   const logout = async () => {
@@ -101,8 +147,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (err) {
       // Proceed with state clearance regardless of network outcome
     } finally {
-      setUser(null);
-      setAccessToken(null);
+      clearSession();
     }
   };
 
@@ -116,10 +161,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updatedUser = await apiRequest('/api/auth/name', 'PUT', { name: newName }, accessToken);
     setUser((prev) => {
       if (!prev) return null;
-      return {
+      const next = {
         ...prev,
         name: updatedUser.name || newName,
       };
+      localStorage.setItem('sambhav_auth_user', JSON.stringify(next));
+      return next;
     });
   };
 
@@ -130,10 +177,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('sambhav_current_avatar', avatarUrl);
     setUser((prev) => {
       if (!prev) return null;
-      return {
+      const next = {
         ...prev,
         avatarUrl,
       };
+      localStorage.setItem('sambhav_auth_user', JSON.stringify(next));
+      return next;
     });
   };
 
@@ -142,10 +191,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const updatedProfile = await apiRequest('/api/profile', 'PUT', profilePayload, accessToken);
     setUser((prev) => {
       if (!prev) return null;
-      return {
+      const next = {
         ...prev,
         profile: updatedProfile,
       };
+      localStorage.setItem('sambhav_auth_user', JSON.stringify(next));
+      return next;
     });
   };
 
