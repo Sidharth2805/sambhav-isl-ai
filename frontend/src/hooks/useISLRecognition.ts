@@ -1,29 +1,95 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { DemoISLClassifier, ISL_VOCABULARY } from '../utils/islModel';
-import type { ISLClassifier, ISLLandmarks } from '../utils/islModel';
+import { SaanketBiLSTMClassifier, ISL_VOCABULARY } from '../utils/islModel';
+import type { ISLClassifier, ISLLandmarks, ISLLandmark } from '../utils/islModel';
 
-export function useISLRecognition(classifier: ISLClassifier = new DemoISLClassifier()) {
+// Dynamic loader for MediaPipe Hands script
+async function loadMediaPipeHands(): Promise<any> {
+  if (typeof window === 'undefined') return null;
+  if ((window as any).Hands) return (window as any).Hands;
+
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js';
+    script.crossOrigin = 'anonymous';
+    script.onload = () => {
+      resolve((window as any).Hands);
+    };
+    script.onerror = () => {
+      reject(new Error('Failed to load MediaPipe Hands from CDN'));
+    };
+    document.head.appendChild(script);
+  });
+}
+
+export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMClassifier()) {
   const [isRecognizing, setIsRecognizing] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [currentGesture, setCurrentGesture] = useState<string | null>(null);
   const [confidence, setConfidence] = useState<number>(0);
   const [translatedText, setTranslatedText] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+  const [isModelOnline, setIsModelOnline] = useState<boolean>(false);
 
   const streamRef = useRef<MediaStream | null>(null);
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
-  const animationFrameIdRef = useRef<number | null>(null);
+  const animFrameIdRef = useRef<number | null>(null);
+  const handsInstanceRef = useRef<any | null>(null);
   const lastProcessedTimeRef = useRef<number>(0);
 
-  // Stop recognition and release camera tracks
+  // Draw hand skeleton connections onto the canvas
+  const drawHandSkeleton = (ctx: CanvasRenderingContext2D, landmarks: ISLLandmark[], width: number, height: number, color = '#fe9832') => {
+    if (!landmarks || landmarks.length < 21) return;
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 3;
+    ctx.fillStyle = '#ffffff';
+
+    // Standard 21 MediaPipe hand connections
+    const connections = [
+      [0, 1], [1, 2], [2, 3], [3, 4], // Thumb
+      [0, 5], [5, 6], [6, 7], [7, 8], // Index
+      [0, 9], [9, 10], [10, 11], [11, 12], // Middle
+      [0, 13], [13, 14], [14, 15], [15, 16], // Ring
+      [0, 17], [17, 18], [18, 19], [19, 20], // Pinky
+      [5, 9], [9, 13], [13, 17] // Palm
+    ];
+
+    // Draw connection lines
+    ctx.beginPath();
+    connections.forEach(([start, end]) => {
+      const p1 = landmarks[start];
+      const p2 = landmarks[end];
+      if (p1 && p2) {
+        ctx.moveTo(p1.x * width, p1.y * height);
+        ctx.lineTo(p2.x * width, p2.y * height);
+      }
+    });
+    ctx.stroke();
+
+    // Draw landmark joint points
+    landmarks.forEach((lm) => {
+      ctx.beginPath();
+      ctx.arc(lm.x * width, lm.y * height, 4, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.strokeStyle = color;
+      ctx.stroke();
+    });
+  };
+
+  // Stop recognition and release camera tracks & MediaPipe
   const stopRecognition = useCallback(() => {
-    if (import.meta.env.DEV) {
-      console.log('[SignBridge Debug] useISLRecognition: stopRecognition() triggered.');
+    if (animFrameIdRef.current) {
+      cancelAnimationFrame(animFrameIdRef.current);
+      animFrameIdRef.current = null;
     }
-    
-    if (animationFrameIdRef.current) {
-      cancelAnimationFrame(animationFrameIdRef.current);
-      animationFrameIdRef.current = null;
+
+    if (handsInstanceRef.current) {
+      try {
+        handsInstanceRef.current.close();
+      } catch {
+        // Ignore close error
+      }
+      handsInstanceRef.current = null;
     }
 
     if (streamRef.current) {
@@ -36,6 +102,13 @@ export function useISLRecognition(classifier: ISLClassifier = new DemoISLClassif
       videoElementRef.current = null;
     }
 
+    // Clear overlay canvas
+    const canvas = document.querySelector('canvas');
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
     setIsRecognizing(false);
     setIsPaused(false);
     setCurrentGesture(null);
@@ -44,24 +117,14 @@ export function useISLRecognition(classifier: ISLClassifier = new DemoISLClassif
   }, []);
 
   const pauseRecognition = useCallback(() => {
-    if (import.meta.env.DEV) {
-      console.log('[SignBridge Debug] useISLRecognition: pauseRecognition() triggered.');
-    }
     setIsPaused(true);
   }, []);
 
   const resumeRecognition = useCallback(() => {
-    if (import.meta.env.DEV) {
-      console.log('[SignBridge Debug] useISLRecognition: resumeRecognition() triggered.');
-    }
     setIsPaused(false);
   }, []);
 
   const startRecognition = useCallback(async (videoElement: HTMLVideoElement | null) => {
-    if (import.meta.env.DEV) {
-      console.log('[SignBridge Debug] useISLRecognition: startRecognition() triggered.');
-    }
-    
     if (!videoElement) {
       setError('Video element reference is null.');
       return;
@@ -71,118 +134,135 @@ export function useISLRecognition(classifier: ISLClassifier = new DemoISLClassif
     videoElementRef.current = videoElement;
 
     try {
-      // 1. Request camera media stream
+      // 1. Initialize classifier
+      await classifier.initialize();
+
+      // 2. Request camera stream
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480, facingMode: 'user' },
+        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
         audio: false,
       });
 
       streamRef.current = stream;
       videoElement.srcObject = stream;
-      
-      // Ensure video plays
       await videoElement.play();
 
       setIsRecognizing(true);
       setIsPaused(false);
 
-      // Initialize the classifier
-      await classifier.initialize();
+      // 3. Load & Initialize MediaPipe Hands
+      const HandsClass = await loadMediaPipeHands();
+      let hands: any = null;
 
-      // Start the inference loop
-      const runLoop = async (timestamp: number) => {
-        if (!streamRef.current || !videoElementRef.current) return;
+      if (HandsClass) {
+        hands = new HandsClass({
+          locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
 
-        // Throttle processing: classify at ~10 FPS (every 100ms) to ensure responsiveness
-        if (timestamp - lastProcessedTimeRef.current >= 100) {
-          lastProcessedTimeRef.current = timestamp;
+        hands.setOptions({
+          maxNumHands: 2,
+          modelComplexity: 1,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5
+        });
 
-          if (!isPaused) {
-            // 2. Extract mock/placeholder landmarks (simulated coordinates that trace motion over time)
-            const mockTime = timestamp / 1000;
-            const rHandY = 0.5 + 0.3 * Math.sin(mockTime * 1.5);
-            const lHandY = 0.6 + 0.2 * Math.cos(mockTime * 2.0);
+        // 4. Handle MediaPipe landmark results
+        hands.onResults(async (results: any) => {
+          if (isPaused) return;
 
-            const landmarks: ISLLandmarks = {
-              rightHand: [{ x: 0.7, y: rHandY, z: 0.0 }],
-              leftHand: [{ x: 0.3, y: lHandY, z: 0.0 }],
-              pose: [{ x: 0.5, y: 0.4, z: 0.0 }]
-            };
-
-            // Draw custom skeleton overlay if canvas is present
-            const canvas = document.querySelector('canvas');
-            if (canvas) {
-              const ctx = canvas.getContext('2d');
-              if (ctx) {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                
-                // Draw skeleton landmarks in bright primary/accent color
-                ctx.fillStyle = '#6366f1';
-                ctx.strokeStyle = '#6366f1';
-                ctx.lineWidth = 4;
-
-                // Draw mock right hand landmark
-                ctx.beginPath();
-                ctx.arc(landmarks.rightHand![0].x * canvas.width, landmarks.rightHand![0].y * canvas.height, 8, 0, 2 * Math.PI);
-                ctx.fill();
-
-                // Draw mock left hand landmark
-                ctx.beginPath();
-                ctx.arc(landmarks.leftHand![0].x * canvas.width, landmarks.leftHand![0].y * canvas.height, 8, 0, 2 * Math.PI);
-                ctx.fill();
-
-                // Draw mock connection line between hands simulating gesture recognition
-                ctx.beginPath();
-                ctx.moveTo(landmarks.leftHand![0].x * canvas.width, landmarks.leftHand![0].y * canvas.height);
-                ctx.lineTo(landmarks.rightHand![0].x * canvas.width, landmarks.rightHand![0].y * canvas.height);
-                ctx.stroke();
-              }
+          const canvas = document.querySelector('canvas');
+          let ctx: CanvasRenderingContext2D | null = null;
+          if (canvas) {
+            ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
             }
+          }
 
-            // 3. Invoke Classification
+          const landmarksPayload: ISLLandmarks = {
+            rightHand: [],
+            leftHand: []
+          };
+
+          if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+            results.multiHandLandmarks.forEach((lms: any[], idx: number) => {
+              const handedness = results.multiHandedness?.[idx]?.label || (idx === 0 ? 'Right' : 'Left');
+              const handPoints: ISLLandmark[] = lms.map(p => ({ x: p.x, y: p.y, z: p.z }));
+
+              if (handedness === 'Right' || idx === 0) {
+                landmarksPayload.rightHand = handPoints;
+                if (ctx && canvas) {
+                  drawHandSkeleton(ctx, handPoints, canvas.width, canvas.height, '#fe9832');
+                }
+              } else {
+                landmarksPayload.leftHand = handPoints;
+                if (ctx && canvas) {
+                  drawHandSkeleton(ctx, handPoints, canvas.width, canvas.height, '#059669');
+                }
+              }
+            });
+          }
+
+          // Throttle inference: classify ~10 FPS (every 100ms)
+          const now = performance.now();
+          if (now - lastProcessedTimeRef.current >= 100) {
+            lastProcessedTimeRef.current = now;
+
             try {
-              const result = await classifier.classify(landmarks);
-              if (result.gesture !== 'G_UNKNOWN') {
-                setCurrentGesture(result.gesture);
-                setConfidence(result.confidence);
-                setTranslatedText(ISL_VOCABULARY[result.gesture] || '');
+              const inference = await classifier.classify(landmarksPayload);
+              setIsModelOnline(!!inference.isRealModel);
+
+              if (inference.gesture && inference.gesture !== 'G_UNKNOWN' && inference.gesture !== 'NO_HANDS') {
+                setCurrentGesture(inference.label || inference.gesture);
+                setConfidence(inference.confidence);
+                const phrase = inference.phrase || ISL_VOCABULARY[inference.gesture] || inference.gesture;
+                setTranslatedText(phrase);
               } else {
                 setCurrentGesture(null);
                 setConfidence(0);
-                setTranslatedText('');
               }
-            } catch (err: any) {
-              console.error('[SignBridge Debug] Classifier failed:', err);
+            } catch (classifyErr) {
+              console.error('[Sambhav ML] Inference error:', classifyErr);
             }
+          }
+        });
+
+        handsInstanceRef.current = hands;
+      }
+
+      // 5. Continuous frame processing loop
+      const processLoop = async () => {
+        if (!streamRef.current || !videoElementRef.current) return;
+
+        if (!isPaused && handsInstanceRef.current && videoElementRef.current.readyState >= 2) {
+          try {
+            await handsInstanceRef.current.send({ image: videoElementRef.current });
+          } catch {
+            // Frame processing catch
           }
         }
 
-        animationFrameIdRef.current = requestAnimationFrame(runLoop);
+        animFrameIdRef.current = requestAnimationFrame(processLoop);
       };
 
-      animationFrameIdRef.current = requestAnimationFrame(runLoop);
+      animFrameIdRef.current = requestAnimationFrame(processLoop);
 
     } catch (err: any) {
-      console.error('[SignBridge Debug] Camera media capture failure:', err);
+      console.error('[Sambhav ML] Camera capture error:', err);
       const friendlyErr = err?.name === 'NotAllowedError' || err?.message?.includes('Permission denied')
-        ? 'Camera permission denied. Please enable camera access in your browser settings.'
-        : 'Failed to access camera. Please check your hardware connections.';
+        ? 'Camera permission denied. Please allow camera access in browser settings.'
+        : 'Failed to access camera. Please verify your camera device is available.';
       setError(friendlyErr);
       stopRecognition();
     }
   }, [classifier, isPaused, stopRecognition]);
 
-  // Clean up resource allocations on unmount
+  // Clean up on unmount
   useEffect(() => {
     return () => {
-      if (animationFrameIdRef.current) {
-        cancelAnimationFrame(animationFrameIdRef.current);
-      }
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-      }
+      stopRecognition();
     };
-  }, []);
+  }, [stopRecognition]);
 
   return {
     isRecognizing,
@@ -191,9 +271,12 @@ export function useISLRecognition(classifier: ISLClassifier = new DemoISLClassif
     confidence,
     translatedText,
     error,
+    isModelOnline,
     startRecognition,
     pauseRecognition,
     resumeRecognition,
     stopRecognition,
   };
 }
+
+

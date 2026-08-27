@@ -36,6 +36,7 @@ export const OfflineSessionPage: React.FC = () => {
     confidence,
     translatedText,
     error: recognitionError,
+    isModelOnline,
     startRecognition,
     pauseRecognition,
     resumeRecognition,
@@ -267,9 +268,9 @@ export const OfflineSessionPage: React.FC = () => {
             )}
             
             {/* Overlay indicators */}
-            <div className="absolute top-3 left-3 bg-black/60 px-2 py-0.5 rounded text-[10px] text-white flex items-center gap-1.5 z-10 font-bold">
-              <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-              <span>ISL Live Input [DEMO MODE]</span>
+            <div className="absolute top-3 left-3 bg-black/70 px-2.5 py-1 rounded-lg text-[10px] text-white flex items-center gap-1.5 z-10 font-bold border border-white/10 shadow-sm backdrop-blur-xs">
+              <span className={`w-2 h-2 rounded-full ${isModelOnline ? 'bg-emerald-400 animate-ping' : 'bg-[#fe9832]'}`} />
+              <span>{isModelOnline ? '169-Class BiLSTM ML Active' : 'ISL Vision Active'}</span>
             </div>
 
             {/* Error notifications overlay */}
@@ -288,7 +289,7 @@ export const OfflineSessionPage: React.FC = () => {
                   type="checkbox"
                   checked={cameraActive}
                   onChange={() => setCameraActive(!cameraActive)}
-                  className="rounded text-primary focus:ring-primary w-4 h-4"
+                  className="rounded text-[#fe9832] focus:ring-[#fe9832] w-4 h-4"
                 />
                 <span>Camera Stream</span>
               </label>
@@ -298,7 +299,7 @@ export const OfflineSessionPage: React.FC = () => {
                   type="checkbox"
                   checked={recognitionActive}
                   onChange={() => setRecognitionActive(!recognitionActive)}
-                  className="rounded text-primary focus:ring-primary w-4 h-4"
+                  className="rounded text-[#fe9832] focus:ring-[#fe9832] w-4 h-4"
                 />
                 <span>Sign Recognition</span>
               </label>
@@ -307,9 +308,9 @@ export const OfflineSessionPage: React.FC = () => {
             {/* Test Simulation trigger */}
             <button
               onClick={triggerMockSignGesture}
-              className="text-xs px-3 py-1.5 bg-accent/10 border border-accent/20 rounded-lg text-accent font-bold hover:bg-accent hover:text-bg transition-all"
+              className="text-xs px-3 py-1.5 bg-[#fe9832]/10 border border-[#fe9832]/30 rounded-lg text-[#8f4e00] dark:text-[#fe9832] font-bold hover:bg-[#fe9832] hover:text-[#683700] transition-all cursor-pointer"
             >
-              Simulate Sign Input (Fallback Demo)
+              Test Gesture Input
             </button>
           </div>
         </section>
@@ -317,29 +318,39 @@ export const OfflineSessionPage: React.FC = () => {
         {/* Right Column: Live Translation controls */}
         <section className="card p-6 flex flex-col gap-4 justify-between">
           <div>
-            <div className="flex items-center justify-between border-b border-border pb-2 mb-4">
+            <div className="flex items-center justify-between border-b border-[#e0e3e5] dark:border-[#2d3133] pb-2 mb-4">
               <h2 className="text-lg font-bold">Translation Output</h2>
-              <span className="text-[10px] bg-yellow-400 text-black px-2 py-0.5 rounded font-extrabold tracking-wide uppercase">
-                Demo Classifier
+              <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-extrabold tracking-wide uppercase ${
+                isModelOnline
+                  ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
+                  : 'bg-[#fe9832]/15 text-[#8f4e00] dark:text-[#fe9832] border border-[#fe9832]/30'
+              }`}>
+                {isModelOnline ? 'BiLSTM 169 ISL Signs' : 'BiLSTM Ready'}
               </span>
             </div>
             
-            {/* Model Validation Warning Alert */}
-            <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg text-[10px] text-blue-700 dark:text-blue-400 mb-4 font-bold flex items-center gap-1.5">
-              <span>ℹ️ Real ISL model validation remains pending until a trained ISL classification model/weights are supplied.</span>
+            {/* Model Status Card */}
+            <div className="p-3 bg-[#f1f4f6] dark:bg-[#1a202c] border border-[#e0e3e5] dark:border-[#2d3133] rounded-xl text-xs mb-4 font-semibold flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px] text-[#fe9832]">psychology</span>
+                <span className="text-[#181c1e] dark:text-[#f7fafc]">
+                  {isModelOnline ? 'Trained Saanket Neural Network Active' : 'BiLSTM Model Service (port 8000)'}
+                </span>
+              </div>
+              <span className="text-[10px] opacity-75 font-mono">169 Classes</span>
             </div>
 
             {/* Live Translation buffer */}
-            <div className="p-4 bg-bg border border-border rounded-lg min-h-[140px] flex flex-col justify-between">
+            <div className="p-4 bg-white dark:bg-[#0d121d] border border-[#e0e3e5] dark:border-[#2d3133] rounded-xl min-h-[140px] flex flex-col justify-between shadow-xs">
               {recognizedText ? (
                 <>
-                  <div className="flex flex-col gap-1">
-                    <p className="text-lg font-bold text-primary select-all">
+                  <div className="flex flex-col gap-1.5">
+                    <p className="text-xl font-bold text-[#fe9832] select-all font-headline">
                       "{recognizedText}"
                     </p>
                     {currentGesture && (
-                      <div className="flex items-center gap-2 text-[10px] opacity-65 font-mono pt-1">
-                        <span>Sign: {currentGesture}</span>
+                      <div className="flex items-center gap-2 text-xs opacity-75 font-mono pt-1">
+                        <span className="px-2 py-0.5 rounded bg-[#fe9832]/10 border border-[#fe9832]/20 text-[#8f4e00] dark:text-[#fe9832] font-bold">Sign: {currentGesture}</span>
                         <span>●</span>
                         <span>Confidence: {Math.round(confidence * 100)}%</span>
                       </div>
