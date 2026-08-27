@@ -153,24 +153,20 @@
 }
 
 .hero-bg {
-  background-image: url('/hero-bg.png');
-  background-size: cover;
-  background-position: center right;
-  background-repeat: no-repeat;
-  background-color: #E2E0DC;
+  background: radial-gradient(ellipse at 50% 0%, rgba(238, 242, 255, 0.6) 0%, rgba(248, 250, 252, 0.8) 50%, #ffffff 100%);
 }
 
 .page-bg {
-  background: linear-gradient(135deg, #DCD9D4 0%, #EAE7E2 100%);
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 25%, #fdfbf7 75%, #f8fafc 100%);
   min-height: 100vh;
 }
 
 .card-shadow {
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.03);
 }
 
 .soft-shadow {
-  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 20px 40px -10px rgba(99, 102, 241, 0.05);
 }
 
 /* Fluid Hardware-Accelerated Animations */
@@ -185,9 +181,9 @@
 }
 
 @keyframes pulseButton {
-  0% { box-shadow: 0 0 0 0 rgba(64, 70, 168, 0.4); }
-  70% { box-shadow: 0 0 0 8px rgba(64, 70, 168, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(64, 70, 168, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.3); }
+  70% { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
 }
 
 /* Flow animation for How It Works */
