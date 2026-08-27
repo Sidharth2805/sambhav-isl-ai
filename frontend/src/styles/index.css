@@ -153,28 +153,28 @@
 }
 
 .hero-bg {
-  background: radial-gradient(ellipse at 50% 0%, rgba(238, 242, 255, 0.6) 0%, rgba(248, 250, 252, 0.8) 50%, #ffffff 100%);
+  background: radial-gradient(ellipse at 50% 0%, rgba(254, 152, 50, 0.08) 0%, rgba(241, 244, 246, 0.6) 50%, #f7fafc 100%);
 }
 
 .dark .hero-bg {
-  background: radial-gradient(ellipse at 50% -20%, rgba(67, 56, 202, 0.25) 0%, rgba(15, 23, 42, 0.95) 60%, #0a0f1d 100%);
+  background: radial-gradient(ellipse at 50% -20%, rgba(254, 152, 50, 0.12) 0%, rgba(13, 18, 29, 0.95) 60%, #030813 100%);
 }
 
 .page-bg {
-  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 25%, #fdfbf7 75%, #f8fafc 100%);
+  background: linear-gradient(180deg, #f7fafc 0%, #f1f4f6 25%, #ffffff 75%, #f7fafc 100%);
   min-height: 100vh;
 }
 
 .dark .page-bg {
-  background: linear-gradient(180deg, #0a0f1d 0%, #0f172a 35%, #111827 75%, #070b14 100%);
+  background: linear-gradient(180deg, #030813 0%, #0d121d 35%, #111827 75%, #030813 100%);
 }
 
 .card-shadow {
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04);
 }
 
 .soft-shadow {
-  box-shadow: 0 20px 40px -10px rgba(99, 102, 241, 0.05);
+  box-shadow: 0 20px 40px -10px rgba(254, 152, 50, 0.08);
 }
 
 /* Fluid Hardware-Accelerated Animations */
@@ -189,9 +189,9 @@
 }
 
 @keyframes pulseButton {
-  0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.3); }
-  70% { box-shadow: 0 0 0 8px rgba(99, 102, 241, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(254, 152, 50, 0.4); }
+  70% { box-shadow: 0 0 0 8px rgba(254, 152, 50, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(254, 152, 50, 0); }
 }
 
 /* Flow animation for How It Works */
@@ -207,7 +207,7 @@
   left: -100%;
   width: 50%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(64, 70, 168, 0.25), transparent);
+  background: linear-gradient(90deg, transparent, rgba(254, 152, 50, 0.2), transparent);
   animation: flow 3s infinite;
 }
 
