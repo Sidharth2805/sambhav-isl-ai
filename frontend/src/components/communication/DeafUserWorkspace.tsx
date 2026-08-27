@@ -331,7 +331,7 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
                 </button>
 
                 {showMicDevices && (
-                  <div className="absolute bottom-11 left-0 bg-white dark:bg-[#1a202c] border border-[#e0e3e5] dark:border-white/15 rounded-2xl shadow-2xl p-2 w-56 z-50 flex flex-col gap-1 max-h-40 overflow-y-auto text-xs text-[#030813] dark:text-white animate-scaleUp">
+                  <div className="absolute bottom-11 left-0 bg-white dark:bg-[#1a202c] border border-[#e0e3e5] dark:border-white/15 rounded-2xl shadow-2xl p-2 w-64 z-50 flex flex-col gap-1 max-h-48 overflow-y-auto text-xs text-[#030813] dark:text-white animate-scaleUp">
                     <div className="text-[10px] font-bold text-[#828796] uppercase px-1.5 py-0.5">Microphones</div>
                     {audioDevices.map((d) => (
                       <button
@@ -340,11 +340,13 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
                           setActiveAudioDevice(d.deviceId);
                           setShowMicDevices(false);
                         }}
-                        className={`text-left p-1.5 rounded-lg text-xs truncate transition-colors ${
+                        title={d.label || 'Microphone'}
+                        className={`text-left p-1.5 rounded-lg text-xs transition-colors flex items-center gap-1.5 ${
                           activeAudioDeviceId === d.deviceId ? 'bg-[#fe9832] text-[#683700] font-bold' : 'hover:bg-[#f1f4f6] dark:hover:bg-white/10'
                         }`}
                       >
-                        {d.label || 'Microphone'}
+                        <span className="material-symbols-outlined text-[14px] flex-shrink-0">mic</span>
+                        <span className="truncate">{d.label || 'Microphone'}</span>
                       </button>
                     ))}
                   </div>
@@ -383,7 +385,7 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
                 </button>
 
                 {showCameraDevices && (
-                  <div className="absolute bottom-11 left-0 bg-white dark:bg-[#1a202c] border border-[#e0e3e5] dark:border-white/15 rounded-2xl shadow-2xl p-2 w-56 z-50 flex flex-col gap-1 max-h-40 overflow-y-auto text-xs text-[#030813] dark:text-white animate-scaleUp">
+                  <div className="absolute bottom-11 left-0 bg-white dark:bg-[#1a202c] border border-[#e0e3e5] dark:border-white/15 rounded-2xl shadow-2xl p-2 w-64 z-50 flex flex-col gap-1 max-h-48 overflow-y-auto text-xs text-[#030813] dark:text-white animate-scaleUp">
                     <div className="text-[10px] font-bold text-[#828796] uppercase px-1.5 py-0.5">Cameras</div>
                     {videoDevices.map((d) => (
                       <button
@@ -392,11 +394,13 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
                           setActiveVideoDevice(d.deviceId);
                           setShowCameraDevices(false);
                         }}
-                        className={`text-left p-1.5 rounded-lg text-xs truncate transition-colors ${
+                        title={d.label || 'Camera'}
+                        className={`text-left p-1.5 rounded-lg text-xs transition-colors flex items-center gap-1.5 ${
                           activeVideoDeviceId === d.deviceId ? 'bg-[#fe9832] text-[#683700] font-bold' : 'hover:bg-[#f1f4f6] dark:hover:bg-white/10'
                         }`}
                       >
-                        {d.label || 'Camera'}
+                        <span className="material-symbols-outlined text-[14px] flex-shrink-0">videocam</span>
+                        <span className="truncate">{d.label || 'Camera'}</span>
                       </button>
                     ))}
                   </div>
