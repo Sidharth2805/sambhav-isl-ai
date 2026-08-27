@@ -156,9 +156,17 @@
   background: radial-gradient(ellipse at 50% 0%, rgba(238, 242, 255, 0.6) 0%, rgba(248, 250, 252, 0.8) 50%, #ffffff 100%);
 }
 
+.dark .hero-bg {
+  background: radial-gradient(ellipse at 50% -20%, rgba(67, 56, 202, 0.25) 0%, rgba(15, 23, 42, 0.95) 60%, #0a0f1d 100%);
+}
+
 .page-bg {
   background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 25%, #fdfbf7 75%, #f8fafc 100%);
   min-height: 100vh;
+}
+
+.dark .page-bg {
+  background: linear-gradient(180deg, #0a0f1d 0%, #0f172a 35%, #111827 75%, #070b14 100%);
 }
 
 .card-shadow {
