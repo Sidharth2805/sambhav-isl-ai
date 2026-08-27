@@ -1,4 +1,4 @@
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AccessibilityProvider } from './hooks/useAccessibility';
 import { AuthProvider } from './context/AuthContext';
@@ -28,6 +28,33 @@ import { CulturalISLPage } from './pages/CulturalISLPage';
 const OnlineSessionPage = lazy(() => import('./pages/OnlineSessionPage'));
 
 const App: React.FC = () => {
+  // Global Auto-Reveal on Hover for any clipped/truncated text
+  useEffect(() => {
+    const handleMouseOver = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target || !target.innerText) return;
+
+      const hasOverflow =
+        target.scrollWidth > target.clientWidth ||
+        target.scrollHeight > target.clientHeight ||
+        target.classList.contains('truncate') ||
+        Array.from(target.classList).some((c) => c.startsWith('line-clamp'));
+
+      if (hasOverflow && !target.getAttribute('title')) {
+        const fullText = target.innerText.trim();
+        if (fullText && fullText.length > 3) {
+          target.setAttribute('title', fullText);
+          target.setAttribute('data-hover-expand', 'true');
+        }
+      }
+    };
+
+    document.addEventListener('mouseover', handleMouseOver, { passive: true });
+    return () => {
+      document.removeEventListener('mouseover', handleMouseOver);
+    };
+  }, []);
+
   return (
     <AccessibilityProvider>
       <AuthProvider>
