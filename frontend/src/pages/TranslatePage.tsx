@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useTextToSpeech } from '../hooks/useTextToSpeech';
 import { SignSequencePlayer } from '../components/accessibility/SignSequencePlayer';
 import { useISLRecognition } from '../hooks/useISLRecognition';
+import { ISLMessageComposer } from '../components/communication/ISLMessageComposer';
 
 interface SignAssetDto {
   assetId: string;
@@ -136,41 +137,41 @@ export const TranslatePage: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
-  // Synchronize Real-time ISL Sign Recognition Stream
+  // Synchronize Real-time ISL Sign Recognition Stream into Editable Draft
   useEffect(() => {
     if (recognizedSignPhrase && activeMode === 'ISL_TO_TEXT') {
       setTranslatedText(recognizedSignPhrase);
-      if (autoSpeakGestures) {
-        speak(recognizedSignPhrase);
-      }
-      const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      
-      setSignedMessages((prev) => {
-        const last = prev[prev.length - 1];
-        if (last && last.phrase === recognizedSignPhrase && Date.now() - parseInt(last.id.split('-')[1] || '0') < 1500) {
-          return prev;
-        }
-        return [
-          ...prev,
-          {
-            id: `signed-${Date.now()}`,
-            sign: recognizedSign || recognizedSignPhrase,
-            phrase: recognizedSignPhrase,
-            confidence: signConfidence,
-            timestamp,
-          }
-        ];
-      });
-
-      setSessionHistoryLogs((prev) => {
-        const last = prev[prev.length - 1];
-        if (last && last.text === recognizedSignPhrase && last.mode === 'GESTURE') {
-          return prev;
-        }
-        return [...prev, { mode: 'GESTURE', text: recognizedSignPhrase, time: timestamp }];
-      });
     }
-  }, [recognizedSignPhrase, recognizedSign, signConfidence, activeMode, autoSpeakGestures, speak]);
+  }, [recognizedSignPhrase, activeMode]);
+
+  // Handle WhatsApp-Style Consolidated Message Dispatch
+  const handleSendSignedMessage = useCallback((finalSentence: string) => {
+    if (!finalSentence || !finalSentence.trim()) return;
+
+    const trimmed = finalSentence.trim();
+    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    setSignedMessages((prev) => [
+      ...prev,
+      {
+        id: `signed-${Date.now()}`,
+        sign: 'SENTENCE',
+        phrase: trimmed,
+        confidence: 0.98,
+        timestamp,
+      },
+    ]);
+
+    setSessionHistoryLogs((prev) => [
+      ...prev,
+      { mode: 'GESTURE', text: trimmed, time: timestamp },
+    ]);
+
+    // Speak the complete consolidated sentence
+    if (autoSpeakGestures) {
+      speak(trimmed);
+    }
+  }, [autoSpeakGestures, speak]);
 
   // Fast Instant Sign Tokenizer & Sequencer
   const translateTextToSign = useCallback((text: string, messageId?: string) => {
@@ -537,12 +538,7 @@ export const TranslatePage: React.FC = () => {
   };
 
   const handleSimulateGestureRecognition = (phrase: string) => {
-    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setTranslatedText(phrase);
-    setSessionHistoryLogs((prev) => [...prev, { mode: 'GESTURE', text: phrase, time: timestamp }]);
-    if (autoSpeakGestures) {
-      speak(phrase);
-    }
   };
 
   const handleSaveCommunication = () => {
@@ -900,18 +896,28 @@ export const TranslatePage: React.FC = () => {
                       <span className="material-symbols-outlined text-[16px] text-[#fe9832]">psychology</span>
                       <span>BiLSTM Neural Network (port 8000)</span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (gestureVideoRef.current) {
-                          startISLRecognition(gestureVideoRef.current);
-                        }
-                      }}
-                      className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-[14px]">refresh</span>
-                      <span>Restart Camera</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSimulateGestureRecognition('HELLO WELCOME TO SAMBHAV')}
+                        className="px-2.5 py-1 bg-white/10 hover:bg-[#fe9832]/20 hover:text-[#fe9832] text-gray-200 rounded-lg text-xs font-bold transition cursor-pointer border border-white/10"
+                        title="Simulate sign detection into composer draft"
+                      >
+                        + Test Sign
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (gestureVideoRef.current) {
+                            startISLRecognition(gestureVideoRef.current);
+                          }
+                        }}
+                        className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">refresh</span>
+                        <span>Restart Camera</span>
+                      </button>
+                    </div>
                   </div>
                 </>
               ) : (
@@ -1337,11 +1343,11 @@ export const TranslatePage: React.FC = () => {
               )}
 
               {/* ========================================================= */}
-              {/* MODE 3: ISL -> TEXT (Signed Chat & Conversation Feed)     */}
+              {/* MODE 3: ISL -> TEXT (Signed Chat & WhatsApp-Style Composer)*/}
               {/* ========================================================= */}
               {activeMode === 'ISL_TO_TEXT' && (
                 <>
-                  <div className="flex-1 bg-white dark:bg-[#1a202c] rounded-2xl p-4 border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col justify-between min-h-0">
+                  <div className="flex-1 bg-white dark:bg-[#1a202c] rounded-2xl p-4 border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col justify-between min-h-0 gap-2">
                     {/* Header */}
                     <div className="flex items-center justify-between border-b border-[#e0e3e5] dark:border-[#2d3133] pb-2 shrink-0">
                       <div className="flex items-center gap-2">
@@ -1350,7 +1356,7 @@ export const TranslatePage: React.FC = () => {
                           Signed Conversation Feed
                         </span>
                         <span className="text-[10px] bg-[#fe9832]/10 text-[#8f4e00] dark:text-[#fe9832] px-2 py-0.5 rounded-full font-bold border border-[#fe9832]/20">
-                          {signedMessages.length} Signs Captured
+                          {signedMessages.length} Sent
                         </span>
                       </div>
                       
@@ -1368,8 +1374,8 @@ export const TranslatePage: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Signed Messages Scroll View */}
-                    <div className="relative flex-1 overflow-y-auto my-2 p-3 bg-[#f7fafc] dark:bg-[#0d121d] rounded-xl border border-[#e0e3e5] dark:border-[#2d3133] flex flex-col gap-2.5">
+                    {/* Sent Signed Messages Scroll View */}
+                    <div className="relative flex-1 overflow-y-auto my-1 p-3 bg-[#f7fafc] dark:bg-[#0d121d] rounded-xl border border-[#e0e3e5] dark:border-[#2d3133] flex flex-col gap-2.5">
                       {signedMessages.length === 0 ? (
                         <div className="my-auto text-center p-6 text-[#45474c]/60 dark:text-[#828796] flex flex-col items-center gap-2">
                           <div className="w-12 h-12 rounded-full bg-[#fe9832]/10 text-[#fe9832] flex items-center justify-center">
@@ -1377,22 +1383,22 @@ export const TranslatePage: React.FC = () => {
                           </div>
                           <p className="text-sm font-bold text-[#181c1e] dark:text-white">Waiting for Signs</p>
                           <p className="text-xs max-w-xs text-center">
-                            Perform ISL signs (A–Z, numbers, words) in front of the full camera on the left. Recognized signs will automatically appear here as conversation messages.
+                            Perform signs in front of the camera. Words will continuously accumulate in the editable message composition box below. Review, edit, and click Send!
                           </p>
                         </div>
                       ) : (
                         signedMessages.map((msg) => (
                           <div
                             key={msg.id}
-                            className="self-start max-w-[95%] bg-white dark:bg-[#1a202c] p-3 rounded-2xl rounded-tl-sm border border-[#e0e3e5] dark:border-[#2d3133] shadow-xs flex flex-col gap-1.5"
+                            className="self-start max-w-[95%] bg-white dark:bg-[#1a202c] p-3 rounded-2xl rounded-tl-sm border border-[#e0e3e5] dark:border-[#2d3133] shadow-xs flex flex-col gap-1.5 animate-fadeIn"
                           >
                             <div className="flex items-center justify-between gap-3 text-[10px] text-[#45474c] dark:text-[#828796] border-b border-[#e0e3e5]/60 dark:border-[#2d3133] pb-1">
                               <div className="flex items-center gap-1.5">
-                                <span className="px-1.5 py-0.2 rounded bg-[#fe9832]/15 text-[#8f4e00] dark:text-[#fe9832] font-black uppercase text-[9px]">
-                                  Sign: {msg.sign}
+                                <span className="px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold uppercase text-[9px] border border-emerald-300/40">
+                                  ISL Message
                                 </span>
-                                <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">
-                                  {Math.round(msg.confidence * 100)}% Match
+                                <span className="font-mono text-gray-400">
+                                  {msg.phrase.split(/\s+/).length} words
                                 </span>
                               </div>
                               <span>{msg.timestamp}</span>
@@ -1419,24 +1425,16 @@ export const TranslatePage: React.FC = () => {
                       <div ref={signedMessagesEndRef} />
                     </div>
 
-                    {/* Live Currently Signing Status & Quick Controls */}
-                    <div className="pt-2 border-t border-[#e0e3e5] dark:border-[#2d3133] flex items-center justify-between gap-2 shrink-0">
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className={`w-2 h-2 rounded-full ${recognizedSign ? 'bg-emerald-500 animate-ping' : 'bg-gray-400'}`} />
-                        <span className="font-bold text-[#181c1e] dark:text-white truncate max-w-xs">
-                          {translatedText || recognizedSign ? `Live: "${translatedText || recognizedSignPhrase || recognizedSign}"` : 'Camera ready • Show hands to sign'}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleSimulateGestureRecognition('HELLO WELCOME TO SAMBHAV')}
-                          className="px-3 py-1.5 bg-[#f1f4f6] dark:bg-[#0d121d] hover:bg-[#e0e3e5] text-[#030813] dark:text-white rounded-xl text-xs font-bold border border-[#e0e3e5] dark:border-[#2d3133] transition cursor-pointer"
-                        >
-                          Test Sign
-                        </button>
-                      </div>
+                    {/* WhatsApp-Style Message Composition Area (ML Words + Manual Edits + Send Button) */}
+                    <div className="shrink-0">
+                      <ISLMessageComposer
+                        incomingMLWord={translatedText || recognizedSignPhrase}
+                        incomingConfidence={signConfidence}
+                        isModelActive={isISLRecognizing}
+                        onSendMessage={handleSendSignedMessage}
+                        onSpeakDraft={(draft) => speak(draft)}
+                        placeholder="Signs continuously accumulate here. Edit or type before sending..."
+                      />
                     </div>
                   </div>
                 </>

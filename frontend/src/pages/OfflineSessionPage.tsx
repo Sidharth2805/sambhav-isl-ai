@@ -6,6 +6,7 @@ import { getSession, endSession } from '../utils/communicationApi';
 import type { CommunicationSessionDto } from '../utils/communicationApi';
 import { useISLRecognition } from '../hooks/useISLRecognition';
 import { DemoISLClassifier } from '../utils/islModel';
+import { ISLMessageComposer } from '../components/communication/ISLMessageComposer';
 
 interface TranscriptMessage {
   id: string;
@@ -18,7 +19,7 @@ export const OfflineSessionPage: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
   const { user, accessToken } = useAuth();
   const navigate = useNavigate();
-  const { speak, stop, speaking, supported: ttsSupported } = useTextToSpeech();
+  const { speak, stop: _stop, supported: ttsSupported } = useTextToSpeech();
 
   const [session, setSession] = useState<CommunicationSessionDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -32,7 +33,7 @@ export const OfflineSessionPage: React.FC = () => {
   const {
     isRecognizing,
     isPaused,
-    currentGesture,
+    currentGesture: _currentGesture,
     confidence,
     translatedText,
     error: recognitionError,
@@ -172,20 +173,21 @@ export const OfflineSessionPage: React.FC = () => {
     });
   };
 
-  const handleAcceptTranslation = () => {
-    if (!recognizedText) return;
+  const handleAcceptTranslation = (textToSend?: string) => {
+    const finalContent = typeof textToSend === 'string' ? textToSend.trim() : recognizedText.trim();
+    if (!finalContent) return;
 
     const newMessage: TranscriptMessage = {
       id: Math.random().toString(),
       sender: 'signer',
-      text: recognizedText,
+      text: finalContent,
       timestamp: new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }),
     };
 
     setTranscript((prev) => [...prev, newMessage]);
     
     if (ttsSupported) {
-      speak(recognizedText, user?.profile?.preferredLanguage || 'English');
+      speak(finalContent, user?.profile?.preferredLanguage || 'English');
     }
     
     setRecognizedText('');
@@ -340,68 +342,17 @@ export const OfflineSessionPage: React.FC = () => {
               <span className="text-[10px] opacity-75 font-mono">169 Classes</span>
             </div>
 
-            {/* Live Translation buffer */}
-            <div className="p-4 bg-white dark:bg-[#0d121d] border border-[#e0e3e5] dark:border-[#2d3133] rounded-xl min-h-[140px] flex flex-col justify-between shadow-xs">
-              {recognizedText ? (
-                <>
-                  <div className="flex flex-col gap-1.5">
-                    <p className="text-xl font-bold text-[#fe9832] select-all font-headline">
-                      "{recognizedText}"
-                    </p>
-                    {currentGesture && (
-                      <div className="flex items-center gap-2 text-xs opacity-75 font-mono pt-1">
-                        <span className="px-2 py-0.5 rounded bg-[#fe9832]/10 border border-[#fe9832]/20 text-[#8f4e00] dark:text-[#fe9832] font-bold">Sign: {currentGesture}</span>
-                        <span>●</span>
-                        <span>Confidence: {Math.round(confidence * 100)}%</span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Speech Trigger Controls */}
-                  <div className="flex items-center gap-2 pt-4 border-t border-border/50 mt-4">
-                    <button
-                      onClick={() => speak(recognizedText, user?.profile?.preferredLanguage || 'English')}
-                      className="btn-secondary py-1 px-3 text-xs font-bold flex items-center gap-1"
-                      aria-label="Speak translated sign"
-                    >
-                      🔊 Speak
-                    </button>
-                    {speaking && (
-                      <button
-                        onClick={stop}
-                        className="px-3 py-1 rounded bg-red-100 hover:bg-red-200 border border-red-200 text-red-700 text-xs font-bold"
-                        aria-label="Stop speech output"
-                      >
-                        Stop
-                      </button>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-8 text-center text-xs opacity-60">
-                  <span className="text-2xl mb-1">🤟</span>
-                  <span>Perform a sign in front of the camera.</span>
-                  <span className="opacity-75 mt-0.5">(or click "Simulate Sign Input" to test)</span>
-                </div>
-              )}
+            {/* WhatsApp-Style Editable ISL Message Composition System */}
+            <div className="flex flex-col gap-2">
+              <ISLMessageComposer
+                incomingMLWord={translatedText || recognizedText}
+                incomingConfidence={confidence}
+                isModelActive={recognitionActive && isModelOnline}
+                onSendMessage={(msg) => handleAcceptTranslation(msg)}
+                onSpeakDraft={(draft) => speak(draft, user?.profile?.preferredLanguage || 'English')}
+                placeholder="Detected signs flow into this draft. Review, edit words, and press Send to log..."
+              />
             </div>
-          </div>
-
-          <div className="flex gap-2 justify-end pt-4">
-            <button
-              onClick={() => setRecognizedText('')}
-              disabled={!recognizedText}
-              className="btn-secondary text-xs py-2 px-4"
-            >
-              Clear
-            </button>
-            <button
-              onClick={handleAcceptTranslation}
-              disabled={!recognizedText}
-              className="btn-primary text-xs py-2 px-5 font-bold"
-            >
-              Accept into Transcript
-            </button>
           </div>
         </section>
 
