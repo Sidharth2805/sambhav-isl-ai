@@ -140,7 +140,7 @@ def run_bilstm_inference(sequence_126: np.ndarray) -> dict:
 
     norm_seq = normalize_sequence(padded_seq)
     batch_input = np.expand_dims(norm_seq, axis=0)
-    preds = model.predict(batch_input, verbose=0)[0]
+    preds = model(batch_input, training=False).numpy()[0]
 
     top_idx = int(np.argmax(preds))
     confidence = float(preds[top_idx])

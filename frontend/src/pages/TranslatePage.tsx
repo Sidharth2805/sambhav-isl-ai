@@ -94,6 +94,10 @@ export const TranslatePage: React.FC = () => {
   const [activeStepIndex, setActiveStepIndex] = useState<number>(-1);
   const [translatedText, setTranslatedText] = useState('');
 
+  // ISL to Text Signed Conversation Feed
+  const [signedMessages, setSignedMessages] = useState<{ id: string; sign: string; phrase: string; confidence: number; timestamp: string }[]>([]);
+  const signedMessagesEndRef = useRef<HTMLDivElement | null>(null);
+
   // ISL Avatar Sequence State
   const [currentSequence, setCurrentSequence] = useState<SignSequenceDto | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -116,6 +120,10 @@ export const TranslatePage: React.FC = () => {
     }
   }, [textMessages, isChatScrolledUp]);
 
+  useEffect(() => {
+    signedMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [signedMessages]);
+
   // Handle user manual scroll in chat window
   const handleChatScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const target = e.currentTarget;
@@ -136,6 +144,24 @@ export const TranslatePage: React.FC = () => {
         speak(recognizedSignPhrase);
       }
       const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      
+      setSignedMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last && last.phrase === recognizedSignPhrase && Date.now() - parseInt(last.id.split('-')[1] || '0') < 1500) {
+          return prev;
+        }
+        return [
+          ...prev,
+          {
+            id: `signed-${Date.now()}`,
+            sign: recognizedSign || recognizedSignPhrase,
+            phrase: recognizedSignPhrase,
+            confidence: signConfidence,
+            timestamp,
+          }
+        ];
+      });
+
       setSessionHistoryLogs((prev) => {
         const last = prev[prev.length - 1];
         if (last && last.text === recognizedSignPhrase && last.mode === 'GESTURE') {
@@ -144,7 +170,7 @@ export const TranslatePage: React.FC = () => {
         return [...prev, { mode: 'GESTURE', text: recognizedSignPhrase, time: timestamp }];
       });
     }
-  }, [recognizedSignPhrase, activeMode, autoSpeakGestures, speak]);
+  }, [recognizedSignPhrase, recognizedSign, signConfidence, activeMode, autoSpeakGestures, speak]);
 
   // Fast Instant Sign Tokenizer & Sequencer
   const translateTextToSign = useCallback((text: string, messageId?: string) => {
@@ -788,69 +814,169 @@ export const TranslatePage: React.FC = () => {
             </div>
           </div>
 
-          {/* Stretched Arena Grid: Left Avatar (Spacious) | Right Mode Specific Workspace */}
+          {/* Stretched Arena Grid: Left (Avatar or Full Camera) | Right (Captions, Text Chat, or Signed Chat Feed) */}
           <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 min-h-0">
             
-            {/* LEFT: Spacious Avatar Visualization (Spans 6 cols) */}
-            <div className="lg:col-span-6 bg-[#1a202c] text-white rounded-2xl p-4 shadow-md flex flex-col justify-between relative overflow-hidden min-h-0">
-              <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2 shrink-0">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[#fe9832] text-[20px]">accessibility</span>
-                  <h3 className="text-sm font-bold text-white">ISL Avatar Visualizer</h3>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] bg-[#fe9832]/20 text-[#fe9832] px-2 py-0.5 rounded font-mono font-bold">
-                    Speed: {avatarSpeed}x
-                  </span>
-                  <span className="text-[10px] bg-white/10 text-[#dde2f3] px-2 py-0.5 rounded font-mono">
-                    {currentSequence ? `${currentSequence.steps.length} Tokens` : 'Ready'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Large Avatar Animation Area */}
-              <div className="flex-1 flex items-center justify-center overflow-hidden min-h-0">
-                {currentSequence ? (
-                  <div className="w-full h-full max-h-[380px] flex items-center justify-center">
-                    <SignSequencePlayer
-                      sequence={currentSequence}
-                      playbackSpeed={avatarSpeed}
-                      onStepStart={(index) => setActiveStepIndex(index)}
-                      onComplete={() => setActiveStepIndex(-1)}
-                      hideOverlayBadge={activeMode === 'TEXT_TO_ISL'}
-                    />
+            {/* LEFT PANE: Full Recognition Camera in ISL_TO_TEXT mode, Avatar in other modes */}
+            <div className="lg:col-span-6 bg-[#1a202c] text-white rounded-2xl p-4 shadow-md flex flex-col justify-between relative overflow-hidden min-h-0 border border-[#e0e3e5] dark:border-[#2d3133]">
+              {activeMode === 'ISL_TO_TEXT' ? (
+                <>
+                  {/* Full Camera Viewport Header */}
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2 shrink-0 z-10">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-[#fe9832] text-[20px]">videocam</span>
+                      <h3 className="text-sm font-bold text-white">Full Sign Recognition Camera</h3>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1.5 ${
+                        isModelOnline
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                          : 'bg-[#fe9832]/20 text-[#fe9832] border border-[#fe9832]/30'
+                      }`}>
+                        <span className={`w-2 h-2 rounded-full ${isModelOnline ? 'bg-emerald-400 animate-ping' : 'bg-[#fe9832]'}`} />
+                        <span>{isModelOnline ? '169-Class BiLSTM Neural Live' : 'ISL Vision Ready'}</span>
+                      </span>
+                    </div>
                   </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center text-center p-4 gap-2">
-                    <img
-                      className="w-28 h-28 sm:w-36 sm:h-36 rounded-full object-cover border-2 border-white/20 shadow-xl opacity-85"
-                      alt="ISL Avatar"
-                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZTT_g8UEu9lHEIQwtsX1X3URkCYfzWm4KcI6A5fPGOvsqaYQSwa2EKYl5DIN41BeTvoADFslNF7KJ85jk1gEcS_Np87ei5nyDBVGbanY1DU8hCom86MCRgJaUyemC5ZmxWMOz-pV5B884zt3ISMTf9cbHDpA9dV3Au1V7-WeBaSc_6cn0ejlXb0sjvBo96UzvppAgaNZ-j8SlDX-0ofnA9o83O2oi7b0NN7TH3PSzeCxR2zUFJZaz"
-                    />
-                    <p className="text-xs text-[#828796] mt-1">
-                      Avatar Ready &bull; Input speech or text to animate signs.
-                    </p>
-                  </div>
-                )}
-              </div>
 
-              {/* Live Presenter Camera Window (Elegantly positioned top-right with clear status) */}
-              <div className="absolute top-3 right-3 w-32 h-24 sm:w-40 sm:h-28 bg-[#0a0f1d] rounded-2xl overflow-hidden border border-white/25 shadow-2xl z-20 transition-all hover:scale-105 group">
-                <video
-                  ref={videoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover transform -scale-x-100"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
-                <div className="absolute bottom-1.5 left-2 right-2 flex items-center justify-between pointer-events-none">
-                  <span className="flex items-center gap-1 text-[9px] font-bold text-white bg-black/60 px-1.5 py-0.5 rounded-md backdrop-blur-xs">
-                    <span className={`w-1.5 h-1.5 rounded-full ${cameraActive ? 'bg-[#8dfc75] animate-pulse' : 'bg-gray-400'}`} />
-                    <span>{cameraActive ? 'Presenter Live' : 'Camera Off'}</span>
-                  </span>
-                </div>
-              </div>
+                  {/* Full Camera Viewport with Hand Skeleton Tracking Canvas */}
+                  <div className="flex-1 relative rounded-xl overflow-hidden bg-black flex items-center justify-center min-h-0">
+                    <video
+                      ref={gestureVideoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover transform -scale-x-100"
+                    />
+                    <canvas
+                      className="absolute inset-0 w-full h-full pointer-events-none transform -scale-x-100"
+                      width={640}
+                      height={480}
+                    />
+
+                    {/* Top Left Live Tracking HUD */}
+                    <div className="absolute top-3 left-3 bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] text-white flex items-center gap-1.5 z-10 font-bold border border-white/10 shadow-sm">
+                      <span className={`w-2 h-2 rounded-full ${isISLRecognizing ? 'bg-emerald-400 animate-pulse' : 'bg-[#fe9832]'}`} />
+                      <span>{isISLRecognizing ? 'Tracking Hand Joints (21 Keypoints / Hand)' : 'Connecting Camera...'}</span>
+                    </div>
+
+                    {/* Bottom Floating Detected Sign Gauge */}
+                    {recognizedSign && (
+                      <div className="absolute bottom-3 left-3 right-3 bg-black/85 backdrop-blur-md p-3 rounded-xl border border-white/15 text-white flex items-center justify-between z-10 animate-scaleUp">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-[#fe9832] text-[#683700] flex items-center justify-center font-black text-sm">
+                            ISL
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-black text-white uppercase tracking-wide">
+                                Sign: {recognizedSign}
+                              </span>
+                              <span className="text-[11px] font-mono text-emerald-400 font-bold px-1.5 py-0.2 rounded bg-emerald-950/80 border border-emerald-500/30">
+                                {Math.round(signConfidence * 100)}% Match
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-300 font-medium truncate max-w-xs">
+                              "{recognizedSignPhrase || recognizedSign}"
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => speak(recognizedSignPhrase || recognizedSign)}
+                          disabled={speaking}
+                          className="px-2.5 py-1 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition shadow-xs"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">volume_up</span>
+                          <span>Speak</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Bottom Camera Toolbar */}
+                  <div className="flex items-center justify-between pt-2 border-t border-white/10 mt-2 shrink-0 z-10">
+                    <div className="flex items-center gap-2 text-xs text-gray-300">
+                      <span className="material-symbols-outlined text-[16px] text-[#fe9832]">psychology</span>
+                      <span>BiLSTM Neural Network (port 8000)</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (gestureVideoRef.current) {
+                          startISLRecognition(gestureVideoRef.current);
+                        }
+                      }}
+                      className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">refresh</span>
+                      <span>Restart Camera</span>
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Avatar Visualizer for Speech to ISL & Text to ISL modes */}
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-[#fe9832] text-[20px]">accessibility</span>
+                      <h3 className="text-sm font-bold text-white">ISL Avatar Visualizer</h3>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] bg-[#fe9832]/20 text-[#fe9832] px-2 py-0.5 rounded font-mono font-bold">
+                        Speed: {avatarSpeed}x
+                      </span>
+                      <span className="text-[10px] bg-white/10 text-[#dde2f3] px-2 py-0.5 rounded font-mono">
+                        {currentSequence ? `${currentSequence.steps.length} Tokens` : 'Ready'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Large Avatar Animation Area */}
+                  <div className="flex-1 flex items-center justify-center overflow-hidden min-h-0">
+                    {currentSequence ? (
+                      <div className="w-full h-full max-h-[380px] flex items-center justify-center">
+                        <SignSequencePlayer
+                          sequence={currentSequence}
+                          playbackSpeed={avatarSpeed}
+                          onStepStart={(index) => setActiveStepIndex(index)}
+                          onComplete={() => setActiveStepIndex(-1)}
+                          hideOverlayBadge={activeMode === 'TEXT_TO_ISL'}
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-center p-4 gap-2">
+                        <img
+                          className="w-28 h-28 sm:w-36 sm:h-36 rounded-full object-cover border-2 border-white/20 shadow-xl opacity-85"
+                          alt="ISL Avatar"
+                          src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZTT_g8UEu9lHEIQwtsX1X3URkCYfzWm4KcI6A5fPGOvsqaYQSwa2EKYl5DIN41BeTvoADFslNF7KJ85jk1gEcS_Np87ei5nyDBVGbanY1DU8hCom86MCRgJaUyemC5ZmxWMOz-pV5B884zt3ISMTf9cbHDpA9dV3Au1V7-WeBaSc_6cn0ejlXb0sjvBo96UzvppAgaNZ-j8SlDX-0ofnA9o83O2oi7b0NN7TH3PSzeCxR2zUFJZaz"
+                        />
+                        <p className="text-xs text-[#828796] mt-1">
+                          Avatar Ready &bull; Input speech or text to animate signs.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Live Presenter Camera Window */}
+                  <div className="absolute top-3 right-3 w-32 h-24 sm:w-40 sm:h-28 bg-[#0a0f1d] rounded-2xl overflow-hidden border border-white/25 shadow-2xl z-20 transition-all hover:scale-105 group">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className="w-full h-full object-cover transform -scale-x-100"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
+                    <div className="absolute bottom-1.5 left-2 right-2 flex items-center justify-between pointer-events-none">
+                      <span className="flex items-center gap-1 text-[9px] font-bold text-white bg-black/60 px-1.5 py-0.5 rounded-md backdrop-blur-xs">
+                        <span className={`w-1.5 h-1.5 rounded-full ${cameraActive ? 'bg-[#8dfc75] animate-pulse' : 'bg-gray-400'}`} />
+                        <span>{cameraActive ? 'Presenter Live' : 'Camera Off'}</span>
+                      </span>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* RIGHT: Workspace Panel (Spans 6 cols) */}
@@ -1211,123 +1337,106 @@ export const TranslatePage: React.FC = () => {
               )}
 
               {/* ========================================================= */}
-              {/* MODE 3: ISL -> TEXT (Camera Gesture Recognition)          */}
+              {/* MODE 3: ISL -> TEXT (Signed Chat & Conversation Feed)     */}
               {/* ========================================================= */}
               {activeMode === 'ISL_TO_TEXT' && (
                 <>
-                  <div className="flex-1 bg-white dark:bg-[#1a202c] rounded-2xl p-4 border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col justify-between min-h-0 gap-3">
+                  <div className="flex-1 bg-white dark:bg-[#1a202c] rounded-2xl p-4 border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col justify-between min-h-0">
+                    {/* Header */}
                     <div className="flex items-center justify-between border-b border-[#e0e3e5] dark:border-[#2d3133] pb-2 shrink-0">
-                      <span className="text-xs font-bold uppercase tracking-wider text-[#030813] dark:text-white flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-[18px] text-[#fe9832]">sign_language</span>
-                        Real-Time Indian Sign Language Recognition
-                      </span>
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1.5 ${
-                        isModelOnline
-                          ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border border-emerald-300'
-                          : 'bg-[#fe9832]/10 text-[#8f4e00] dark:text-[#fe9832] border border-[#fe9832]/30'
-                      }`}>
-                        <span className={`w-2 h-2 rounded-full ${isModelOnline ? 'bg-emerald-500 animate-ping' : 'bg-[#fe9832]'}`} />
-                        <span>{isModelOnline ? 'BiLSTM 169 Classes Live' : 'ISL Vision Ready'}</span>
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold uppercase tracking-wider text-[#030813] dark:text-white flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-[18px] text-[#fe9832]">chat</span>
+                          Signed Conversation Feed
+                        </span>
+                        <span className="text-[10px] bg-[#fe9832]/10 text-[#8f4e00] dark:text-[#fe9832] px-2 py-0.5 rounded-full font-bold border border-[#fe9832]/20">
+                          {signedMessages.length} Signs Captured
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                        {signedMessages.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setSignedMessages([])}
+                            className="text-[11px] text-gray-500 hover:text-red-500 font-bold transition flex items-center gap-1 cursor-pointer px-2 py-0.5 rounded hover:bg-red-50 dark:hover:bg-red-950/40"
+                          >
+                            <span className="material-symbols-outlined text-[13px]">delete_sweep</span>
+                            <span>Clear Feed</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Interactive Camera & Real-Time Hand Tracking Skeleton Viewport */}
-                    <div className="relative aspect-video rounded-xl bg-black border border-[#e0e3e5] dark:border-[#2d3133] overflow-hidden flex items-center justify-center shrink-0">
-                      <video
-                        ref={gestureVideoRef}
-                        autoPlay
-                        playsInline
-                        muted
-                        className="w-full h-full object-cover transform -scale-x-100"
-                      />
-                      <canvas
-                        className="absolute inset-0 w-full h-full pointer-events-none transform -scale-x-100"
-                        width={640}
-                        height={480}
-                      />
-                      
-                      {/* Recognition Active Overlay Badge */}
-                      <div className="absolute top-2.5 left-2.5 bg-black/70 px-2.5 py-1 rounded-lg text-[10px] text-white flex items-center gap-1.5 z-10 font-bold border border-white/10 backdrop-blur-xs">
-                        <span className={`w-2 h-2 rounded-full ${isISLRecognizing ? 'bg-emerald-400 animate-pulse' : 'bg-[#fe9832]'}`} />
-                        <span>{isISLRecognizing ? 'Tracking Hand Joints (21 Keypoints)' : 'Connecting Camera...'}</span>
+                    {/* Signed Messages Scroll View */}
+                    <div className="relative flex-1 overflow-y-auto my-2 p-3 bg-[#f7fafc] dark:bg-[#0d121d] rounded-xl border border-[#e0e3e5] dark:border-[#2d3133] flex flex-col gap-2.5">
+                      {signedMessages.length === 0 ? (
+                        <div className="my-auto text-center p-6 text-[#45474c]/60 dark:text-[#828796] flex flex-col items-center gap-2">
+                          <div className="w-12 h-12 rounded-full bg-[#fe9832]/10 text-[#fe9832] flex items-center justify-center">
+                            <span className="material-symbols-outlined text-2xl">sign_language</span>
+                          </div>
+                          <p className="text-sm font-bold text-[#181c1e] dark:text-white">Waiting for Signs</p>
+                          <p className="text-xs max-w-xs text-center">
+                            Perform ISL signs (A–Z, numbers, words) in front of the full camera on the left. Recognized signs will automatically appear here as conversation messages.
+                          </p>
+                        </div>
+                      ) : (
+                        signedMessages.map((msg) => (
+                          <div
+                            key={msg.id}
+                            className="self-start max-w-[95%] bg-white dark:bg-[#1a202c] p-3 rounded-2xl rounded-tl-sm border border-[#e0e3e5] dark:border-[#2d3133] shadow-xs flex flex-col gap-1.5"
+                          >
+                            <div className="flex items-center justify-between gap-3 text-[10px] text-[#45474c] dark:text-[#828796] border-b border-[#e0e3e5]/60 dark:border-[#2d3133] pb-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="px-1.5 py-0.2 rounded bg-[#fe9832]/15 text-[#8f4e00] dark:text-[#fe9832] font-black uppercase text-[9px]">
+                                  Sign: {msg.sign}
+                                </span>
+                                <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+                                  {Math.round(msg.confidence * 100)}% Match
+                                </span>
+                              </div>
+                              <span>{msg.timestamp}</span>
+                            </div>
+
+                            <p className="text-base font-bold text-[#030813] dark:text-white leading-relaxed">
+                              "{msg.phrase}"
+                            </p>
+
+                            <div className="flex items-center justify-end pt-1">
+                              <button
+                                type="button"
+                                onClick={() => speak(msg.phrase)}
+                                disabled={speaking}
+                                className="px-2 py-0.5 bg-[#f1f4f6] dark:bg-[#0d121d] hover:bg-[#fe9832]/20 text-[#030813] dark:text-white rounded-md text-[10px] font-bold transition flex items-center gap-1 border border-[#e0e3e5] dark:border-[#2d3133] cursor-pointer"
+                              >
+                                <span className="material-symbols-outlined text-[13px] text-[#fe9832]">volume_up</span>
+                                <span>Speak Aloud</span>
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                      <div ref={signedMessagesEndRef} />
+                    </div>
+
+                    {/* Live Currently Signing Status & Quick Controls */}
+                    <div className="pt-2 border-t border-[#e0e3e5] dark:border-[#2d3133] flex items-center justify-between gap-2 shrink-0">
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className={`w-2 h-2 rounded-full ${recognizedSign ? 'bg-emerald-500 animate-ping' : 'bg-gray-400'}`} />
+                        <span className="font-bold text-[#181c1e] dark:text-white truncate max-w-xs">
+                          {translatedText || recognizedSign ? `Live: "${translatedText || recognizedSignPhrase || recognizedSign}"` : 'Camera ready • Show hands to sign'}
+                        </span>
                       </div>
 
-                      {recognizedSign && (
-                        <div className="absolute bottom-2.5 left-2.5 right-2.5 bg-black/80 backdrop-blur-md p-2 rounded-xl border border-white/15 text-white flex items-center justify-between z-10">
-                          <div className="flex items-center gap-2">
-                            <span className="px-2 py-0.5 rounded bg-[#fe9832] text-[#683700] text-xs font-black uppercase">
-                              Sign: {recognizedSign}
-                            </span>
-                            <span className="text-[11px] font-mono text-emerald-400 font-bold">
-                              {Math.round(signConfidence * 100)}% Confidence
-                            </span>
-                          </div>
-                          <span className="text-[10px] text-gray-300">BiLSTM Model</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Detected Phrase & Speech Output */}
-                    <div className="flex-1 overflow-y-auto p-3 bg-[#f7fafc] dark:bg-[#0d121d] rounded-xl border border-[#e0e3e5] dark:border-[#2d3133] flex flex-col justify-center items-center text-center gap-1.5">
-                      <span className="text-[10px] font-bold uppercase text-[#8f4e00] dark:text-[#ffb77a] tracking-wider">
-                        Live Translated Phrase:
-                      </span>
-                      <p className="text-xl font-black text-[#030813] dark:text-white font-headline">
-                        {translatedText ? `"${translatedText}"` : 'Perform sign in front of the camera...'}
-                      </p>
-                      {recognizedSign && (
-                        <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
-                          Detected Sign: {recognizedSign} ({Math.round(signConfidence * 100)}% match)
-                        </p>
-                      )}
-                    </div>
-
-                    {translatedText && (
-                      <div className="flex items-center justify-between pt-1 shrink-0">
-                        <span className="text-[11px] text-[#45474c] dark:text-[#c1c6d7]">ISL Gesture Recognized</span>
+                      <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => speak(translatedText)}
-                          disabled={speaking}
-                          className="px-3 py-1 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer shadow-xs"
+                          onClick={() => handleSimulateGestureRecognition('HELLO WELCOME TO SAMBHAV')}
+                          className="px-3 py-1.5 bg-[#f1f4f6] dark:bg-[#0d121d] hover:bg-[#e0e3e5] text-[#030813] dark:text-white rounded-xl text-xs font-bold border border-[#e0e3e5] dark:border-[#2d3133] transition cursor-pointer"
                         >
-                          <span className="material-symbols-outlined text-[14px]">volume_up</span>
-                          <span>Speak Aloud</span>
+                          Test Sign
                         </button>
                       </div>
-                    )}
-                  </div>
-
-                  {/* ISL Recognition Controls Bar */}
-                  <div className="bg-white dark:bg-[#1a202c] rounded-2xl p-3 border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm shrink-0 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-[#fe9832]/10 text-[#fe9832] flex items-center justify-center">
-                        <span className="material-symbols-outlined text-[18px]">psychology</span>
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold text-[#181c1e] dark:text-white">169-Class BiLSTM Neural Engine</span>
-                        <p className="text-[10px] text-[#45474c] dark:text-[#828796]">Python ML Backend port 8000</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleSimulateGestureRecognition('HELLO WELCOME TO SAMBHAV')}
-                        className="px-3 py-1.5 bg-[#f1f4f6] dark:bg-[#0d121d] hover:bg-[#e0e3e5] text-[#030813] dark:text-white rounded-xl text-xs font-bold border border-[#e0e3e5] dark:border-[#2d3133] transition-all cursor-pointer"
-                      >
-                        Test Sign Trigger
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (gestureVideoRef.current || videoRef.current) {
-                            startISLRecognition(gestureVideoRef.current || videoRef.current);
-                          }
-                        }}
-                        className="px-3.5 py-1.5 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer shadow-xs"
-                      >
-                        Restart Camera Tracker
-                      </button>
                     </div>
                   </div>
                 </>
