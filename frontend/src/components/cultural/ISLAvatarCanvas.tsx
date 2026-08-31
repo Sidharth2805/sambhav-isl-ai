@@ -26,14 +26,14 @@ interface ISLAvatarCanvasProps {
 }
 
 /**
- * 3D ISL Avatar Canvas Renderer (Avatar-Realtime Engine Integration)
+ * 3D ISL Avatar Canvas Renderer (Avatar-Realtime Engine)
  *
- * Integrates the exact 3D Mixamo GLTF animation engine from Avatar-realtime.
- * Supports dynamic real-time speed adjustments (up to 3x) and rock-solid pause/resume.
+ * Flawless timestamp-driven animation loop with zero fragile setTimeout flags.
+ * Supports real-time speed switching (up to 3x) and immediate pause/resume.
  */
 export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasProps>(({
   modelPath = '/models/ybot.glb',
-  speed = 0.12,
+  speed = 1.0,
   pauseTimeMs = 400,
   onProgressChar,
   onFinish,
@@ -43,20 +43,21 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState<string | null>(null);
 
-  // Dynamic Refs for Speed and Pause Duration to avoid re-mounting Three.js scene on speed changes
-  const speedRef = useRef<number>(speed);
+  // Dynamic Refs for Speed & Pause Duration to prevent React re-renders from destroying scene
+  const speedMultiplierRef = useRef<number>(speed);
   const pauseTimeMsRef = useRef<number>(pauseTimeMs);
   const isPausedRef = useRef<boolean>(false);
+  const pauseEndTimeRef = useRef<number>(0);
 
   useEffect(() => {
-    speedRef.current = speed;
+    speedMultiplierRef.current = speed;
   }, [speed]);
 
   useEffect(() => {
     pauseTimeMsRef.current = pauseTimeMs;
   }, [pauseTimeMs]);
 
-  // Mutable animation state container matching Avatar-realtime structure
+  // Mutable state container matching Avatar-realtime structure
   const avatarStateRef = useRef<{
     scene?: THREE.Scene;
     camera?: THREE.PerspectiveCamera;
@@ -65,21 +66,18 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
     animations: any[];
     characters: string[];
     pending: boolean;
-    flag: boolean;
     processedText: string;
     animate: () => void;
     currentAnimationReq?: number;
-    pauseTimeout?: ReturnType<typeof setTimeout>;
   }>({
     animations: [],
     characters: [],
     pending: false,
-    flag: false,
     processedText: '',
     animate: () => {},
   });
 
-  // Initialize Three.js Scene, Camera, Lighting & Load GLTF Avatar Mesh (ONLY on modelPath changes)
+  // Initialize Three.js Scene, Camera, Lighting & Load GLTF Avatar Mesh (ONLY on modelPath change)
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -88,9 +86,9 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
     setHasError(null);
 
     const state = avatarStateRef.current;
-    state.flag = false;
     state.pending = false;
     isPausedRef.current = false;
+    pauseEndTimeRef.current = 0;
     state.animations = [];
     state.characters = [];
     state.processedText = '';
@@ -130,7 +128,7 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
     rimLight.position.set(-2, 2, -2);
     scene.add(rimLight);
 
-    // 4. Robust Animation Loop (ref.animate)
+    // 4. Timestamp-Driven Robust Animation Loop (ref.animate)
     state.animate = () => {
       if (isPausedRef.current) {
         state.pending = false;
@@ -146,46 +144,54 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
         return;
       }
 
+      // Check if we are currently in an inter-pose pause duration
+      const now = performance.now();
+      if (now < pauseEndTimeRef.current) {
+        if (state.renderer && state.scene && state.camera) {
+          state.renderer.render(state.scene, state.camera);
+        }
+        state.currentAnimationReq = requestAnimationFrame(state.animate);
+        return;
+      }
+
       state.currentAnimationReq = requestAnimationFrame(state.animate);
 
       if (state.animations[0] && state.animations[0].length) {
-        if (!state.flag) {
-          if (state.animations[0][0] === 'add-text') {
-            const addedChar = state.animations[0][1];
-            state.processedText += addedChar;
-            if (onProgressChar) {
-              onProgressChar(addedChar.trim(), state.processedText);
-            }
-            state.animations.shift();
-          } else {
-            const currentSpeed = speedRef.current;
-            for (let i = 0; i < state.animations[0].length; ) {
-              const [boneName, action, axis, limit, sign] = state.animations[0][i];
-              const bone = state.avatar?.getObjectByName(boneName);
-              if (bone) {
-                if (sign === '+' && (bone as any)[action][axis] < limit) {
-                  (bone as any)[action][axis] += currentSpeed;
-                  (bone as any)[action][axis] = Math.min((bone as any)[action][axis], limit);
-                  i++;
-                } else if (sign === '-' && (bone as any)[action][axis] > limit) {
-                  (bone as any)[action][axis] -= currentSpeed;
-                  (bone as any)[action][axis] = Math.max((bone as any)[action][axis], limit);
-                  i++;
-                } else {
-                  state.animations[0].splice(i, 1);
-                }
+        if (state.animations[0][0] === 'add-text') {
+          const addedChar = state.animations[0][1];
+          state.processedText += addedChar;
+          if (onProgressChar) {
+            onProgressChar(addedChar.trim(), state.processedText);
+          }
+          state.animations.shift();
+        } else {
+          // Dynamic step speed based on current multiplier
+          const stepSpeed = 0.08 * speedMultiplierRef.current;
+
+          for (let i = 0; i < state.animations[0].length; ) {
+            const [boneName, action, axis, limit, sign] = state.animations[0][i];
+            const bone = state.avatar?.getObjectByName(boneName);
+            if (bone) {
+              if (sign === '+' && (bone as any)[action][axis] < limit) {
+                (bone as any)[action][axis] += stepSpeed;
+                (bone as any)[action][axis] = Math.min((bone as any)[action][axis], limit);
+                i++;
+              } else if (sign === '-' && (bone as any)[action][axis] > limit) {
+                (bone as any)[action][axis] -= stepSpeed;
+                (bone as any)[action][axis] = Math.max((bone as any)[action][axis], limit);
+                i++;
               } else {
                 state.animations[0].splice(i, 1);
               }
+            } else {
+              state.animations[0].splice(i, 1);
             }
           }
         }
       } else {
-        state.flag = true;
+        // Current pose chunk completed. Schedule non-blocking timestamp pause.
         const delay = pauseTimeMsRef.current;
-        state.pauseTimeout = setTimeout(() => {
-          state.flag = false;
-        }, delay);
+        pauseEndTimeRef.current = performance.now() + delay;
         state.animations.shift();
       }
 
@@ -235,7 +241,6 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      if (state.pauseTimeout) clearTimeout(state.pauseTimeout);
       if (state.currentAnimationReq) cancelAnimationFrame(state.currentAnimationReq);
       if (state.renderer && state.renderer.domElement) {
         state.renderer.dispose();
@@ -251,6 +256,10 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
     const str = textValue.toUpperCase();
     const strWords = str.split(/\s+/).filter(Boolean);
 
+    if (state.currentAnimationReq) {
+      cancelAnimationFrame(state.currentAnimationReq);
+    }
+    pauseEndTimeRef.current = 0;
     state.animations = [];
     state.pending = false;
     state.processedText = '';
@@ -286,6 +295,10 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
     playLetter: (letter: string) => {
       const state = avatarStateRef.current;
       isPausedRef.current = false;
+      if (state.currentAnimationReq) {
+        cancelAnimationFrame(state.currentAnimationReq);
+      }
+      pauseEndTimeRef.current = 0;
       state.animations = [];
       state.pending = false;
       const upper = letter.toUpperCase().trim();
@@ -299,10 +312,6 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
     pauseAnimation: () => {
       isPausedRef.current = true;
       const state = avatarStateRef.current;
-      if (state.pauseTimeout) {
-        clearTimeout(state.pauseTimeout);
-        state.pauseTimeout = undefined;
-      }
       if (state.currentAnimationReq) {
         cancelAnimationFrame(state.currentAnimationReq);
         state.currentAnimationReq = undefined;
@@ -310,8 +319,8 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
       state.pending = false;
     },
     resumeAnimation: () => {
-      isPausedRef.current = false;
       const state = avatarStateRef.current;
+      isPausedRef.current = false;
       if (state.animations.length > 0 && !state.pending) {
         state.pending = true;
         state.animate();
@@ -319,11 +328,8 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
     },
     resetPose: () => {
       isPausedRef.current = false;
+      pauseEndTimeRef.current = 0;
       const state = avatarStateRef.current;
-      if (state.pauseTimeout) {
-        clearTimeout(state.pauseTimeout);
-        state.pauseTimeout = undefined;
-      }
       if (state.currentAnimationReq) {
         cancelAnimationFrame(state.currentAnimationReq);
         state.currentAnimationReq = undefined;
