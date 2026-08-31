@@ -29,8 +29,7 @@ interface ISLAvatarCanvasProps {
  * 3D ISL Avatar Canvas Renderer (Avatar-Realtime Engine Integration)
  *
  * Integrates the exact 3D Mixamo GLTF animation engine from Avatar-realtime.
- * Queues character and word poses, animates bone rotations via requestAnimationFrame,
- * and emits progress updates matching the avatar's real-time signing position.
+ * Supports dynamic real-time speed adjustments (up to 3x) and rock-solid pause/resume.
  */
 export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasProps>(({
   modelPath = '/models/ybot.glb',
@@ -44,6 +43,19 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState<string | null>(null);
 
+  // Dynamic Refs for Speed and Pause Duration to avoid re-mounting Three.js scene on speed changes
+  const speedRef = useRef<number>(speed);
+  const pauseTimeMsRef = useRef<number>(pauseTimeMs);
+  const isPausedRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    speedRef.current = speed;
+  }, [speed]);
+
+  useEffect(() => {
+    pauseTimeMsRef.current = pauseTimeMs;
+  }, [pauseTimeMs]);
+
   // Mutable animation state container matching Avatar-realtime structure
   const avatarStateRef = useRef<{
     scene?: THREE.Scene;
@@ -54,7 +66,6 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
     characters: string[];
     pending: boolean;
     flag: boolean;
-    isPaused: boolean;
     processedText: string;
     animate: () => void;
     currentAnimationReq?: number;
@@ -64,12 +75,11 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
     characters: [],
     pending: false,
     flag: false,
-    isPaused: false,
     processedText: '',
     animate: () => {},
   });
 
-  // Initialize Three.js Scene, Camera, Lighting & Load GLTF Avatar Mesh
+  // Initialize Three.js Scene, Camera, Lighting & Load GLTF Avatar Mesh (ONLY on modelPath changes)
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -80,7 +90,7 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
     const state = avatarStateRef.current;
     state.flag = false;
     state.pending = false;
-    state.isPaused = false;
+    isPausedRef.current = false;
     state.animations = [];
     state.characters = [];
     state.processedText = '';
@@ -120,8 +130,13 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
     rimLight.position.set(-2, 2, -2);
     scene.add(rimLight);
 
-    // 4. Exact Avatar-realtime Animation Loop (ref.animate)
+    // 4. Robust Animation Loop (ref.animate)
     state.animate = () => {
+      if (isPausedRef.current) {
+        state.pending = false;
+        return;
+      }
+
       if (state.animations.length === 0) {
         state.pending = false;
         if (onFinish) onFinish();
@@ -133,8 +148,6 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
 
       state.currentAnimationReq = requestAnimationFrame(state.animate);
 
-      if (state.isPaused) return;
-
       if (state.animations[0] && state.animations[0].length) {
         if (!state.flag) {
           if (state.animations[0][0] === 'add-text') {
@@ -145,16 +158,17 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
             }
             state.animations.shift();
           } else {
+            const currentSpeed = speedRef.current;
             for (let i = 0; i < state.animations[0].length; ) {
               const [boneName, action, axis, limit, sign] = state.animations[0][i];
               const bone = state.avatar?.getObjectByName(boneName);
               if (bone) {
                 if (sign === '+' && (bone as any)[action][axis] < limit) {
-                  (bone as any)[action][axis] += speed;
+                  (bone as any)[action][axis] += currentSpeed;
                   (bone as any)[action][axis] = Math.min((bone as any)[action][axis], limit);
                   i++;
                 } else if (sign === '-' && (bone as any)[action][axis] > limit) {
-                  (bone as any)[action][axis] -= speed;
+                  (bone as any)[action][axis] -= currentSpeed;
                   (bone as any)[action][axis] = Math.max((bone as any)[action][axis], limit);
                   i++;
                 } else {
@@ -168,9 +182,10 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
         }
       } else {
         state.flag = true;
+        const delay = pauseTimeMsRef.current;
         state.pauseTimeout = setTimeout(() => {
           state.flag = false;
-        }, pauseTimeMs);
+        }, delay);
         state.animations.shift();
       }
 
@@ -226,9 +241,9 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
         state.renderer.dispose();
       }
     };
-  }, [modelPath, speed, pauseTimeMs]);
+  }, [modelPath]); // ONLY modelPath triggers scene reload!
 
-  // Exact Avatar-realtime Text Queueing Engine
+  // Queue animations helper
   const queueTextAnimations = (textValue: string) => {
     const state = avatarStateRef.current;
     if (!state.avatar) return;
@@ -265,13 +280,12 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
   // Expose Imperative Methods to Ref
   useImperativeHandle(ref, () => ({
     signText: (text: string) => {
-      const state = avatarStateRef.current;
-      state.isPaused = false;
+      isPausedRef.current = false;
       queueTextAnimations(text);
     },
     playLetter: (letter: string) => {
       const state = avatarStateRef.current;
-      state.isPaused = false;
+      isPausedRef.current = false;
       state.animations = [];
       state.pending = false;
       const upper = letter.toUpperCase().trim();
@@ -283,21 +297,39 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
       }
     },
     pauseAnimation: () => {
-      avatarStateRef.current.isPaused = true;
+      isPausedRef.current = true;
+      const state = avatarStateRef.current;
+      if (state.pauseTimeout) {
+        clearTimeout(state.pauseTimeout);
+        state.pauseTimeout = undefined;
+      }
+      if (state.currentAnimationReq) {
+        cancelAnimationFrame(state.currentAnimationReq);
+        state.currentAnimationReq = undefined;
+      }
+      state.pending = false;
     },
     resumeAnimation: () => {
+      isPausedRef.current = false;
       const state = avatarStateRef.current;
-      state.isPaused = false;
       if (state.animations.length > 0 && !state.pending) {
         state.pending = true;
         state.animate();
       }
     },
     resetPose: () => {
+      isPausedRef.current = false;
       const state = avatarStateRef.current;
+      if (state.pauseTimeout) {
+        clearTimeout(state.pauseTimeout);
+        state.pauseTimeout = undefined;
+      }
+      if (state.currentAnimationReq) {
+        cancelAnimationFrame(state.currentAnimationReq);
+        state.currentAnimationReq = undefined;
+      }
       state.animations = [];
       state.pending = false;
-      state.isPaused = false;
       state.processedText = '';
       if (state.avatar) defaultPose(state);
     },
@@ -305,7 +337,7 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
 
   return (
     <div className={`relative w-full h-full min-h-[260px] flex items-center justify-center ${className}`}>
-      {/* Loading State */}
+      {/* Loading Overlay */}
       {isLoading && (
         <div className="absolute inset-0 z-10 bg-[#050b16]/90 backdrop-blur-md flex flex-col items-center justify-center p-4 text-center gap-3 rounded-2xl">
           <div className="w-10 h-10 border-3 border-[#fe9832] border-t-transparent rounded-full animate-spin" />
@@ -313,7 +345,7 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
         </div>
       )}
 
-      {/* Error State */}
+      {/* Error Overlay */}
       {hasError && (
         <div className="absolute inset-0 z-10 bg-red-950/90 backdrop-blur-md flex flex-col items-center justify-center p-4 text-center gap-2 text-red-200 rounded-2xl">
           <span className="material-symbols-outlined text-3xl">warning</span>

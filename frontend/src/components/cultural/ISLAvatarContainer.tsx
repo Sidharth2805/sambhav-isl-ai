@@ -232,15 +232,15 @@ export const ISLAvatarContainer: React.FC<ISLAvatarContainerProps> = ({
             </div>
 
             {/* Speed Selector */}
-            <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/10 text-[11px]">
-              {[0.75, 1.0, 1.25, 1.5].map((speed) => (
+            <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/10 text-[11px] overflow-x-auto">
+              {[0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0].map((speed) => (
                 <button
                   key={speed}
                   type="button"
                   onClick={() => onChangeSpeed(speed)}
-                  className={`px-2 py-0.5 rounded-lg font-bold transition-all cursor-pointer ${
+                  className={`px-1.5 py-0.5 rounded-lg font-bold transition-all whitespace-nowrap cursor-pointer ${
                     playbackSpeed === speed
-                      ? 'bg-[#fe9832]' + ' text-[#542900]'
+                      ? 'bg-[#fe9832] text-[#542900]'
                       : 'text-white/70 hover:text-white'
                   }`}
                 >
