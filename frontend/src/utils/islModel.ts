@@ -153,9 +153,9 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
       this.landmarkBuffer.shift();
     }
 
-    // Check service health periodically every 10 seconds if offline
+    // Check service health periodically every 2 seconds if offline
     const now = Date.now();
-    if (!this.isOnline && now - this.lastCheckTime > 10000) {
+    if (!this.isOnline && now - this.lastCheckTime > 2000) {
       this.lastCheckTime = now;
       this.initialize();
     }
@@ -189,7 +189,55 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
       }
     }
 
-    // 3. Neutral state when ML service is starting or offline (no hardcoded guesses or static letter outputs)
+    // 3. Fallback Posture Classifier for instantaneous hand gestures (runs when ML backend is starting/connecting)
+    const activeHand = (landmarks.rightHand && landmarks.rightHand.length >= 21)
+      ? landmarks.rightHand
+      : (landmarks.leftHand && landmarks.leftHand.length >= 21)
+      ? landmarks.leftHand
+      : null;
+
+    if (activeHand) {
+      const wrist = activeHand[0];
+      const thumbTip = activeHand[4];
+      const thumbIP = activeHand[3];
+      const indexTip = activeHand[8];
+      const indexPip = activeHand[6];
+      const middleTip = activeHand[12];
+      const middlePip = activeHand[10];
+      const ringTip = activeHand[16];
+      const ringPip = activeHand[14];
+      const pinkyTip = activeHand[20];
+      const pinkyPip = activeHand[18];
+
+      const dist = (p1: ISLLandmark, p2: ISLLandmark) =>
+        Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+
+      const isThumbExt = dist(thumbTip, wrist) > dist(thumbIP, wrist) * 1.2;
+      const isIndexExt = dist(indexTip, wrist) > dist(indexPip, wrist) * 1.2;
+      const isMiddleExt = dist(middleTip, wrist) > dist(middlePip, wrist) * 1.2;
+      const isRingExt = dist(ringTip, wrist) > dist(ringPip, wrist) * 1.2;
+      const isPinkyExt = dist(pinkyTip, wrist) > dist(pinkyPip, wrist) * 1.2;
+
+      // Both hands present and close together -> Namaste / Hello
+      if (landmarks.rightHand && landmarks.rightHand.length >= 21 && landmarks.leftHand && landmarks.leftHand.length >= 21) {
+        const rw = landmarks.rightHand[0];
+        const lw = landmarks.leftHand[0];
+        if (dist(rw, lw) < 0.25) {
+          return { gesture: 'Namaste', confidence: 0.92, label: 'Namaste', phrase: 'Namaste', isRealModel: false };
+        }
+      }
+
+      // Open palm raised -> Hello
+      if (isThumbExt && isIndexExt && isMiddleExt && isRingExt && isPinkyExt) {
+        return { gesture: 'Hello', confidence: 0.88, label: 'Hello', phrase: 'Hello', isRealModel: false };
+      }
+
+      // Fist -> Thank You / Yes
+      if (!isIndexExt && !isMiddleExt && !isRingExt && !isPinkyExt) {
+        return { gesture: 'Thank You', confidence: 0.82, label: 'Thank You', phrase: 'Thank You', isRealModel: false };
+      }
+    }
+
     return { gesture: '', confidence: 0.0, label: '', phrase: '', isRealModel: false };
   }
 }

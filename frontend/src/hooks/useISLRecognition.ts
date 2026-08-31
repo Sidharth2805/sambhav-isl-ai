@@ -240,16 +240,21 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
         handsInstanceRef.current = hands;
       }
 
-      // 5. Continuous frame processing loop
+      // 5. Continuous frame processing loop with frame-in-flight guard to prevent browser freezing
+      let isProcessingFrame = false;
+
       const processLoop = async () => {
         if (!videoElementRef.current) return;
 
         const vid = videoElementRef.current;
-        if (!isPaused && handsInstanceRef.current && vid.videoWidth > 0 && vid.videoHeight > 0) {
+        if (!isPaused && handsInstanceRef.current && vid.videoWidth > 0 && vid.videoHeight > 0 && !isProcessingFrame) {
+          isProcessingFrame = true;
           try {
             await handsInstanceRef.current.send({ image: vid });
           } catch {
             // Frame processing catch
+          } finally {
+            isProcessingFrame = false;
           }
         }
 
