@@ -93,9 +93,9 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
     const height = container.clientHeight || 320;
     const aspect = width / height;
 
-    const camera = new THREE.PerspectiveCamera(35, aspect, 0.1, 1000);
-    camera.position.set(0, 1.18, 1.25);
-    camera.lookAt(0, 1.02, 0);
+    const camera = new THREE.PerspectiveCamera(32, aspect, 0.1, 1000);
+    camera.position.set(0, 1.35, 1.85);
+    camera.lookAt(0, 1.05, 0);
     state.camera = camera;
 
     // 2. WebGL Renderer
