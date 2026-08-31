@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { ISLAvatarCanvas, type ISLAvatarCanvasRef } from '../components/cultural/ISLAvatarCanvas';
 
 export interface NewsArticle {
   id: number;
@@ -94,6 +95,10 @@ export const NewsPage: React.FC = () => {
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
   const [speechActive, setSpeechActive] = useState<boolean>(false);
 
+  const avatarCanvasRef = useRef<ISLAvatarCanvasRef | null>(null);
+  const [modelPath, setModelPath] = useState<string>('/models/ybot.glb');
+  const [activeAvatarChar, setActiveAvatarChar] = useState<string | null>(null);
+
   // Active word reference for smooth auto-scroll into view
   const activeWordRef = useRef<HTMLSpanElement | null>(null);
 
@@ -161,6 +166,18 @@ export const NewsPage: React.FC = () => {
       });
     }
   }, [currentWordIndex, isAvatarPlaying]);
+
+  const handleToggleAvatarPlay = useCallback(() => {
+    if (!selectedArticle) return;
+    if (isAvatarPlaying) {
+      setIsAvatarPlaying(false);
+      avatarCanvasRef.current?.pauseAnimation();
+    } else {
+      setIsAvatarPlaying(true);
+      const fullText = `${selectedArticle.title} ${selectedArticle.content.join(' ')}`;
+      avatarCanvasRef.current?.signText(fullText);
+    }
+  }, [isAvatarPlaying, selectedArticle]);
 
   // Handle Speech narration toggle
   const handleToggleSpeech = useCallback(() => {
@@ -394,55 +411,64 @@ export const NewsPage: React.FC = () => {
                   </span>
                 </div>
 
-                {/* EXPANDED 3D AVATAR ARENA (Maximized Length & Breadth) */}
-                <div className="w-full min-h-[480px] sm:min-h-[560px] lg:min-h-[600px] bg-gradient-to-br from-[#080e1b] via-[#101a2d] to-[#04070d] rounded-2xl overflow-hidden relative border border-white/15 shadow-2xl flex flex-col justify-between p-5 text-white">
+                {/* 3D ISL AVATAR ARENA */}
+                <div className="w-full min-h-[480px] sm:min-h-[560px] lg:min-h-[600px] bg-gradient-to-br from-[#080e1b] via-[#101a2d] to-[#04070d] rounded-2xl overflow-hidden relative border border-white/15 shadow-2xl flex flex-col justify-between p-4 text-white">
                   
-                  {/* Top Status & Token Progress */}
+                  {/* Top Status & Model Selector */}
                   <div className="flex items-center justify-between z-10">
                     <span className="text-[11px] font-mono font-bold bg-black/70 backdrop-blur-md px-3 py-1 rounded-xl border border-white/15 shadow-sm">
                       Word {currentWordIndex + 1} / {articleTokens.length}
                     </span>
 
-                    <div className="flex items-center gap-1.5 bg-black/70 backdrop-blur-md px-3 py-1 rounded-xl border border-white/15 text-[11px]">
-                      <span className={`w-2 h-2 rounded-full ${isAvatarPlaying ? 'bg-[#8dfc75] animate-ping' : 'bg-amber-400'}`} />
-                      <span className="font-bold">{isAvatarPlaying ? 'Signing...' : 'Ready'}</span>
+                    <div className="flex items-center gap-1.5 bg-black/70 backdrop-blur-md px-2 py-1 rounded-xl border border-white/15 text-[11px]">
+                      <button
+                        type="button"
+                        onClick={() => setModelPath('/models/ybot.glb')}
+                        className={`px-2 py-0.5 rounded-lg font-bold transition-all ${
+                          modelPath.includes('ybot') ? 'bg-[#fe9832] text-[#542900]' : 'text-white/70'
+                        }`}
+                      >
+                        YBot
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setModelPath('/models/xbot.glb')}
+                        className={`px-2 py-0.5 rounded-lg font-bold transition-all ${
+                          modelPath.includes('xbot') ? 'bg-[#fe9832] text-[#542900]' : 'text-white/70'
+                        }`}
+                      >
+                        XBot
+                      </button>
                     </div>
                   </div>
 
-                  {/* Spacious 3D Avatar Center Figure Stage */}
-                  <div className="my-auto flex flex-col items-center justify-center text-center gap-4 relative py-6">
-                    <div className="relative">
-                      {/* Avatar Figure Frame */}
-                      <div className={`w-44 h-44 sm:w-56 sm:h-56 rounded-full bg-gradient-to-br from-[#fe9832]/30 via-emerald-500/20 to-[#fe9832]/25 border-2 border-[#fe9832]/60 flex items-center justify-center shadow-2xl transition-all duration-300 ${isAvatarPlaying ? 'scale-105 shadow-[#fe9832]/40 ring-4 ring-[#8dfc75]/40' : ''}`}>
-                        <span className={`material-symbols-outlined text-8xl sm:text-9xl text-[#fe9832] transition-transform duration-300 ${isAvatarPlaying ? 'animate-pulse scale-110' : ''}`}>
-                          sign_language
-                        </span>
-                      </div>
-                      
-                      {/* Active Hands Badge */}
-                      {isAvatarPlaying && (
-                        <span className="absolute -bottom-2 right-2 px-3.5 py-1 rounded-full bg-[#8dfc75] text-[#012700] font-black text-xs shadow-lg animate-bounce">
-                          ISL Sign Morphology Active
-                        </span>
-                      )}
-                    </div>
+                  {/* Real 3D Avatar WebGL Canvas */}
+                  <div className="flex-1 w-full h-full min-h-[360px] flex items-center justify-center relative overflow-hidden my-2 rounded-xl">
+                    <ISLAvatarCanvas
+                      ref={avatarCanvasRef}
+                      modelPath={modelPath}
+                      speed={playbackSpeed}
+                      pauseTimeMs={Math.round(400 / playbackSpeed)}
+                      onProgressChar={(char) => setActiveAvatarChar(char)}
+                      onFinish={() => setIsAvatarPlaying(false)}
+                      className="w-full h-full"
+                    />
 
-                    <div>
-                      <h4 className="text-base sm:text-lg font-black text-white tracking-wide">
-                        SAMBHAV Neural ISL 3D Avatar
-                      </h4>
-                      <p className="text-xs text-[#c1c6d7] font-medium mt-0.5">
-                        High-Definition Facial Expressions, Body Pose &amp; ISLRTC Handshapes
-                      </p>
-                    </div>
+                    {/* Target Letter Overlay Badge */}
+                    {activeAvatarChar && (
+                      <div className="absolute bottom-3 left-3 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/15 text-xs font-mono font-bold text-[#8dfc75] shadow-lg z-10 flex items-center gap-2">
+                        <span className="text-[10px] text-white/60 uppercase">Target Signal:</span>
+                        <span className="text-sm text-[#fe9832]">"{activeAvatarChar}"</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Synchronized Live Sign Gloss Display Banner */}
-                  <div className="bg-black/85 backdrop-blur-md p-4 rounded-2xl border border-white/20 text-center flex flex-col gap-1 shadow-xl">
+                  <div className="bg-black/85 backdrop-blur-md p-3 rounded-2xl border border-white/20 text-center flex flex-col gap-0.5 shadow-xl z-10">
                     <span className="text-[10px] uppercase tracking-widest text-[#fe9832] font-black">
                       Current Sign Token
                     </span>
-                    <span className="font-mono text-xl sm:text-2xl font-black text-[#8dfc75] tracking-widest">
+                    <span className="font-mono text-lg sm:text-xl font-black text-[#8dfc75] tracking-widest">
                       [{currentToken?.cleanToken || 'IDLE'}]
                     </span>
                   </div>
@@ -468,10 +494,10 @@ export const NewsPage: React.FC = () => {
                   </div>
 
                   {/* Play / Pause / Replay & Speed Controls */}
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <button
-                      onClick={() => setIsAvatarPlaying(!isAvatarPlaying)}
-                      className="flex-1 py-3.5 bg-gradient-to-r from-[#fe9832] to-[#e8872b] hover:brightness-110 text-[#542900] font-black text-xs sm:text-sm rounded-2xl transition-all shadow-md flex items-center justify-center gap-2 active:scale-95"
+                      onClick={handleToggleAvatarPlay}
+                      className="flex-1 py-3.5 bg-gradient-to-r from-[#fe9832] to-[#e8872b] hover:brightness-110 text-[#542900] font-black text-xs sm:text-sm rounded-2xl transition-all shadow-md flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
                     >
                       <span className="material-symbols-outlined text-[22px]">
                         {isAvatarPlaying ? 'pause' : 'play_arrow'}
@@ -483,8 +509,12 @@ export const NewsPage: React.FC = () => {
                       onClick={() => {
                         setCurrentWordIndex(0);
                         setIsAvatarPlaying(true);
+                        if (selectedArticle && avatarCanvasRef.current) {
+                          const fullText = `${selectedArticle.title} ${selectedArticle.content.join(' ')}`;
+                          avatarCanvasRef.current.signText(fullText);
+                        }
                       }}
-                      className="px-4 py-3.5 bg-[#f8fafc] dark:bg-[#0c121e] hover:bg-[#fe9832]/10 border border-[#e0e3e5] dark:border-[#243044] text-[#030813] dark:text-white rounded-2xl text-xs font-bold transition-all active:scale-95 flex items-center gap-1"
+                      className="px-4 py-3.5 bg-[#f8fafc] dark:bg-[#0c121e] hover:bg-[#fe9832]/10 border border-[#e0e3e5] dark:border-[#243044] text-[#030813] dark:text-white rounded-2xl text-xs font-bold transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
                       title="Restart reading from start"
                     >
                       <span className="material-symbols-outlined text-[18px]">replay</span>
@@ -492,12 +522,12 @@ export const NewsPage: React.FC = () => {
                     </button>
 
                     {/* Speed Selector */}
-                    <div className="flex items-center bg-[#f8fafc] dark:bg-[#0c121e] border border-[#e0e3e5] dark:border-[#243044] rounded-2xl p-1">
-                      {[0.75, 1.0, 1.25].map((speed) => (
+                    <div className="flex items-center bg-[#f8fafc] dark:bg-[#0c121e] border border-[#e0e3e5] dark:border-[#243044] rounded-2xl p-1 overflow-x-auto">
+                      {[0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0].map((speed) => (
                         <button
                           key={speed}
                           onClick={() => setPlaybackSpeed(speed)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          className={`px-2 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                             playbackSpeed === speed
                               ? 'bg-[#fe9832] text-[#542900] shadow-xs font-black'
                               : 'text-[#45474c] dark:text-[#828796] hover:text-[#030813] dark:hover:text-white'

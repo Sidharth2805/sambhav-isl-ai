@@ -3,7 +3,7 @@ import { VideoTrack } from '@livekit/components-react';
 import { Track, ConnectionState as LkConnectionState } from 'livekit-client';
 import DraggableSelfView from './DraggableSelfView';
 import type { TranscriptEvent } from '../../types/transcript';
-import { SignSequencePlayer } from '../accessibility/SignSequencePlayer';
+import { ISLAvatarCanvas, type ISLAvatarCanvasRef } from '../cultural/ISLAvatarCanvas';
 
 interface DeafUserWorkspaceProps {
   sessionId: string;
@@ -100,9 +100,9 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
   captionsEndRef,
 
   controlsVisible: _controlsVisible,
-  activeSequence,
-  onSequenceComplete,
-  recoveryState = 'READY',
+  activeSequence: _activeSequence,
+  onSequenceComplete: _onSequenceComplete,
+  recoveryState: _recoveryState = 'READY',
   onSendMessage,
 }) => {
   const [typedResponse, setTypedResponse] = useState('');
@@ -149,48 +149,32 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const speedOptions = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+  const avatarCanvasRef = useRef<ISLAvatarCanvasRef | null>(null);
+  const [modelPath, setModelPath] = useState('/models/ybot.glb');
+  const [activeAvatarChar, setActiveAvatarChar] = useState<string | null>(null);
 
-  // Custom Read-on-Demand State
-  const [localCustomSequence, setLocalCustomSequence] = useState<any | null>(null);
+  const speedOptions = [0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0];
   const [activeReadingMessageId, setActiveReadingMessageId] = useState<string | null>(null);
 
-  // Helper to convert any text into a 3D Sign Sequence on demand
+  // Helper to convert any text into 3D ISL Avatar signing on demand
   const handleReadMessageInSign = (text: string, msgId?: string) => {
     if (!text || !text.trim()) return;
-    const words = text.trim().split(/\s+/);
-    const stepDuration = 450;
-    const steps = words.map((word, index) => {
-      const clean = word.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-      return {
-        sequenceIndex: index,
-        conceptId: clean,
-        displayToken: clean || word,
-        durationMs: stepDuration,
-        confidence: 0.98,
-        asset: null,
-        resolutionStatus: 'FOUND',
-        sourceConcept: word,
-      };
-    });
-
-    const seq = {
-      sequenceId: `seq-demand-${Date.now()}`,
-      sourceSessionId: 'local',
-      sourceText: text,
-      language: 'ISL',
-      createdAt: Date.now(),
-      steps,
-      totalDurationMs: steps.length * stepDuration,
-      overallConfidence: 0.98,
-      status: 'READY',
-    };
-
-    if (msgId) {
-      setActiveReadingMessageId(msgId);
-    }
-    setLocalCustomSequence(seq);
+    if (msgId) setActiveReadingMessageId(msgId);
+    avatarCanvasRef.current?.signText(text);
   };
+
+  // Auto-trigger 3D Avatar letter-by-letter signing when live incoming captions update
+  useEffect(() => {
+    const activeInterim = Object.values(interimTranscripts).join(' ');
+    if (activeInterim.trim()) {
+      avatarCanvasRef.current?.signText(activeInterim);
+    } else if (finalTranscripts.length > 0) {
+      const lastMsg = finalTranscripts[finalTranscripts.length - 1];
+      if (lastMsg && lastMsg.text) {
+        avatarCanvasRef.current?.signText(lastMsg.text);
+      }
+    }
+  }, [interimTranscripts, finalTranscripts]);
 
   // Helper to read any text aloud in voice via Text-to-Speech (TTS)
   const handleSpeakMessageAloud = (text: string) => {
@@ -226,31 +210,71 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
         {/* ========================================================= */}
         {/* LEFT COLUMN: 3D ISL Signing Avatar Screen                 */}
         {/* ========================================================= */}
-        <section className="lg:col-span-6 bg-white dark:bg-[#030813] rounded-2xl border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col relative overflow-hidden h-full min-h-0">
-          <div className="absolute top-2.5 left-3 z-10 flex items-center gap-2">
-            <span className="px-2.5 py-0.5 bg-black/60 backdrop-blur-md border border-white/10 text-white rounded-full text-[10px] font-bold flex items-center gap-1.5 shadow">
+        <section className="lg:col-span-6 bg-[#030813] rounded-2xl border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col relative overflow-hidden h-full min-h-0">
+          <div className="absolute top-2.5 left-3 z-20 flex items-center gap-2">
+            <span className="px-2.5 py-0.5 bg-black/70 backdrop-blur-md border border-white/10 text-white rounded-full text-[10px] font-bold flex items-center gap-1.5 shadow">
               <span className="w-2 h-2 rounded-full bg-[#fe9832] animate-pulse" />
-              <span>{localCustomSequence ? 'Reading Selected Message in Sign...' : 'ISL 3D Avatar Translation'}</span>
+              <span>ISL 3D Avatar (Letter-by-Letter)</span>
             </span>
 
-            {recoveryState === 'RECOVERING' && (
-              <span className="px-2 py-0.5 bg-amber-500/80 backdrop-blur-md text-black rounded-full text-[10px] font-bold flex items-center gap-1 animate-pulse">
-                <span className="material-symbols-outlined text-[12px] animate-spin">sync</span>
-                <span>Syncing...</span>
-              </span>
+            <div className="flex items-center gap-1 bg-black/60 backdrop-blur-md p-0.5 rounded-full border border-white/10 text-[10px]">
+              <button
+                type="button"
+                onClick={() => setModelPath('/models/ybot.glb')}
+                className={`px-2 py-0.5 rounded-full font-bold transition-all ${
+                  modelPath.includes('ybot') ? 'bg-[#fe9832] text-[#542900]' : 'text-white/70'
+                }`}
+              >
+                YBot
+              </button>
+              <button
+                type="button"
+                onClick={() => setModelPath('/models/xbot.glb')}
+                className={`px-2 py-0.5 rounded-full font-bold transition-all ${
+                  modelPath.includes('xbot') ? 'bg-[#fe9832] text-[#542900]' : 'text-white/70'
+                }`}
+              >
+                XBot
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 w-full h-full flex items-center justify-center relative overflow-hidden bg-gradient-to-b from-[#050b16] via-[#091325] to-[#040914]">
+            <ISLAvatarCanvas
+              ref={avatarCanvasRef}
+              modelPath={modelPath}
+              speed={avatarSpeed}
+              pauseTimeMs={Math.round(400 / avatarSpeed)}
+              onProgressChar={(char) => setActiveAvatarChar(char)}
+              className="w-full h-full"
+            />
+
+            {/* Target Letter Overlay Badge */}
+            {activeAvatarChar && (
+              <div className="absolute bottom-3 left-3 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/15 text-xs font-mono font-bold text-[#8dfc75] shadow-lg z-10 flex items-center gap-2">
+                <span className="text-[10px] text-white/60 uppercase">Target Signal:</span>
+                <span className="text-sm text-[#fe9832]">"{activeAvatarChar}"</span>
+              </div>
             )}
           </div>
 
-          <div className="flex-1 w-full h-full flex items-center justify-center relative overflow-hidden">
-            <SignSequencePlayer
-              sequence={localCustomSequence || activeSequence}
-              onComplete={() => {
-                setLocalCustomSequence(null);
-                setActiveReadingMessageId(null);
-                if (onSequenceComplete) onSequenceComplete();
-              }}
-              playbackSpeed={avatarSpeed}
-            />
+          {/* Speed Selector Footer */}
+          <div className="bg-black/60 backdrop-blur-md border-t border-white/10 px-3 py-1.5 flex items-center justify-between text-xs text-white">
+            <span className="text-[11px] font-bold text-white/70">Playback Speed:</span>
+            <div className="flex items-center gap-1 overflow-x-auto">
+              {[0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0].map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setAvatarSpeed(s)}
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer ${
+                    avatarSpeed === s ? 'bg-[#fe9832] text-[#542900]' : 'bg-white/10 text-white/70 hover:text-white'
+                  }`}
+                >
+                  {s}x
+                </button>
+              ))}
+            </div>
           </div>
         </section>
 

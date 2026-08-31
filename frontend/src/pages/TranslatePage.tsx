@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useTextToSpeech } from '../hooks/useTextToSpeech';
-import { SignSequencePlayer } from '../components/accessibility/SignSequencePlayer';
+import { ISLAvatarCanvas, type ISLAvatarCanvasRef } from '../components/cultural/ISLAvatarCanvas';
 import { useISLRecognition } from '../hooks/useISLRecognition';
 import { ISLMessageComposer } from '../components/communication/ISLMessageComposer';
 
@@ -100,15 +100,29 @@ export const TranslatePage: React.FC = () => {
   const signedMessagesEndRef = useRef<HTMLDivElement | null>(null);
 
   // ISL Avatar Sequence State
-  const [currentSequence, setCurrentSequence] = useState<SignSequenceDto | null>(null);
+  const [_currentSequence, setCurrentSequence] = useState<SignSequenceDto | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Settings & Speed Control (0.75x, 1.0x, 1.25x, 1.5x)
+  // Settings & Speed Control (0.75x, 1.0x, 1.25x, 1.5x, 2.0x, 2.5x, 3.0x)
   const [captionFontSize, setCaptionFontSize] = useState<'sm' | 'md' | 'lg'>('lg');
   const [avatarSpeed, setAvatarSpeed] = useState<number>(1.25);
   const [autoSpeakGestures] = useState(true);
   const [autoReadOutChat, setAutoReadOutChat] = useState(true);
   const [isChatScrolledUp, setIsChatScrolledUp] = useState(false);
+
+  const avatarCanvasRef = useRef<ISLAvatarCanvasRef | null>(null);
+  const [modelPath, setModelPath] = useState('/models/ybot.glb');
+  const [activeAvatarChar, setActiveAvatarChar] = useState<string | null>(null);
+
+  // Auto-trigger letter-by-letter 3D avatar signing when speech live caption or text changes
+  useEffect(() => {
+    if (activeMode === 'SPEECH_TO_ISL') {
+      const activeText = liveCaption || finalTranscript;
+      if (activeText.trim()) {
+        avatarCanvasRef.current?.signText(activeText);
+      }
+    }
+  }, [liveCaption, finalTranscript, activeMode]);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const chatScrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -181,6 +195,9 @@ export const TranslatePage: React.FC = () => {
     if (messageId) {
       setActiveSigningMessageId(messageId);
     }
+
+    // Trigger 3D Avatar letter-by-letter signing
+    avatarCanvasRef.current?.signText(text);
 
     try {
       const words = text.trim().split(/\s+/);
@@ -686,11 +703,13 @@ export const TranslatePage: React.FC = () => {
                   onChange={(e: any) => setAvatarSpeed(parseFloat(e.target.value))}
                   className="bg-white dark:bg-[#1a202c] border border-[#c6c6cc] dark:border-[#2d3133] text-[#181c1e] dark:text-white rounded px-2 py-1 text-xs font-semibold outline-none cursor-pointer"
                 >
-                  <option value={0.5}>0.5x (Slow - Clear)</option>
                   <option value={0.75}>0.75x (Relaxed)</option>
                   <option value={1.0}>1.0x (Normal)</option>
-                  <option value={1.25}>1.25x (Fast - Snappy)</option>
-                  <option value={1.5}>1.5x (Real-Time Pro)</option>
+                  <option value={1.25}>1.25x (Fast)</option>
+                  <option value={1.5}>1.5x (Pro)</option>
+                  <option value={2.0}>2.0x (Hyper Fast)</option>
+                  <option value={2.5}>2.5x (Ultra Fast)</option>
+                  <option value={3.0}>3.0x (Extreme 3x)</option>
                 </select>
               </label>
             </div>
@@ -771,11 +790,13 @@ export const TranslatePage: React.FC = () => {
                   onChange={(e: any) => setAvatarSpeed(parseFloat(e.target.value))}
                   className="bg-white border border-[#c6c6cc] rounded px-1.5 py-0.5 text-xs font-bold text-[#030813] outline-none"
                 >
-                  <option value={0.5}>0.5x</option>
                   <option value={0.75}>0.75x</option>
                   <option value={1.0}>1.0x</option>
                   <option value={1.25}>1.25x</option>
                   <option value={1.5}>1.5x</option>
+                  <option value={2.0}>2.0x</option>
+                  <option value={2.5}>2.5x</option>
+                  <option value={3.0}>3.0x</option>
                 </select>
               </label>
 
@@ -905,44 +926,55 @@ export const TranslatePage: React.FC = () => {
                 </>
               ) : (
                 <>
-                  {/* Avatar Visualizer for Speech to ISL & Text to ISL modes */}
-                  <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2 shrink-0">
+                  {/* 3D ISL Avatar Visualizer for Speech to ISL & Text to ISL modes */}
+                  <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2 shrink-0 z-10">
                     <div className="flex items-center gap-2">
                       <span className="material-symbols-outlined text-[#fe9832] text-[20px]">accessibility</span>
-                      <h3 className="text-sm font-bold text-white">ISL Avatar Visualizer</h3>
+                      <h3 className="text-sm font-bold text-white">3D ISL Avatar (Letter-by-Letter)</h3>
                     </div>
                     <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-full border border-white/10 text-[10px]">
+                        <button
+                          type="button"
+                          onClick={() => setModelPath('/models/ybot.glb')}
+                          className={`px-2 py-0.5 rounded-full font-bold transition-all ${
+                            modelPath.includes('ybot') ? 'bg-[#fe9832] text-[#542900]' : 'text-white/70'
+                          }`}
+                        >
+                          YBot
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setModelPath('/models/xbot.glb')}
+                          className={`px-2 py-0.5 rounded-full font-bold transition-all ${
+                            modelPath.includes('xbot') ? 'bg-[#fe9832] text-[#542900]' : 'text-white/70'
+                          }`}
+                        >
+                          XBot
+                        </button>
+                      </div>
                       <span className="text-[10px] bg-[#fe9832]/20 text-[#fe9832] px-2 py-0.5 rounded font-mono font-bold">
-                        Speed: {avatarSpeed}x
-                      </span>
-                      <span className="text-[10px] bg-white/10 text-[#dde2f3] px-2 py-0.5 rounded font-mono">
-                        {currentSequence ? `${currentSequence.steps.length} Tokens` : 'Ready'}
+                        {avatarSpeed}x Speed
                       </span>
                     </div>
                   </div>
 
-                  {/* Large Avatar Animation Area */}
-                  <div className="flex-1 flex items-center justify-center overflow-hidden min-h-0">
-                    {currentSequence ? (
-                      <div className="w-full h-full max-h-[380px] flex items-center justify-center">
-                        <SignSequencePlayer
-                          sequence={currentSequence}
-                          playbackSpeed={avatarSpeed}
-                          onStepStart={(index) => setActiveStepIndex(index)}
-                          onComplete={() => setActiveStepIndex(-1)}
-                          hideOverlayBadge={activeMode === 'TEXT_TO_ISL'}
-                        />
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center text-center p-4 gap-2">
-                        <img
-                          className="w-28 h-28 sm:w-36 sm:h-36 rounded-full object-cover border-2 border-white/20 shadow-xl opacity-85"
-                          alt="ISL Avatar"
-                          src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZTT_g8UEu9lHEIQwtsX1X3URkCYfzWm4KcI6A5fPGOvsqaYQSwa2EKYl5DIN41BeTvoADFslNF7KJ85jk1gEcS_Np87ei5nyDBVGbanY1DU8hCom86MCRgJaUyemC5ZmxWMOz-pV5B884zt3ISMTf9cbHDpA9dV3Au1V7-WeBaSc_6cn0ejlXb0sjvBo96UzvppAgaNZ-j8SlDX-0ofnA9o83O2oi7b0NN7TH3PSzeCxR2zUFJZaz"
-                        />
-                        <p className="text-xs text-[#828796] mt-1">
-                          Avatar Ready &bull; Input speech or text to animate signs.
-                        </p>
+                  {/* 3D Avatar Canvas Area */}
+                  <div className="flex-1 w-full h-full min-h-[320px] flex items-center justify-center relative overflow-hidden bg-gradient-to-b from-[#050b16] via-[#091325] to-[#040914] rounded-2xl border border-white/10">
+                    <ISLAvatarCanvas
+                      ref={avatarCanvasRef}
+                      modelPath={modelPath}
+                      speed={avatarSpeed}
+                      pauseTimeMs={Math.round(400 / avatarSpeed)}
+                      onProgressChar={(char) => setActiveAvatarChar(char)}
+                      className="w-full h-full"
+                    />
+
+                    {/* Target Letter Overlay Badge */}
+                    {activeAvatarChar && (
+                      <div className="absolute bottom-3 left-3 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/15 text-xs font-mono font-bold text-[#8dfc75] shadow-lg z-10 flex items-center gap-2">
+                        <span className="text-[10px] text-white/60 uppercase">Target Signal:</span>
+                        <span className="text-sm text-[#fe9832]">"{activeAvatarChar}"</span>
                       </div>
                     )}
                   </div>
