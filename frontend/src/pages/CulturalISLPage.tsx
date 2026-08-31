@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BackgroundVideo } from '../components/cultural/BackgroundVideo';
 import { DarkOverlay } from '../components/cultural/DarkOverlay';
 import { JanaGanaManaContent, buildParagraphLetterTokens, JANA_GANA_MANA_APPROVED_TEXT } from '../components/cultural/JanaGanaManaContent';
 import { ISLAvatarContainer } from '../components/cultural/ISLAvatarContainer';
+import type { ISLAvatarCanvasRef } from '../components/cultural/ISLAvatarCanvas';
 
 interface WordInfo {
   word: string;
@@ -50,16 +51,13 @@ function buildWordData(linesText: string[]) {
   return words;
 }
 
+const FULL_ANTHEM_STRING = JANA_GANA_MANA_APPROVED_TEXT.join(' ');
+
 /**
  * JanaGanaManaPage (Cultural ISL Experience)
  *
  * Dedicated premium cultural page for India's National Anthem "Jana Gana Mana".
- * Features:
- * - Full-screen looping background video with animated Indian tricolor flag waves
- * - Dark cinematic overlay for maximum contrast & accessibility
- * - Approved English-only Jana Gana Mana verses in paragraph format
- * - Letter-by-letter avatar state machine with word pause protection
- * - Real 3D Three.js Mixamo Avatar Renderer (YBot / XBot)
+ * Integrates the real 3D Three.js Mixamo Avatar Renderer (YBot / XBot) from Avatar-realtime.
  */
 export const CulturalISLPage: React.FC = () => {
   const navigate = useNavigate();
@@ -80,6 +78,9 @@ export const CulturalISLPage: React.FC = () => {
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
   const [isCompleted, setIsCompleted] = useState<boolean>(false);
 
+  // Ref to 3D Avatar Canvas Imperative Handle
+  const canvasRef = useRef<ISLAvatarCanvasRef | null>(null);
+
   // Derive current word & letter progress from activeLetterIndex
   const { currentWordObj, currentWordIndex, currentWordProgress } = useMemo(() => {
     const foundWord = words.find((w) => w.globalLetterIndices.includes(activeLetterIndex)) || words[0];
@@ -98,76 +99,73 @@ export const CulturalISLPage: React.FC = () => {
     return allLetters[activeLetterIndex] || null;
   }, [allLetters, activeLetterIndex]);
 
-  // Sequential Playback State Machine Engine
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const clearTimer = useCallback(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
+  // Callback from 3D Avatar Engine when each letter animation begins
+  const handleAvatarProgressChar = useCallback((_char: string, processedText: string) => {
+    // Calculate global letter count processed so far
+    const cleanLettersProcessed = processedText.replace(/[^a-zA-Z]/g, '').length;
+    if (cleanLettersProcessed > 0 && cleanLettersProcessed <= allLetters.length) {
+      setActiveLetterIndex(cleanLettersProcessed - 1);
     }
+  }, [allLetters.length]);
+
+  const handleAvatarFinish = useCallback(() => {
+    setIsPlaying(false);
+    setIsCompleted(true);
   }, []);
-
-  useEffect(() => {
-    if (!isPlaying) {
-      clearTimer();
-      return;
-    }
-
-    const currentWordInfo = words.find((w) => w.globalLetterIndices.includes(activeLetterIndex));
-    const isLastLetterOfWord = currentWordInfo && currentWordInfo.globalLetterIndices[currentWordInfo.globalLetterIndices.length - 1] === activeLetterIndex;
-
-    // Durations scaled by speed
-    const letterDurationMs = Math.round(450 / playbackSpeed);
-    const wordPauseDurationMs = Math.round(650 / playbackSpeed);
-
-    const delay = isLastLetterOfWord ? letterDurationMs + wordPauseDurationMs : letterDurationMs;
-
-    timeoutRef.current = setTimeout(() => {
-      setActiveLetterIndex((prevIndex) => {
-        if (prevIndex >= allLetters.length - 1) {
-          setIsPlaying(false);
-          setIsCompleted(true);
-          return prevIndex;
-        }
-        return prevIndex + 1;
-      });
-    }, delay);
-
-    return () => {
-      clearTimer();
-    };
-  }, [isPlaying, activeLetterIndex, playbackSpeed, allLetters.length, words, clearTimer]);
 
   // Handlers for Control Actions
   const handleTogglePlay = useCallback(() => {
-    if (activeLetterIndex >= allLetters.length - 1) {
-      setActiveLetterIndex(0);
+    if (!canvasRef.current) return;
+
+    if (isPlaying) {
+      setIsPlaying(false);
+      canvasRef.current.pauseAnimation();
+    } else {
       setIsCompleted(false);
+      setIsPlaying(true);
+      if (activeLetterIndex === 0 || activeLetterIndex >= allLetters.length - 1) {
+        setActiveLetterIndex(0);
+        canvasRef.current.signText(FULL_ANTHEM_STRING);
+      } else {
+        canvasRef.current.resumeAnimation();
+      }
     }
-    setIsPlaying((prev) => !prev);
-  }, [activeLetterIndex, allLetters.length]);
+  }, [isPlaying, activeLetterIndex, allLetters.length]);
 
   const handleStepNext = useCallback(() => {
     setIsCompleted(false);
-    setActiveLetterIndex((prev) => Math.min(allLetters.length - 1, prev + 1));
-  }, [allLetters.length]);
+    const nextIdx = Math.min(allLetters.length - 1, activeLetterIndex + 1);
+    setActiveLetterIndex(nextIdx);
+    if (canvasRef.current && allLetters[nextIdx]) {
+      canvasRef.current.playLetter(allLetters[nextIdx]);
+    }
+  }, [allLetters, activeLetterIndex]);
 
   const handleStepPrev = useCallback(() => {
     setIsCompleted(false);
-    setActiveLetterIndex((prev) => Math.max(0, prev - 1));
-  }, []);
+    const prevIdx = Math.max(0, activeLetterIndex - 1);
+    setActiveLetterIndex(prevIdx);
+    if (canvasRef.current && allLetters[prevIdx]) {
+      canvasRef.current.playLetter(allLetters[prevIdx]);
+    }
+  }, [allLetters, activeLetterIndex]);
 
   const handleReset = useCallback(() => {
     setIsPlaying(false);
     setIsCompleted(false);
     setActiveLetterIndex(0);
+    if (canvasRef.current) {
+      canvasRef.current.resetPose();
+    }
   }, []);
 
   const handleSelectLetter = useCallback((index: number) => {
     setIsCompleted(false);
     setActiveLetterIndex(index);
-  }, []);
+    if (canvasRef.current && allLetters[index]) {
+      canvasRef.current.playLetter(allLetters[index]);
+    }
+  }, [allLetters]);
 
   const handleChangeSpeed = useCallback((speed: number) => {
     setPlaybackSpeed(speed);
@@ -175,6 +173,10 @@ export const CulturalISLPage: React.FC = () => {
 
   const handleChangeModel = useCallback((path: string) => {
     setModelPath(path);
+    setIsPlaying(false);
+    if (canvasRef.current) {
+      canvasRef.current.resetPose();
+    }
   }, []);
 
   return (
@@ -245,6 +247,7 @@ export const CulturalISLPage: React.FC = () => {
           {/* Right Column (Lg: 5 cols): Real 3D ISL Avatar Container */}
           <div className="lg:col-span-5">
             <ISLAvatarContainer
+              canvasRef={canvasRef}
               currentWord={currentWordObj ? currentWordObj.word : ''}
               currentWordProgress={currentWordProgress}
               currentLetter={currentLetter}
@@ -255,6 +258,8 @@ export const CulturalISLPage: React.FC = () => {
               isPlaying={isPlaying}
               playbackSpeed={playbackSpeed}
               modelPath={modelPath}
+              onProgressChar={handleAvatarProgressChar}
+              onFinish={handleAvatarFinish}
               onTogglePlay={handleTogglePlay}
               onStepNext={handleStepNext}
               onStepPrev={handleStepPrev}

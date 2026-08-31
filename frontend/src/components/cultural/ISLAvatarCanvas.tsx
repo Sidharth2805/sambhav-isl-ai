@@ -4,38 +4,48 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 // @ts-ignore
 import * as alphabets from '../../services/avatar/Animations/alphabets';
 // @ts-ignore
+import * as words from '../../services/avatar/Animations/words';
+// @ts-ignore
 import { defaultPose } from '../../services/avatar/Animations/defaultPose';
 
 export interface ISLAvatarCanvasRef {
-  playLetter: (letter: string, speedMultiplier?: number) => void;
+  signText: (text: string) => void;
+  playLetter: (letter: string) => void;
+  pauseAnimation: () => void;
+  resumeAnimation: () => void;
   resetPose: () => void;
 }
 
 interface ISLAvatarCanvasProps {
   modelPath?: string;
-  activeLetter?: string | null;
   speed?: number;
+  pauseTimeMs?: number;
+  onProgressChar?: (char: string, processedText: string) => void;
+  onFinish?: () => void;
   className?: string;
 }
 
 /**
- * 3D ISL Avatar Canvas Renderer
+ * 3D ISL Avatar Canvas Renderer (Avatar-Realtime Engine Integration)
  *
- * Uses Three.js & GLTFLoader to render the 3D Mixamo avatar mesh (YBot/XBot).
- * Translates English character inputs ('A'-'Z') into real-time ISL bone rotations.
+ * Integrates the exact 3D Mixamo GLTF animation engine from Avatar-realtime.
+ * Queues character and word poses, animates bone rotations via requestAnimationFrame,
+ * and emits progress updates matching the avatar's real-time signing position.
  */
 export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasProps>(({
   modelPath = '/models/ybot.glb',
-  activeLetter = null,
   speed = 0.12,
+  pauseTimeMs = 400,
+  onProgressChar,
+  onFinish,
   className = '',
 }, ref) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState<string | null>(null);
 
-  // Mutable animation state container matching avatar-realtime structure
-  const avatarRef = useRef<{
+  // Mutable animation state container matching Avatar-realtime structure
+  const avatarStateRef = useRef<{
     scene?: THREE.Scene;
     camera?: THREE.PerspectiveCamera;
     renderer?: THREE.WebGLRenderer;
@@ -44,17 +54,22 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
     characters: string[];
     pending: boolean;
     flag: boolean;
+    isPaused: boolean;
+    processedText: string;
     animate: () => void;
     currentAnimationReq?: number;
+    pauseTimeout?: ReturnType<typeof setTimeout>;
   }>({
     animations: [],
     characters: [],
     pending: false,
     flag: false,
+    isPaused: false,
+    processedText: '',
     animate: () => {},
   });
 
-  // Initialize Three.js Scene, Camera, Lighting & GLTF Avatar Mesh
+  // Initialize Three.js Scene, Camera, Lighting & Load GLTF Avatar Mesh
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -62,13 +77,15 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
     setIsLoading(true);
     setHasError(null);
 
-    const state = avatarRef.current;
+    const state = avatarStateRef.current;
     state.flag = false;
     state.pending = false;
+    state.isPaused = false;
     state.animations = [];
     state.characters = [];
+    state.processedText = '';
 
-    // Scene & Camera
+    // 1. Scene & Camera
     const scene = new THREE.Scene();
     state.scene = scene;
 
@@ -81,7 +98,7 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
     camera.lookAt(0, 1.1, 0);
     state.camera = camera;
 
-    // Renderer
+    // 2. WebGL Renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(width, height);
@@ -91,22 +108,23 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
     container.innerHTML = '';
     container.appendChild(renderer.domElement);
 
-    // Lights
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+    // 3. Lighting Setup
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.95);
     scene.add(ambientLight);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.3);
     dirLight.position.set(2, 4, 3);
     scene.add(dirLight);
 
-    const backLight = new THREE.DirectionalLight(0xfe9832, 0.6);
-    backLight.position.set(-2, 2, -2);
-    scene.add(backLight);
+    const rimLight = new THREE.DirectionalLight(0xfe9832, 0.7);
+    rimLight.position.set(-2, 2, -2);
+    scene.add(rimLight);
 
-    // Animation Loop Function
+    // 4. Exact Avatar-realtime Animation Loop (ref.animate)
     state.animate = () => {
       if (state.animations.length === 0) {
         state.pending = false;
+        if (onFinish) onFinish();
         if (state.renderer && state.scene && state.camera) {
           state.renderer.render(state.scene, state.camera);
         }
@@ -115,22 +133,28 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
 
       state.currentAnimationReq = requestAnimationFrame(state.animate);
 
+      if (state.isPaused) return;
+
       if (state.animations[0] && state.animations[0].length) {
         if (!state.flag) {
           if (state.animations[0][0] === 'add-text') {
+            const addedChar = state.animations[0][1];
+            state.processedText += addedChar;
+            if (onProgressChar) {
+              onProgressChar(addedChar.trim(), state.processedText);
+            }
             state.animations.shift();
           } else {
             for (let i = 0; i < state.animations[0].length; ) {
               const [boneName, action, axis, limit, sign] = state.animations[0][i];
               const bone = state.avatar?.getObjectByName(boneName);
               if (bone) {
-                const step = speed;
                 if (sign === '+' && (bone as any)[action][axis] < limit) {
-                  (bone as any)[action][axis] += step;
+                  (bone as any)[action][axis] += speed;
                   (bone as any)[action][axis] = Math.min((bone as any)[action][axis], limit);
                   i++;
                 } else if (sign === '-' && (bone as any)[action][axis] > limit) {
-                  (bone as any)[action][axis] -= step;
+                  (bone as any)[action][axis] -= speed;
                   (bone as any)[action][axis] = Math.max((bone as any)[action][axis], limit);
                   i++;
                 } else {
@@ -144,9 +168,9 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
         }
       } else {
         state.flag = true;
-        setTimeout(() => {
+        state.pauseTimeout = setTimeout(() => {
           state.flag = false;
-        }, 150);
+        }, pauseTimeMs);
         state.animations.shift();
       }
 
@@ -155,7 +179,7 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
       }
     };
 
-    // Load GLTF Model
+    // 5. Load GLTF Avatar Model
     const loader = new GLTFLoader();
     loader.load(
       modelPath,
@@ -166,7 +190,6 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
           }
         });
 
-        // Center avatar
         gltf.scene.position.set(0, 0, 0);
         state.avatar = gltf.scene;
         scene.add(gltf.scene);
@@ -178,7 +201,7 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
       undefined,
       (err) => {
         console.error('[ISLAvatarCanvas] Error loading GLTF model:', err);
-        setHasError('The ISL avatar model is temporarily unavailable.');
+        setHasError('The ISL avatar model is temporarily unavailable. Please try again.');
         setIsLoading(false);
       }
     );
@@ -197,71 +220,100 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      if (state.currentAnimationReq) {
-        cancelAnimationFrame(state.currentAnimationReq);
-      }
+      if (state.pauseTimeout) clearTimeout(state.pauseTimeout);
+      if (state.currentAnimationReq) cancelAnimationFrame(state.currentAnimationReq);
       if (state.renderer && state.renderer.domElement) {
         state.renderer.dispose();
       }
     };
-  }, [modelPath, speed]);
+  }, [modelPath, speed, pauseTimeMs]);
 
-  // Imperative handle methods
+  // Exact Avatar-realtime Text Queueing Engine
+  const queueTextAnimations = (textValue: string) => {
+    const state = avatarStateRef.current;
+    if (!state.avatar) return;
+
+    const str = textValue.toUpperCase();
+    const strWords = str.split(/\s+/).filter(Boolean);
+
+    state.animations = [];
+    state.pending = false;
+    state.processedText = '';
+
+    for (const word of strWords) {
+      if ((words as any)[word]) {
+        state.animations.push(['add-text', word + ' ']);
+        (words as any)[word](state);
+      } else {
+        for (const [index, ch] of word.split('').entries()) {
+          if (index === word.length - 1) {
+            state.animations.push(['add-text', ch + ' ']);
+          } else {
+            state.animations.push(['add-text', ch]);
+          }
+
+          if (typeof (alphabets as any)[ch] === 'function') {
+            (alphabets as any)[ch](state);
+          } else {
+            defaultPose(state);
+          }
+        }
+      }
+    }
+  };
+
+  // Expose Imperative Methods to Ref
   useImperativeHandle(ref, () => ({
+    signText: (text: string) => {
+      const state = avatarStateRef.current;
+      state.isPaused = false;
+      queueTextAnimations(text);
+    },
     playLetter: (letter: string) => {
-      const state = avatarRef.current;
-      if (!state.avatar) return;
-
-      const upper = letter.toUpperCase();
+      const state = avatarStateRef.current;
+      state.isPaused = false;
       state.animations = [];
       state.pending = false;
-
+      const upper = letter.toUpperCase().trim();
       if (upper && (alphabets as any)[upper]) {
+        state.animations.push(['add-text', upper]);
         (alphabets as any)[upper](state);
       } else {
         defaultPose(state);
+      }
+    },
+    pauseAnimation: () => {
+      avatarStateRef.current.isPaused = true;
+    },
+    resumeAnimation: () => {
+      const state = avatarStateRef.current;
+      state.isPaused = false;
+      if (state.animations.length > 0 && !state.pending) {
+        state.pending = true;
+        state.animate();
       }
     },
     resetPose: () => {
-      const state = avatarRef.current;
-      if (!state.avatar) return;
+      const state = avatarStateRef.current;
       state.animations = [];
       state.pending = false;
-      defaultPose(state);
+      state.isPaused = false;
+      state.processedText = '';
+      if (state.avatar) defaultPose(state);
     },
   }));
 
-  // Trigger animation when activeLetter prop updates
-  useEffect(() => {
-    const state = avatarRef.current;
-    if (!state.avatar || isLoading) return;
-
-    if (activeLetter) {
-      const upper = activeLetter.toUpperCase();
-      state.animations = [];
-      state.pending = false;
-
-      if ((alphabets as any)[upper]) {
-        (alphabets as any)[upper](state);
-      } else {
-        defaultPose(state);
-      }
-    } else {
-      defaultPose(state);
-    }
-  }, [activeLetter, isLoading]);
-
   return (
     <div className={`relative w-full h-full min-h-[260px] flex items-center justify-center ${className}`}>
-      {/* Loading Overlay */}
+      {/* Loading State */}
       {isLoading && (
         <div className="absolute inset-0 z-10 bg-[#050b16]/90 backdrop-blur-md flex flex-col items-center justify-center p-4 text-center gap-3 rounded-2xl">
           <div className="w-10 h-10 border-3 border-[#fe9832] border-t-transparent rounded-full animate-spin" />
-          <span className="text-xs font-bold text-white">Loading ISL Avatar Mesh (3D YBot)...</span>
+          <span className="text-xs font-bold text-white">Loading 3D ISL Avatar Mesh (YBot)...</span>
         </div>
       )}
 
-      {/* Error Overlay */}
+      {/* Error State */}
       {hasError && (
         <div className="absolute inset-0 z-10 bg-red-950/90 backdrop-blur-md flex flex-col items-center justify-center p-4 text-center gap-2 text-red-200 rounded-2xl">
           <span className="material-symbols-outlined text-3xl">warning</span>
@@ -269,7 +321,7 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
         </div>
       )}
 
-      {/* Three.js WebGL Container */}
+      {/* Three.js Render Target Canvas */}
       <div ref={containerRef} className="w-full h-full flex items-center justify-center overflow-hidden" />
     </div>
   );

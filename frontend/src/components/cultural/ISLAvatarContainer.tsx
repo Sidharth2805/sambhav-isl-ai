@@ -1,7 +1,8 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { ISLAvatarCanvas, type ISLAvatarCanvasRef } from './ISLAvatarCanvas';
 
 export interface ISLAvatarContainerProps {
+  canvasRef: React.RefObject<ISLAvatarCanvasRef | null>;
   currentWord: string | null;
   currentWordProgress: { current: number; total: number };
   currentLetter: string | null;
@@ -12,6 +13,8 @@ export interface ISLAvatarContainerProps {
   isPlaying: boolean;
   playbackSpeed: number;
   modelPath: string;
+  onProgressChar?: (char: string, processedText: string) => void;
+  onFinish?: () => void;
   onTogglePlay: () => void;
   onStepNext: () => void;
   onStepPrev: () => void;
@@ -27,6 +30,7 @@ export interface ISLAvatarContainerProps {
  * Visualizes character-by-character ISL signing in synchronization with lyrics.
  */
 export const ISLAvatarContainer: React.FC<ISLAvatarContainerProps> = ({
+  canvasRef,
   currentWord,
   currentWordProgress,
   currentLetter,
@@ -37,6 +41,8 @@ export const ISLAvatarContainer: React.FC<ISLAvatarContainerProps> = ({
   isPlaying,
   playbackSpeed,
   modelPath,
+  onProgressChar,
+  onFinish,
   onTogglePlay,
   onStepNext,
   onStepPrev,
@@ -44,8 +50,6 @@ export const ISLAvatarContainer: React.FC<ISLAvatarContainerProps> = ({
   onChangeSpeed,
   onChangeModel,
 }) => {
-  const canvasRef = useRef<ISLAvatarCanvasRef | null>(null);
-
   // Overall letter progress percentage
   const letterProgressPercent = totalLetters > 0 ? Math.round(((currentLetterIndex + 1) / totalLetters) * 100) : 0;
 
@@ -89,8 +93,10 @@ export const ISLAvatarContainer: React.FC<ISLAvatarContainerProps> = ({
         <ISLAvatarCanvas
           ref={canvasRef}
           modelPath={modelPath}
-          activeLetter={currentLetter}
-          speed={0.08 * playbackSpeed}
+          speed={0.12 * playbackSpeed}
+          pauseTimeMs={Math.round(400 / playbackSpeed)}
+          onProgressChar={onProgressChar}
+          onFinish={onFinish}
           className="w-full h-full"
         />
 
@@ -234,7 +240,7 @@ export const ISLAvatarContainer: React.FC<ISLAvatarContainerProps> = ({
                   onClick={() => onChangeSpeed(speed)}
                   className={`px-2 py-0.5 rounded-lg font-bold transition-all cursor-pointer ${
                     playbackSpeed === speed
-                      ? 'bg-[#fe9832] text-[#542900]'
+                      ? 'bg-[#fe9832]' + ' text-[#542900]'
                       : 'text-white/70 hover:text-white'
                   }`}
                 >
