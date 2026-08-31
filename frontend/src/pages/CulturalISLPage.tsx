@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BackgroundVideo } from '../components/cultural/BackgroundVideo';
 import { DarkOverlay } from '../components/cultural/DarkOverlay';
-import { JanaGanaManaContent, buildPoemTokens, JANA_GANA_MANA_APPROVED_LINES } from '../components/cultural/JanaGanaManaContent';
+import { JanaGanaManaContent, buildParagraphLetterTokens, JANA_GANA_MANA_APPROVED_TEXT } from '../components/cultural/JanaGanaManaContent';
 import { ISLAvatarContainer } from '../components/cultural/ISLAvatarContainer';
 
 /**
@@ -10,10 +10,10 @@ import { ISLAvatarContainer } from '../components/cultural/ISLAvatarContainer';
  *
  * Dedicated premium cultural page for India's National Anthem "Jana Gana Mana".
  * Features:
- * - Full-screen looping background video
+ * - Full-screen looping background video with animated Indian tricolor flag waves
  * - Dark cinematic overlay for maximum contrast & accessibility
- * - Approved English-only Jana Gana Mana verses
- * - Word-by-word tokenized processing architecture
+ * - Approved English-only Jana Gana Mana verses in paragraph format
+ * - Letter-by-letter tokenized processing architecture
  * - Isolated ISL Avatar Container prepared for plug-and-play avatar integration
  */
 export const CulturalISLPage: React.FC = () => {
@@ -22,27 +22,28 @@ export const CulturalISLPage: React.FC = () => {
   // Custom Video Source URL (Easily replaceable by passing a prop or updating the path)
   const [backgroundVideoSrc] = useState<string>('/assets/videos/jana_gana_mana_bg.mp4');
 
-  // Tokenize approved English Jana Gana Mana text into structured lines and global word tokens
-  const { lines, allWords } = useMemo(() => buildPoemTokens(JANA_GANA_MANA_APPROVED_LINES), []);
+  // Tokenize approved English Jana Gana Mana paragraph text into stanzas and letter tokens
+  const { stanzas, allLetters } = useMemo(() => buildParagraphLetterTokens(JANA_GANA_MANA_APPROVED_TEXT), []);
 
-  // Playback & Word-by-word Sequential State
-  const [activeWordIndex, setActiveWordIndex] = useState<number>(0);
+  // Playback & Letter-by-letter Sequential State
+  const [activeLetterIndex, setActiveLetterIndex] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
 
-  const currentWord = useMemo(() => {
-    return allWords[activeWordIndex] || null;
-  }, [allWords, activeWordIndex]);
+  const currentLetter = useMemo(() => {
+    return allLetters[activeLetterIndex] || null;
+  }, [allLetters, activeLetterIndex]);
 
-  // Sequential Timer Engine for Word-by-Word ISL Performance
+  // Sequential Timer Engine for Letter-by-Letter ISL Performance
   useEffect(() => {
     let timer: ReturnType<typeof setInterval> | null = null;
 
     if (isPlaying) {
-      const stepDurationMs = Math.round(1000 / playbackSpeed);
+      // Adjusted speed per letter for smooth reading (e.g. ~400ms per letter at 1.0x)
+      const stepDurationMs = Math.round(400 / playbackSpeed);
       timer = setInterval(() => {
-        setActiveWordIndex((prevIndex) => {
-          if (prevIndex >= allWords.length - 1) {
+        setActiveLetterIndex((prevIndex) => {
+          if (prevIndex >= allLetters.length - 1) {
             setIsPlaying(false);
             return prevIndex;
           }
@@ -54,31 +55,31 @@ export const CulturalISLPage: React.FC = () => {
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [isPlaying, playbackSpeed, allWords.length]);
+  }, [isPlaying, playbackSpeed, allLetters.length]);
 
   // Handlers for Control Actions
   const handleTogglePlay = useCallback(() => {
-    if (activeWordIndex >= allWords.length - 1) {
-      setActiveWordIndex(0);
+    if (activeLetterIndex >= allLetters.length - 1) {
+      setActiveLetterIndex(0);
     }
     setIsPlaying((prev) => !prev);
-  }, [activeWordIndex, allWords.length]);
+  }, [activeLetterIndex, allLetters.length]);
 
   const handleStepNext = useCallback(() => {
-    setActiveWordIndex((prev) => Math.min(allWords.length - 1, prev + 1));
-  }, [allWords.length]);
+    setActiveLetterIndex((prev) => Math.min(allLetters.length - 1, prev + 1));
+  }, [allLetters.length]);
 
   const handleStepPrev = useCallback(() => {
-    setActiveWordIndex((prev) => Math.max(0, prev - 1));
+    setActiveLetterIndex((prev) => Math.max(0, prev - 1));
   }, []);
 
   const handleReset = useCallback(() => {
     setIsPlaying(false);
-    setActiveWordIndex(0);
+    setActiveLetterIndex(0);
   }, []);
 
-  const handleSelectWord = useCallback((index: number) => {
-    setActiveWordIndex(index);
+  const handleSelectLetter = useCallback((index: number) => {
+    setActiveLetterIndex(index);
   }, []);
 
   const handleChangeSpeed = useCallback((speed: number) => {
@@ -88,7 +89,7 @@ export const CulturalISLPage: React.FC = () => {
   return (
     <div className="relative min-h-[calc(100vh-80px)] w-full overflow-hidden text-white font-['Inter',sans-serif] flex flex-col justify-between p-4 sm:p-6 lg:p-8 rounded-[32px]">
       
-      {/* 1. Full-Screen Looping Background Video */}
+      {/* 1. Full-Screen Looping Background Video with Animated Tricolor Waves */}
       <BackgroundVideo videoSrc={backgroundVideoSrc} />
 
       {/* 2. Cinematic Dark Overlay & Gradient */}
@@ -115,7 +116,7 @@ export const CulturalISLPage: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs text-white/70 mt-0.5">
-                Indian National Anthem • Sequential Word-by-Word ISL Performance
+                Indian National Anthem • Sequential Letter-by-Letter ISL Performance
               </p>
             </div>
           </div>
@@ -132,24 +133,25 @@ export const CulturalISLPage: React.FC = () => {
           </button>
         </header>
 
-        {/* Main Grid: Content & Avatar Container */}
+        {/* Main Grid: Paragraph Content & Avatar Container */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
-          {/* Left Column (Lg: 7 cols): Approved English Lyrics with Token Highlight */}
+          {/* Left Column (Lg: 7 cols): Approved English Lyrics in Paragraph Format */}
           <div className="lg:col-span-7">
             <JanaGanaManaContent
-              lines={lines}
-              activeWordIndex={activeWordIndex}
-              onSelectWord={handleSelectWord}
+              stanzas={stanzas}
+              activeLetterIndex={activeLetterIndex}
+              totalLetters={allLetters.length}
+              onSelectLetter={handleSelectLetter}
             />
           </div>
 
           {/* Right Column (Lg: 5 cols): Isolated ISL Avatar Container */}
           <div className="lg:col-span-5">
             <ISLAvatarContainer
-              currentWord={currentWord}
-              currentWordIndex={activeWordIndex}
-              totalWords={allWords.length}
+              currentLetter={currentLetter}
+              currentLetterIndex={activeLetterIndex}
+              totalLetters={allLetters.length}
               isPlaying={isPlaying}
               playbackSpeed={playbackSpeed}
               onTogglePlay={handleTogglePlay}

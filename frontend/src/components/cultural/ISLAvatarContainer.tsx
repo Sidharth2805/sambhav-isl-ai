@@ -1,9 +1,9 @@
 import React from 'react';
 
 export interface ISLAvatarContainerProps {
-  currentWord: string | null;
-  currentWordIndex: number;
-  totalWords: number;
+  currentLetter: string | null;
+  currentLetterIndex: number;
+  totalLetters: number;
   isPlaying: boolean;
   playbackSpeed: number;
   onTogglePlay: () => void;
@@ -17,12 +17,12 @@ export interface ISLAvatarContainerProps {
  * ISLAvatarContainer
  *
  * Isolated component architecture designed for plug-and-play avatar model integration.
- * Connect the 3D Avatar canvas / WebGL renderer inside the <AvatarModelSlot /> when available.
+ * Processes English text letter-by-letter sequentially.
  */
 export const ISLAvatarContainer: React.FC<ISLAvatarContainerProps> = ({
-  currentWord,
-  currentWordIndex,
-  totalWords,
+  currentLetter,
+  currentLetterIndex,
+  totalLetters,
   isPlaying,
   playbackSpeed,
   onTogglePlay,
@@ -43,7 +43,7 @@ export const ISLAvatarContainer: React.FC<ISLAvatarContainerProps> = ({
             <h3 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
               <span>ISL Avatar Visualizer</span>
             </h3>
-            <p className="text-[11px] text-white/60">Sequential Sign Performance Engine</p>
+            <p className="text-[11px] text-white/60">Letter-by-Letter Sign Performance Engine</p>
           </div>
         </div>
 
@@ -69,23 +69,23 @@ export const ISLAvatarContainer: React.FC<ISLAvatarContainerProps> = ({
           </span>
         </div>
 
-        {/* Current Active Word Box */}
+        {/* Current Active Target Letter Box */}
         <div className="flex flex-col items-center gap-1">
           <span className="text-[10px] uppercase font-bold tracking-widest text-white/50">
-            Target Word Signal
+            Target Letter Signal
           </span>
-          <div className="text-2xl sm:text-3xl font-black text-white tracking-tight px-4 py-1.5 rounded-xl bg-white/5 border border-white/10 shadow-sm min-w-[140px] text-center">
-            {currentWord ? `"${currentWord}"` : '—'}
+          <div className="text-3xl sm:text-4xl font-mono font-black text-white tracking-tight px-6 py-2 rounded-xl bg-white/5 border border-white/10 shadow-sm min-w-[100px] text-center">
+            {currentLetter ? `"${currentLetter}"` : '—'}
           </div>
         </div>
 
         <p className="text-[11px] text-white/60 max-w-xs mt-3 leading-relaxed">
-          Avatar model architecture is prepared to receive English word tokens and perform corresponding ISL signs in sequence.
+          Avatar model architecture is prepared to receive English character tokens letter-by-letter and perform corresponding ISL alphabet signs in sequence.
         </p>
 
-        {/* Word Counter Badge */}
+        {/* Letter Counter Badge */}
         <div className="absolute bottom-3 right-3 text-[10px] font-mono text-white/70 bg-black/50 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/10">
-          Word <span className="text-[#fe9832] font-bold">{currentWordIndex + 1}</span> of {totalWords}
+          Letter <span className="text-[#fe9832] font-bold">{currentLetterIndex + 1}</span> of {totalLetters}
         </div>
       </div>
 
@@ -98,9 +98,9 @@ export const ISLAvatarContainer: React.FC<ISLAvatarContainerProps> = ({
             <button
               type="button"
               onClick={onStepPrev}
-              disabled={currentWordIndex <= 0}
+              disabled={currentLetterIndex <= 0}
               className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-              title="Previous Word"
+              title="Previous Letter"
             >
               <span className="material-symbols-outlined text-[20px]">skip_previous</span>
             </button>
@@ -114,16 +114,16 @@ export const ISLAvatarContainer: React.FC<ISLAvatarContainerProps> = ({
               <span className="material-symbols-outlined text-[20px]">
                 {isPlaying ? 'pause' : 'play_arrow'}
               </span>
-              <span>{isPlaying ? 'Pause Sequence' : 'Start ISL Sequence'}</span>
+              <span>{isPlaying ? 'Pause Sequence' : 'Start Letter Sequence'}</span>
             </button>
 
             {/* Step Forward */}
             <button
               type="button"
               onClick={onStepNext}
-              disabled={currentWordIndex >= totalWords - 1}
+              disabled={currentLetterIndex >= totalLetters - 1}
               className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-              title="Next Word"
+              title="Next Letter"
             >
               <span className="material-symbols-outlined text-[20px]">skip_next</span>
             </button>
