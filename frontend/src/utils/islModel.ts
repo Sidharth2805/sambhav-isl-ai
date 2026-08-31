@@ -128,19 +128,21 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
       return { gesture: '', confidence: 0.0, label: '', phrase: '', isRealModel: this.isOnline };
     }
 
-    // 1. Flatten into exact 126-dimensional coordinate vector (2 hands * 21 landmarks * 3 coordinates)
+    // 1. Flatten into exact 126-dimensional coordinate vector matching saanket_bilstm.keras model schema:
+    //    Index 0 (Features 0..62)   = Left Hand (21 landmarks * 3 coords)
+    //    Index 1 (Features 63..125) = Right Hand (21 landmarks * 3 coords)
     const frame126: number[] = new Array(126).fill(0.0);
 
-    if (landmarks.rightHand) {
-      landmarks.rightHand.slice(0, 21).forEach((lm, i) => {
+    if (hasLeftHand && landmarks.leftHand) {
+      landmarks.leftHand.slice(0, 21).forEach((lm, i) => {
         frame126[i * 3] = lm.x ?? 0.0;
         frame126[i * 3 + 1] = lm.y ?? 0.0;
         frame126[i * 3 + 2] = lm.z ?? 0.0;
       });
     }
 
-    if (landmarks.leftHand) {
-      landmarks.leftHand.slice(0, 21).forEach((lm, i) => {
+    if (hasRightHand && landmarks.rightHand) {
+      landmarks.rightHand.slice(0, 21).forEach((lm, i) => {
         frame126[63 + i * 3] = lm.x ?? 0.0;
         frame126[63 + i * 3 + 1] = lm.y ?? 0.0;
         frame126[63 + i * 3 + 2] = lm.z ?? 0.0;
