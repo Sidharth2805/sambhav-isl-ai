@@ -1450,13 +1450,13 @@ export const TranslatePage: React.FC = () => {
 
             {/* Detailed Mode Breakdown in Summary */}
             <div className="bg-[#f7fafc] rounded-2xl p-4 border border-[#e0e3e5] flex flex-col gap-2 max-h-48 overflow-y-auto">
-              <div className="flex justify-between text-xs border-b border-[#e0e3e5]/60 pb-1.5">
-                <span className="text-[#45474c]">Total Entries:</span>
+              <div className="flex justify-between text-xs border-b border-[#e0e3e5]/60 pb-1.5 font-bold">
+                <span className="text-[#45474c]">Conversation:</span>
                 <span className="font-bold text-[#030813]">{sessionHistoryLogs.length} events</span>
               </div>
 
               {sessionHistoryLogs.length === 0 ? (
-                <p className="text-[11px] text-[#45474c]/70 italic py-2">No messages or speech recorded in this session.</p>
+                <p className="text-[11px] text-[#45474c]/70 italic py-2">No conversation in this session.</p>
               ) : (
                 <div className="space-y-1.5 pt-1">
                   {sessionHistoryLogs.map((log, idx) => (

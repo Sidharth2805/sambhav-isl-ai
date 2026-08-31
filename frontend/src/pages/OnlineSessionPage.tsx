@@ -892,13 +892,13 @@ const ActiveCallWorkspace: React.FC<ActiveCallWorkspaceProps> = ({
             {/* Conversation Log Summary Breakdown */}
             <div className="bg-[#f7fafc] dark:bg-[#030813] rounded-2xl p-4 border border-[#e0e3e5] dark:border-[#2d3133] flex flex-col gap-2 max-h-48 overflow-y-auto">
               <div className="flex justify-between text-xs border-b border-[#e0e3e5] dark:border-[#2d3133] pb-1.5 font-bold">
-                <span className="text-[#45474c] dark:text-[#828796]">Recorded Messages:</span>
+                <span className="text-[#45474c] dark:text-[#828796]">Conversation:</span>
                 <span className="text-[#030813] dark:text-white">{finalTranscripts.length} entries</span>
               </div>
 
               {finalTranscripts.length === 0 ? (
                 <p className="text-[11px] text-[#45474c] dark:text-[#828796] italic py-2 text-center">
-                  No dialogue recorded during this call.
+                  No conversation during this call.
                 </p>
               ) : (
                 <div className="space-y-2 pt-1">
