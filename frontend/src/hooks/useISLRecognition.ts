@@ -137,15 +137,22 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
       // 1. Initialize classifier
       await classifier.initialize();
 
-      // 2. Request camera stream
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
-        audio: false,
-      });
+      // 2. Attach or request camera stream
+      if (videoElement.srcObject) {
+        streamRef.current = videoElement.srcObject as MediaStream;
+        if (videoElement.paused) {
+          await videoElement.play().catch(() => {});
+        }
+      } else {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
+          audio: false,
+        });
 
-      streamRef.current = stream;
-      videoElement.srcObject = stream;
-      await videoElement.play();
+        streamRef.current = stream;
+        videoElement.srcObject = stream;
+        await videoElement.play().catch(() => {});
+      }
 
       setIsRecognizing(true);
       setIsPaused(false);

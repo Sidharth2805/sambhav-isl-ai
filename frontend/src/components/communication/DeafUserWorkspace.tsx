@@ -4,6 +4,7 @@ import { Track, ConnectionState as LkConnectionState } from 'livekit-client';
 import DraggableSelfView from './DraggableSelfView';
 import type { TranscriptEvent } from '../../types/transcript';
 import { ISLAvatarCanvas, type ISLAvatarCanvasRef } from '../cultural/ISLAvatarCanvas';
+import { useISLRecognition } from '../../hooks/useISLRecognition';
 
 interface DeafUserWorkspaceProps {
   sessionId: string;
@@ -156,6 +157,27 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
   const speedOptions = [0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0];
   const [activeReadingMessageId, setActiveReadingMessageId] = useState<string | null>(null);
 
+  // Real-time Neural BiLSTM Sign Recognition Hook (171 ISL Classes for letters & words)
+  const {
+    currentGesture: recognizedSign,
+    confidence: signConfidence,
+    translatedText: recognizedSignPhrase,
+    isModelOnline,
+  } = useISLRecognition();
+
+  const lastTransmittedSignRef = useRef<string>('');
+
+  // Automatically broadcast recognized sign / letter / word into live call chat/transcript
+  useEffect(() => {
+    const textToTransmit = recognizedSignPhrase || recognizedSign;
+    if (textToTransmit && textToTransmit !== lastTransmittedSignRef.current && signConfidence >= 0.65) {
+      lastTransmittedSignRef.current = textToTransmit;
+      if (onSendMessage) {
+        onSendMessage(textToTransmit);
+      }
+    }
+  }, [recognizedSign, recognizedSignPhrase, signConfidence, onSendMessage]);
+
   // Helper to convert any text into 3D ISL Avatar signing on demand
   const handleReadMessageInSign = (text: string, msgId?: string) => {
     if (!text || !text.trim()) return;
@@ -304,6 +326,28 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
             <div className="absolute top-2.5 left-3 bg-emerald-500 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full shadow z-10 flex items-center gap-1.5 animate-pulse">
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
               <span>Viewing Screen Share</span>
+            </div>
+          )}
+
+          {/* Live ISL Gesture Recognition HUD Overlay */}
+          {cameraState && (
+            <div className="absolute top-2.5 right-3 z-30 flex items-center gap-2">
+              {recognizedSign ? (
+                <div className="bg-black/85 backdrop-blur-md px-3 py-1 rounded-xl border border-emerald-500/50 text-white flex items-center gap-2 shadow-xl animate-scaleUp">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                  <span className="text-xs font-black text-emerald-400 uppercase tracking-wide">
+                    Sign: {recognizedSignPhrase || recognizedSign}
+                  </span>
+                  <span className="text-[10px] font-mono text-emerald-300 font-bold px-1.5 py-0.2 rounded bg-emerald-950/80">
+                    {Math.round(signConfidence * 100)}%
+                  </span>
+                </div>
+              ) : (
+                <div className="bg-black/65 backdrop-blur-md px-2.5 py-1 rounded-xl border border-white/15 text-white/80 text-[10px] font-bold flex items-center gap-1.5">
+                  <span className={`w-1.5 h-1.5 rounded-full ${isModelOnline ? 'bg-emerald-400 animate-ping' : 'bg-[#fe9832] animate-pulse'}`} />
+                  <span>{isModelOnline ? '171-Class BiLSTM Neural Live' : 'AI Gesture Recognition Active (171 Classes)'}</span>
+                </div>
+              )}
             </div>
           )}
 
