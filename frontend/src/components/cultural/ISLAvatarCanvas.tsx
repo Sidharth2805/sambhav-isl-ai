@@ -93,9 +93,9 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
     const height = container.clientHeight || 320;
     const aspect = width / height;
 
-    const camera = new THREE.PerspectiveCamera(32, aspect, 0.1, 1000);
-    camera.position.set(0, 1.35, 1.85);
-    camera.lookAt(0, 1.05, 0);
+    const camera = new THREE.PerspectiveCamera(28, aspect, 0.1, 1000);
+    camera.position.set(0, 1.1, 2.2);
+    camera.lookAt(0, 0.85, 0);
     state.camera = camera;
 
     // 2. WebGL Renderer
@@ -190,7 +190,7 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
           }
         });
 
-        gltf.scene.position.set(0, 0, 0);
+        gltf.scene.position.set(0, -0.4, 0);
         state.avatar = gltf.scene;
         scene.add(gltf.scene);
 
