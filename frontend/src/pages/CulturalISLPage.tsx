@@ -1,9 +1,54 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BackgroundVideo } from '../components/cultural/BackgroundVideo';
 import { DarkOverlay } from '../components/cultural/DarkOverlay';
 import { JanaGanaManaContent, buildParagraphLetterTokens, JANA_GANA_MANA_APPROVED_TEXT } from '../components/cultural/JanaGanaManaContent';
 import { ISLAvatarContainer } from '../components/cultural/ISLAvatarContainer';
+
+interface WordInfo {
+  word: string;
+  wordIndex: number;
+  globalLetterIndices: number[];
+  letters: string[];
+}
+
+/**
+ * Builds structured word metadata mapping words to their global letter token indices.
+ */
+function buildWordData(linesText: string[]) {
+  let globalIndex = 0;
+  let wordCounter = 0;
+  const words: WordInfo[] = [];
+
+  for (const line of linesText) {
+    const lineWords = line.trim().split(/\s+/).filter(Boolean);
+    for (const w of lineWords) {
+      const letters: string[] = [];
+      const globalLetterIndices: number[] = [];
+
+      for (let i = 0; i < w.length; i++) {
+        const char = w[i];
+        if (/[a-zA-Z]/.test(char)) {
+          letters.push(char.toUpperCase());
+          globalLetterIndices.push(globalIndex);
+          globalIndex++;
+        }
+      }
+
+      if (letters.length > 0) {
+        words.push({
+          word: w,
+          wordIndex: wordCounter,
+          globalLetterIndices,
+          letters,
+        });
+        wordCounter++;
+      }
+    }
+  }
+
+  return words;
+}
 
 /**
  * JanaGanaManaPage (Cultural ISL Experience)
@@ -13,77 +58,123 @@ import { ISLAvatarContainer } from '../components/cultural/ISLAvatarContainer';
  * - Full-screen looping background video with animated Indian tricolor flag waves
  * - Dark cinematic overlay for maximum contrast & accessibility
  * - Approved English-only Jana Gana Mana verses in paragraph format
- * - Letter-by-letter tokenized processing architecture
- * - Isolated ISL Avatar Container prepared for plug-and-play avatar integration
+ * - Letter-by-letter avatar state machine with word pause protection
+ * - Real 3D Three.js Mixamo Avatar Renderer (YBot / XBot)
  */
 export const CulturalISLPage: React.FC = () => {
   const navigate = useNavigate();
 
-  // Custom Video Source URL (Easily replaceable by passing a prop or updating the path)
+  // Background video source path (easily replaceable)
   const [backgroundVideoSrc] = useState<string>('/assets/videos/jana_gana_mana_bg.mp4');
 
-  // Tokenize approved English Jana Gana Mana paragraph text into stanzas and letter tokens
+  // Avatar 3D Model Path (YBot / XBot)
+  const [modelPath, setModelPath] = useState<string>('/models/ybot.glb');
+
+  // Tokenize approved English Jana Gana Mana paragraph text into stanzas & words
   const { stanzas, allLetters } = useMemo(() => buildParagraphLetterTokens(JANA_GANA_MANA_APPROVED_TEXT), []);
+  const words = useMemo(() => buildWordData(JANA_GANA_MANA_APPROVED_TEXT), []);
 
   // Playback & Letter-by-letter Sequential State
   const [activeLetterIndex, setActiveLetterIndex] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
+  const [isCompleted, setIsCompleted] = useState<boolean>(false);
+
+  // Derive current word & letter progress from activeLetterIndex
+  const { currentWordObj, currentWordIndex, currentWordProgress } = useMemo(() => {
+    const foundWord = words.find((w) => w.globalLetterIndices.includes(activeLetterIndex)) || words[0];
+    const letterPosInWord = foundWord ? foundWord.globalLetterIndices.indexOf(activeLetterIndex) : 0;
+    return {
+      currentWordObj: foundWord,
+      currentWordIndex: foundWord ? foundWord.wordIndex : 0,
+      currentWordProgress: {
+        current: Math.max(0, letterPosInWord),
+        total: foundWord ? foundWord.letters.length : 1,
+      },
+    };
+  }, [words, activeLetterIndex]);
 
   const currentLetter = useMemo(() => {
     return allLetters[activeLetterIndex] || null;
   }, [allLetters, activeLetterIndex]);
 
-  // Sequential Timer Engine for Letter-by-Letter ISL Performance
-  useEffect(() => {
-    let timer: ReturnType<typeof setInterval> | null = null;
+  // Sequential Playback State Machine Engine
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    if (isPlaying) {
-      // Adjusted speed per letter for smooth reading (e.g. ~400ms per letter at 1.0x)
-      const stepDurationMs = Math.round(400 / playbackSpeed);
-      timer = setInterval(() => {
-        setActiveLetterIndex((prevIndex) => {
-          if (prevIndex >= allLetters.length - 1) {
-            setIsPlaying(false);
-            return prevIndex;
-          }
-          return prevIndex + 1;
-        });
-      }, stepDurationMs);
+  const clearTimer = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isPlaying) {
+      clearTimer();
+      return;
     }
 
+    const currentWordInfo = words.find((w) => w.globalLetterIndices.includes(activeLetterIndex));
+    const isLastLetterOfWord = currentWordInfo && currentWordInfo.globalLetterIndices[currentWordInfo.globalLetterIndices.length - 1] === activeLetterIndex;
+
+    // Durations scaled by speed
+    const letterDurationMs = Math.round(450 / playbackSpeed);
+    const wordPauseDurationMs = Math.round(650 / playbackSpeed);
+
+    const delay = isLastLetterOfWord ? letterDurationMs + wordPauseDurationMs : letterDurationMs;
+
+    timeoutRef.current = setTimeout(() => {
+      setActiveLetterIndex((prevIndex) => {
+        if (prevIndex >= allLetters.length - 1) {
+          setIsPlaying(false);
+          setIsCompleted(true);
+          return prevIndex;
+        }
+        return prevIndex + 1;
+      });
+    }, delay);
+
     return () => {
-      if (timer) clearInterval(timer);
+      clearTimer();
     };
-  }, [isPlaying, playbackSpeed, allLetters.length]);
+  }, [isPlaying, activeLetterIndex, playbackSpeed, allLetters.length, words, clearTimer]);
 
   // Handlers for Control Actions
   const handleTogglePlay = useCallback(() => {
     if (activeLetterIndex >= allLetters.length - 1) {
       setActiveLetterIndex(0);
+      setIsCompleted(false);
     }
     setIsPlaying((prev) => !prev);
   }, [activeLetterIndex, allLetters.length]);
 
   const handleStepNext = useCallback(() => {
+    setIsCompleted(false);
     setActiveLetterIndex((prev) => Math.min(allLetters.length - 1, prev + 1));
   }, [allLetters.length]);
 
   const handleStepPrev = useCallback(() => {
+    setIsCompleted(false);
     setActiveLetterIndex((prev) => Math.max(0, prev - 1));
   }, []);
 
   const handleReset = useCallback(() => {
     setIsPlaying(false);
+    setIsCompleted(false);
     setActiveLetterIndex(0);
   }, []);
 
   const handleSelectLetter = useCallback((index: number) => {
+    setIsCompleted(false);
     setActiveLetterIndex(index);
   }, []);
 
   const handleChangeSpeed = useCallback((speed: number) => {
     setPlaybackSpeed(speed);
+  }, []);
+
+  const handleChangeModel = useCallback((path: string) => {
+    setModelPath(path);
   }, []);
 
   return (
@@ -114,9 +205,14 @@ export const CulturalISLPage: React.FC = () => {
                 <span className="px-2.5 py-0.5 bg-[#fe9832]/20 text-[#fe9832] border border-[#fe9832]/30 rounded-full text-[10px] font-extrabold uppercase tracking-wider">
                   Cultural ISL
                 </span>
+                {isCompleted && (
+                  <span className="px-2.5 py-0.5 bg-emerald-500/20 text-[#8dfc75] border border-emerald-500/30 rounded-full text-[10px] font-extrabold">
+                    Jana Gana Mana Completed ✓
+                  </span>
+                )}
               </div>
               <p className="text-xs text-white/70 mt-0.5">
-                Indian National Anthem • Sequential Letter-by-Letter ISL Performance
+                Indian National Anthem • Sequential Letter-by-Letter 3D ISL Avatar Performance
               </p>
             </div>
           </div>
@@ -133,7 +229,7 @@ export const CulturalISLPage: React.FC = () => {
           </button>
         </header>
 
-        {/* Main Grid: Paragraph Content & Avatar Container */}
+        {/* Main Grid: Paragraph Lyrics & Real 3D Avatar Container */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
           {/* Left Column (Lg: 7 cols): Approved English Lyrics in Paragraph Format */}
@@ -146,19 +242,25 @@ export const CulturalISLPage: React.FC = () => {
             />
           </div>
 
-          {/* Right Column (Lg: 5 cols): Isolated ISL Avatar Container */}
+          {/* Right Column (Lg: 5 cols): Real 3D ISL Avatar Container */}
           <div className="lg:col-span-5">
             <ISLAvatarContainer
+              currentWord={currentWordObj ? currentWordObj.word : ''}
+              currentWordProgress={currentWordProgress}
               currentLetter={currentLetter}
               currentLetterIndex={activeLetterIndex}
               totalLetters={allLetters.length}
+              wordIndex={currentWordIndex}
+              totalWords={words.length}
               isPlaying={isPlaying}
               playbackSpeed={playbackSpeed}
+              modelPath={modelPath}
               onTogglePlay={handleTogglePlay}
               onStepNext={handleStepNext}
               onStepPrev={handleStepPrev}
               onReset={handleReset}
               onChangeSpeed={handleChangeSpeed}
+              onChangeModel={handleChangeModel}
             />
           </div>
 
