@@ -906,7 +906,7 @@ export const TranslatePage: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => handleSimulateGestureRecognition('HELLO WELCOME TO SAMBHAV')}
+                        onClick={() => handleSimulateGestureRecognition('HELLO')}
                         className="px-2.5 py-1 bg-white/10 hover:bg-[#fe9832]/20 hover:text-[#fe9832] text-gray-200 rounded-lg text-xs font-bold transition cursor-pointer border border-white/10"
                         title="Simulate sign detection into composer draft"
                       >

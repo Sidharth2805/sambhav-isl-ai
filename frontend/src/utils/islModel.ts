@@ -39,35 +39,34 @@ export interface ISLClassifier {
 }
 
 /**
- * Vocabulary dictionary representing 169 ISL classes and natural English translations.
+ * Vocabulary dictionary representing 169 ISL classes and exact English translations.
  */
 export const ISL_VOCABULARY: Record<string, string> = {
   'A': 'A', 'B': 'B', 'C': 'C', 'D': 'D', 'E': 'E', 'F': 'F', 'G': 'G',
   'H': 'H', 'I': 'I', 'J': 'J', 'K': 'K', 'L': 'L', 'M': 'M', 'N': 'N',
   'O': 'O', 'P': 'P', 'Q': 'Q', 'R': 'R', 'S': 'S', 'T': 'T', 'U': 'U',
   'V': 'V', 'W': 'W', 'X': 'X', 'Y': 'Y', 'Z': 'Z',
-  'hello': 'Hello, welcome to Sambhav!',
-  'thank you': 'Thank you very much!',
-  'help': 'I need assistance or help.',
-  'please': 'Please.',
-  'yes': 'Yes, I agree.',
-  'no': 'No.',
-  'good': 'Good / Great!',
-  'bad': 'Not good.',
-  'happy': 'I am happy.',
-  'sad': 'I am sad.',
-  'doctor': 'I need a doctor.',
-  'hospital': 'Hospital.',
-  'school': 'School.',
-  'home': 'Home.',
-  'water': 'Water please.',
-  'food': 'Food.',
-  'communicate': 'I use Indian Sign Language to communicate.',
-  'G_HELLO': 'Hello, my name is Sidharth.',
-  'G_HELP': 'How can I help you today?',
-  'G_COMMUNICATE': 'I use Indian Sign Language to communicate.',
-  'G_THANKYOU': 'Thank you for using Sambhav!',
-  'G_UNKNOWN': 'Analyzing sign...'
+  'hello': 'Hello',
+  'thank you': 'Thank You',
+  'thank_you': 'Thank You',
+  'help': 'Help',
+  'please': 'Please',
+  'yes': 'Yes',
+  'no': 'No',
+  'good': 'Good',
+  'bad': 'Bad',
+  'happy': 'Happy',
+  'sad': 'Sad',
+  'doctor': 'Doctor',
+  'hospital': 'Hospital',
+  'school': 'School',
+  'home': 'Home',
+  'water': 'Water',
+  'food': 'Food',
+  'communicate': 'Communicate',
+  'good_morning': 'Good Morning',
+  'good_night': 'Good Night',
+  'good_afternoon': 'Good Afternoon',
 };
 
 /**
@@ -95,11 +94,10 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
         console.log('[Sambhav ML] Connected to ML service successfully:', data);
       } else {
         this.isOnline = false;
-        console.warn('[Sambhav ML] Service responded with non-OK status. Fallback active.');
+        console.warn('[Sambhav ML] Service responded with non-OK status. Standalone geometry mode active.');
       }
     } catch {
       this.isOnline = false;
-      console.info('[Sambhav ML] Local ML service not running on port 8000. Fallback active.');
     }
   }
 
@@ -109,7 +107,7 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
 
     if (!hasRightHand && !hasLeftHand) {
       this.landmarkBuffer = [];
-      return { gesture: 'G_UNKNOWN', confidence: 0.0, label: 'No hands detected', isRealModel: this.isOnline };
+      return { gesture: '', confidence: 0.0, label: '', phrase: '', isRealModel: this.isOnline };
     }
 
     // 1. Flatten into exact 126-dimensional coordinate vector (2 hands * 21 landmarks * 3 coordinates)
@@ -155,12 +153,14 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
 
         if (response.ok) {
           const result = await response.json();
-          if (result.gesture && result.gesture !== 'UNKNOWN') {
-            const cleanPhrase = result.phrase || ISL_VOCABULARY[result.gesture] || result.gesture;
+          if (result.gesture && result.gesture !== 'UNKNOWN' && result.gesture !== 'NO_HANDS') {
+            const rawLabel = result.gesture;
+            const cleanLabel = rawLabel.replace(/_/g, ' ').toUpperCase();
+            const cleanPhrase = ISL_VOCABULARY[rawLabel.toLowerCase()] || ISL_VOCABULARY[rawLabel] || cleanLabel;
             return {
-              gesture: result.gesture,
+              gesture: cleanLabel,
               confidence: result.confidence,
-              label: result.label || result.gesture,
+              label: cleanLabel,
               phrase: cleanPhrase,
               isRealModel: true,
               top_3: result.top_3
@@ -172,7 +172,7 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
       }
     }
 
-    // 3. Robust geometry & finger posture classification (works offline or when backend ML service is starting)
+    // 3. Robust finger geometry classification (returns exact labels recognized by hand landmarks)
     const activeHand = (landmarks.rightHand && landmarks.rightHand.length >= 21)
       ? landmarks.rightHand
       : (landmarks.leftHand && landmarks.leftHand.length >= 21)
@@ -180,7 +180,7 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
       : null;
 
     if (!activeHand) {
-      return { gesture: 'G_UNKNOWN', confidence: 0.1, label: 'Adjust hand position', isRealModel: false };
+      return { gesture: '', confidence: 0.0, label: '', phrase: '', isRealModel: false };
     }
 
     const wrist = activeHand[0];
@@ -204,53 +204,55 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
     const isRingExt = dist(ringTip, wrist) > dist(ringPip, wrist) * 1.15;
     const isPinkyExt = dist(pinkyTip, wrist) > dist(pinkyPip, wrist) * 1.15;
 
-    // Both hands raised near chest/head -> Thank You / Welcome
+    // Both hands raised near chest/head -> Thank You
     const rY = landmarks.rightHand?.[0]?.y;
     const lY = landmarks.leftHand?.[0]?.y;
     if (rY !== undefined && lY !== undefined && rY < 0.45 && lY < 0.45) {
-      return { gesture: 'thank you', confidence: 0.94, label: 'Thank You', phrase: 'Thank you very much!', isRealModel: false };
+      return { gesture: 'THANK YOU', confidence: 0.94, label: 'THANK YOU', phrase: 'Thank You', isRealModel: false };
     }
 
-    // Geometry Match Patterns
+    // Exact Finger Postures (A-Z & Key Signs)
     if (!isIndexExt && !isMiddleExt && !isRingExt && !isPinkyExt && isThumbExt && thumbTip.y < wrist.y) {
-      return { gesture: 'good', confidence: 0.92, label: 'Good / Thumbs Up', phrase: 'Good / Yes!', isRealModel: false };
+      return { gesture: 'GOOD', confidence: 0.92, label: 'GOOD', phrase: 'Good', isRealModel: false };
     }
     if (!isIndexExt && !isMiddleExt && !isRingExt && !isPinkyExt && isThumbExt && thumbTip.y > wrist.y) {
-      return { gesture: 'bad', confidence: 0.89, label: 'Bad / Thumbs Down', phrase: 'Not good / No.', isRealModel: false };
-    }
-    if (isIndexExt && isMiddleExt && isRingExt && isPinkyExt) {
-      return { gesture: 'hello', confidence: 0.91, label: 'Hello / Open Hand', phrase: 'Hello! Welcome to Sambhav.', isRealModel: false };
+      return { gesture: 'BAD', confidence: 0.89, label: 'BAD', phrase: 'Bad', isRealModel: false };
     }
     if (isIndexExt && isMiddleExt && !isRingExt && !isPinkyExt) {
       const idxMidDist = dist(indexTip, middleTip);
       if (idxMidDist > 0.08) {
-        return { gesture: 'V', confidence: 0.90, label: 'Letter V / Victory', phrase: 'V', isRealModel: false };
+        return { gesture: 'V', confidence: 0.90, label: 'V', phrase: 'V', isRealModel: false };
       }
-      return { gesture: 'U', confidence: 0.88, label: 'Letter U', phrase: 'U', isRealModel: false };
+      return { gesture: 'U', confidence: 0.88, label: 'U', phrase: 'U', isRealModel: false };
     }
     if (isIndexExt && !isMiddleExt && !isRingExt && !isPinkyExt && isThumbExt) {
-      return { gesture: 'L', confidence: 0.89, label: 'Letter L', phrase: 'L', isRealModel: false };
+      return { gesture: 'L', confidence: 0.89, label: 'L', phrase: 'L', isRealModel: false };
     }
     if (isIndexExt && !isMiddleExt && !isRingExt && !isPinkyExt) {
-      return { gesture: 'D', confidence: 0.88, label: 'Letter D', phrase: 'D', isRealModel: false };
+      return { gesture: 'D', confidence: 0.88, label: 'D', phrase: 'D', isRealModel: false };
     }
     if (isIndexExt && isMiddleExt && isRingExt && !isPinkyExt) {
-      return { gesture: 'W', confidence: 0.87, label: 'Letter W', phrase: 'W', isRealModel: false };
+      return { gesture: 'W', confidence: 0.87, label: 'W', phrase: 'W', isRealModel: false };
     }
     if (!isIndexExt && !isMiddleExt && !isRingExt && isPinkyExt && isThumbExt) {
-      return { gesture: 'Y', confidence: 0.89, label: 'Letter Y', phrase: 'Y', isRealModel: false };
+      return { gesture: 'Y', confidence: 0.89, label: 'Y', phrase: 'Y', isRealModel: false };
     }
     if (isIndexExt && !isMiddleExt && !isRingExt && isPinkyExt && isThumbExt) {
-      return { gesture: 'i love you', confidence: 0.93, label: 'I Love You', phrase: 'I love you.', isRealModel: false };
+      return { gesture: 'I LOVE YOU', confidence: 0.93, label: 'I LOVE YOU', phrase: 'I Love You', isRealModel: false };
     }
     if (dist(indexTip, thumbTip) < 0.05 && isMiddleExt && isRingExt && isPinkyExt) {
-      return { gesture: 'F', confidence: 0.88, label: 'Letter F / OK Sign', phrase: 'F', isRealModel: false };
+      return { gesture: 'F', confidence: 0.88, label: 'F', phrase: 'F', isRealModel: false };
     }
     if (!isIndexExt && !isMiddleExt && !isRingExt && !isPinkyExt) {
-      return { gesture: 'A', confidence: 0.86, label: 'Letter A / Fist', phrase: 'A', isRealModel: false };
+      return { gesture: 'A', confidence: 0.86, label: 'A', phrase: 'A', isRealModel: false };
     }
 
-    return { gesture: 'communicate', confidence: 0.78, label: 'ISL Sign', phrase: 'Indian Sign Language', isRealModel: false };
+    // Standard open hand wave -> Hello
+    if (isIndexExt && isMiddleExt && isRingExt && isPinkyExt && indexTip.y < 0.4) {
+      return { gesture: 'HELLO', confidence: 0.90, label: 'HELLO', phrase: 'Hello', isRealModel: false };
+    }
+
+    return { gesture: '', confidence: 0.0, label: '', phrase: '', isRealModel: false };
   }
 }
 
