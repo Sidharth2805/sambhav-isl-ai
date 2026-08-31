@@ -81,7 +81,7 @@ export const ISLAvatarContainer: React.FC<ISLAvatarContainerProps> = ({
       </div>
 
       {/* Main 3D WebGL Avatar Viewport */}
-      <div className="relative aspect-video sm:aspect-[4/3] bg-gradient-to-b from-[#050b16] via-[#091325] to-[#040914] rounded-2xl border border-white/10 overflow-hidden flex flex-col items-center justify-center shadow-inner">
+      <div className="relative w-full h-[400px] sm:h-[480px] lg:h-[540px] bg-gradient-to-b from-[#050b16] via-[#091325] to-[#040914] rounded-2xl border border-white/10 overflow-hidden flex flex-col items-center justify-center shadow-inner">
         
         {/* Tricolor Accent Stripe */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#ff9933] via-white to-[#138808] opacity-70 z-10" />

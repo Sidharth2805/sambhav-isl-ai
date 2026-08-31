@@ -234,8 +234,8 @@ export const CulturalISLPage: React.FC = () => {
         {/* Main Grid: Paragraph Lyrics & Real 3D Avatar Container */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
-          {/* Left Column (Lg: 7 cols): Approved English Lyrics in Paragraph Format */}
-          <div className="lg:col-span-7">
+          {/* Left Column (Lg: 6 cols): Approved English Lyrics in Paragraph Format */}
+          <div className="lg:col-span-6">
             <JanaGanaManaContent
               stanzas={stanzas}
               activeLetterIndex={activeLetterIndex}
@@ -244,8 +244,8 @@ export const CulturalISLPage: React.FC = () => {
             />
           </div>
 
-          {/* Right Column (Lg: 5 cols): Real 3D ISL Avatar Container */}
-          <div className="lg:col-span-5">
+          {/* Right Column (Lg: 6 cols): Real 3D ISL Avatar Container */}
+          <div className="lg:col-span-6">
             <ISLAvatarContainer
               canvasRef={canvasRef}
               currentWord={currentWordObj ? currentWordObj.word : ''}
