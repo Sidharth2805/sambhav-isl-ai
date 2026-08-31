@@ -6,12 +6,18 @@ export interface LetterToken {
   globalLetterIndex: number | null; // null for spaces/punctuation
 }
 
+export interface WordToken {
+  word: string;
+  tokens: LetterToken[];
+  globalLetterIndices: number[];
+}
+
 export interface ParagraphStanza {
   stanzaNumber: number;
   title: string;
   lines: {
     lineIndex: number;
-    tokens: LetterToken[];
+    words: WordToken[];
   }[];
 }
 
@@ -39,7 +45,7 @@ export const JANA_GANA_MANA_APPROVED_TEXT: string[] = [
 ];
 
 /**
- * Builds letter-by-letter tokens and paragraph stanzas from approved anthem text.
+ * Builds word-grouped letter-by-letter tokens and paragraph stanzas from approved anthem text.
  */
 export function buildParagraphLetterTokens(linesText: string[] = JANA_GANA_MANA_APPROVED_TEXT): {
   stanzas: ParagraphStanza[];
@@ -48,7 +54,6 @@ export function buildParagraphLetterTokens(linesText: string[] = JANA_GANA_MANA_
   let letterCounter = 0;
   const allLetters: string[] = [];
 
-  // Group into 3 natural patriotic stanzas
   const stanzaGroupings = [
     { number: 1, title: 'Invocation of Destiny', lines: linesText.slice(0, 4) },
     { number: 2, title: 'Sacred Rivers & Mountains', lines: linesText.slice(4, 9) },
@@ -59,31 +64,44 @@ export function buildParagraphLetterTokens(linesText: string[] = JANA_GANA_MANA_
 
   const stanzas: ParagraphStanza[] = stanzaGroupings.map((group) => {
     const stanzaLines = group.lines.map((lineText) => {
-      const tokens: LetterToken[] = [];
+      const rawWords = lineText.trim().split(/\s+/);
+      const wordTokensList: WordToken[] = [];
 
-      for (let i = 0; i < lineText.length; i++) {
-        const char = lineText[i];
-        const isLetter = /[a-zA-Z]/.test(char);
+      for (const w of rawWords) {
+        const tokens: LetterToken[] = [];
+        const globalLetterIndices: number[] = [];
 
-        if (isLetter) {
-          const uppercaseChar = char.toUpperCase();
-          tokens.push({
-            char,
-            isLetter: true,
-            globalLetterIndex: letterCounter,
-          });
-          allLetters.push(uppercaseChar);
-          letterCounter++;
-        } else {
-          tokens.push({
-            char,
-            isLetter: false,
-            globalLetterIndex: null,
-          });
+        for (let i = 0; i < w.length; i++) {
+          const char = w[i];
+          const isLetter = /[a-zA-Z]/.test(char);
+
+          if (isLetter) {
+            const uppercaseChar = char.toUpperCase();
+            tokens.push({
+              char,
+              isLetter: true,
+              globalLetterIndex: letterCounter,
+            });
+            globalLetterIndices.push(letterCounter);
+            allLetters.push(uppercaseChar);
+            letterCounter++;
+          } else {
+            tokens.push({
+              char,
+              isLetter: false,
+              globalLetterIndex: null,
+            });
+          }
         }
+
+        wordTokensList.push({
+          word: w,
+          tokens,
+          globalLetterIndices,
+        });
       }
 
-      const lineRes = { lineIndex: currentLineIndex, tokens };
+      const lineRes = { lineIndex: currentLineIndex, words: wordTokensList };
       currentLineIndex++;
       return lineRes;
     });
@@ -106,7 +124,7 @@ export const JanaGanaManaContent: React.FC<JanaGanaManaContentProps> = ({
 }) => {
   return (
     <div className="bg-[#0b1324]/80 backdrop-blur-xl rounded-[28px] border border-white/15 p-6 sm:p-8 flex flex-col gap-6 shadow-2xl relative overflow-hidden">
-      {/* Tricolor Header Bar */}
+      {/* Header Bar */}
       <div className="flex items-center justify-between border-b border-white/10 pb-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#fe9832] via-[#ffffff] to-[#138808] p-0.5 shadow-md">
@@ -116,7 +134,7 @@ export const JanaGanaManaContent: React.FC<JanaGanaManaContentProps> = ({
           </div>
           <div>
             <h2 className="text-lg font-black text-white tracking-tight">Jana Gana Mana</h2>
-            <p className="text-xs text-white/60">English Transliteration • Letter-by-Letter ISL Processing</p>
+            <p className="text-xs text-white/60">English Transliteration • Real-Time Word & Letter Highlighting</p>
           </div>
         </div>
 
@@ -130,7 +148,7 @@ export const JanaGanaManaContent: React.FC<JanaGanaManaContentProps> = ({
         </div>
       </div>
 
-      {/* Paragraph Stanzas Display with Letter-by-Letter Active Highlight */}
+      {/* Paragraph Stanzas Display with Word & Letter Highlighting */}
       <div className="flex flex-col gap-6 font-['Inter',sans-serif]">
         {stanzas.map((stanza) => (
           <div
@@ -145,32 +163,53 @@ export const JanaGanaManaContent: React.FC<JanaGanaManaContentProps> = ({
             </div>
 
             {/* Paragraph Line Flow */}
-            <div className="flex flex-col gap-2 leading-relaxed">
+            <div className="flex flex-col gap-3 leading-relaxed">
               {stanza.lines.map((line) => (
-                <p key={line.lineIndex} className="text-base sm:text-lg font-bold tracking-wide text-white/90">
-                  {line.tokens.map((token, idx) => {
-                    if (!token.isLetter || token.globalLetterIndex === null) {
-                      return <span key={idx} className="text-white/40">{token.char}</span>;
-                    }
-
-                    const isActive = token.globalLetterIndex === activeLetterIndex;
+                <div key={line.lineIndex} className="flex flex-wrap items-center gap-2">
+                  {line.words.map((wordObj, wIdx) => {
+                    const isWordActive = wordObj.globalLetterIndices.includes(activeLetterIndex);
 
                     return (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => onSelectLetter(token.globalLetterIndex!)}
-                        className={`inline-flex items-center justify-center font-mono font-black transition-all rounded px-0.5 cursor-pointer ${
-                          isActive
-                            ? 'bg-gradient-to-r from-[#fe9832] to-[#e8872b] text-[#542900] scale-125 shadow-lg ring-2 ring-white animate-bounce z-10'
-                            : 'hover:text-[#fe9832] hover:bg-white/10'
+                      <div
+                        key={wIdx}
+                        className={`inline-flex items-center gap-0.5 px-2 py-1 rounded-xl transition-all ${
+                          isWordActive
+                            ? 'bg-[#fe9832]/25 border-2 border-[#fe9832] ring-4 ring-[#fe9832]/20 shadow-lg scale-105'
+                            : 'bg-white/[0.04] border border-white/10 hover:border-white/20'
                         }`}
                       >
-                        {token.char}
-                      </button>
+                        {wordObj.tokens.map((token, tIdx) => {
+                          if (!token.isLetter || token.globalLetterIndex === null) {
+                            return (
+                              <span key={tIdx} className="text-white/40 text-base font-bold">
+                                {token.char}
+                              </span>
+                            );
+                          }
+
+                          const isLetterActive = token.globalLetterIndex === activeLetterIndex;
+
+                          return (
+                            <button
+                              key={tIdx}
+                              type="button"
+                              onClick={() => onSelectLetter(token.globalLetterIndex!)}
+                              className={`inline-flex items-center justify-center font-mono font-black text-base sm:text-lg transition-all rounded px-1 cursor-pointer ${
+                                isLetterActive
+                                  ? 'bg-gradient-to-r from-[#fe9832] to-[#e8872b] text-[#542900] scale-125 shadow-xl ring-2 ring-white animate-pulse z-10'
+                                  : isWordActive
+                                  ? 'text-white font-black hover:text-[#fe9832]'
+                                  : 'text-white/80 hover:text-[#fe9832] hover:bg-white/10'
+                              }`}
+                            >
+                              {token.char}
+                            </button>
+                          );
+                        })}
+                      </div>
                     );
                   })}
-                </p>
+                </div>
               ))}
             </div>
           </div>
@@ -178,9 +217,9 @@ export const JanaGanaManaContent: React.FC<JanaGanaManaContentProps> = ({
       </div>
 
       {/* Footer Guidance */}
-      <div className="flex items-center justify-between text-[11px] text-white/50 border-t border-white/10 pt-3">
-        <span>Click any letter to jump letter sequence</span>
-        <span className="font-mono text-[#8dfc75] font-semibold">Sequential Character Engine Active</span>
+      <div className="flex items-center justify-between text-xs text-white/50 border-t border-white/10 pt-4">
+        <span>Click any letter in the lyrics to jump the 3D avatar directly to that sign position.</span>
+        <span className="font-mono text-[#fe9832]">Active Letter: {activeLetterIndex + 1} / {totalLetters}</span>
       </div>
     </div>
   );
