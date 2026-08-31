@@ -970,6 +970,12 @@ export const TranslatePage: React.FC = () => {
                       speed={avatarSpeed}
                       pauseTimeMs={Math.round(400 / avatarSpeed)}
                       onProgressChar={(char) => setActiveAvatarChar(char)}
+                      onProgressWord={(wordIdx) => setActiveStepIndex(wordIdx)}
+                      onFinish={() => {
+                        setActiveSigningMessageId(null);
+                        setActiveStepIndex(-1);
+                        setActiveAvatarChar(null);
+                      }}
                       className="w-full h-full"
                     />
 

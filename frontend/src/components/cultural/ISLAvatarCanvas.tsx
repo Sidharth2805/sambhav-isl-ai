@@ -21,6 +21,7 @@ interface ISLAvatarCanvasProps {
   speed?: number;
   pauseTimeMs?: number;
   onProgressChar?: (char: string, processedText: string) => void;
+  onProgressWord?: (wordIndex: number, currentWord: string) => void;
   onFinish?: () => void;
   className?: string;
 }
@@ -36,6 +37,7 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
   speed = 1.0,
   pauseTimeMs = 400,
   onProgressChar,
+  onProgressWord,
   onFinish,
   className = '',
 }, ref) => {
@@ -146,7 +148,13 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
         const now = performance.now();
         if (now >= pauseEndTimeRef.current) {
           if (state.animations[0] && state.animations[0].length) {
-            if (state.animations[0][0] === 'add-text') {
+            if (state.animations[0][0] === 'word-start') {
+              const [_, wordIdx, wordText] = state.animations[0];
+              if (onProgressWord) {
+                onProgressWord(wordIdx, wordText);
+              }
+              state.animations.shift();
+            } else if (state.animations[0][0] === 'add-text') {
               const addedChar = state.animations[0][1];
               state.processedText += addedChar;
               if (onProgressChar) {
@@ -261,7 +269,10 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
     state.animations = [];
     state.processedText = '';
 
-    for (const word of strWords) {
+    for (let wIdx = 0; wIdx < strWords.length; wIdx++) {
+      const word = strWords[wIdx];
+      state.animations.push(['word-start', wIdx, word]);
+
       if ((words as any)[word]) {
         state.animations.push(['add-text', word + ' ']);
         (words as any)[word](state);
