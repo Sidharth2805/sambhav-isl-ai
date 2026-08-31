@@ -93,7 +93,6 @@ export const NewsPage: React.FC = () => {
   const [isAvatarPlaying, setIsAvatarPlaying] = useState<boolean>(false);
   const [currentWordIndex, setCurrentWordIndex] = useState<number>(0);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1.0);
-  const [speechActive, setSpeechActive] = useState<boolean>(false);
 
   const avatarCanvasRef = useRef<ISLAvatarCanvasRef | null>(null);
   const [modelPath, setModelPath] = useState<string>('/models/ybot.glb');
@@ -173,30 +172,11 @@ export const NewsPage: React.FC = () => {
     }
   }, [isAvatarPlaying, selectedArticle]);
 
-  // Handle Speech narration toggle
-  const handleToggleSpeech = useCallback(() => {
-    if (!selectedArticle) return;
-    if (speechActive) {
-      window.speechSynthesis.cancel();
-      setSpeechActive(false);
-    } else {
-      window.speechSynthesis.cancel();
-      const textToRead = `${selectedArticle.title}. ${selectedArticle.content.join(' ')}`;
-      const utterance = new SpeechSynthesisUtterance(textToRead);
-      utterance.rate = playbackSpeed;
-      utterance.onend = () => setSpeechActive(false);
-      utterance.onerror = () => setSpeechActive(false);
-      window.speechSynthesis.speak(utterance);
-      setSpeechActive(true);
-    }
-  }, [selectedArticle, speechActive, playbackSpeed]);
-
   const handleOpenArticle = (article: NewsArticle) => {
     setSelectedArticle(article);
     setIsAvatarPlaying(false);
     setCurrentWordIndex(0);
     window.speechSynthesis.cancel();
-    setSpeechActive(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -205,7 +185,6 @@ export const NewsPage: React.FC = () => {
     setIsAvatarPlaying(false);
     setCurrentWordIndex(0);
     window.speechSynthesis.cancel();
-    setSpeechActive(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -246,37 +225,6 @@ export const NewsPage: React.FC = () => {
                   {selectedArticle.title}
                 </p>
               </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleToggleSpeech}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all border ${
-                  speechActive
-                    ? 'bg-[#8dfc75] text-[#012700] border-[#8dfc75]'
-                    : 'bg-[#f8fafc] dark:bg-[#0c121e] text-[#030813] dark:text-white border-[#e0e3e5] dark:border-[#243044] hover:border-[#fe9832]'
-                }`}
-                title="Listen to Spoken Audio"
-              >
-                <span className="material-symbols-outlined text-[18px]">
-                  {speechActive ? 'volume_up' : 'volume_mute'}
-                </span>
-                <span className="hidden sm:inline">{speechActive ? 'Speaking...' : 'Listen Voice'}</span>
-              </button>
-
-              <button
-                onClick={() => setIsAvatarPlaying(!isAvatarPlaying)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all shadow-sm ${
-                  isAvatarPlaying
-                    ? 'bg-gradient-to-r from-[#fe9832] to-[#e8872b] text-[#542900]'
-                    : 'bg-[#fe9832]/15 text-[#fe9832] hover:bg-[#fe9832] hover:text-[#542900]'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[18px]">
-                  {isAvatarPlaying ? 'pause_circle' : 'sign_language'}
-                </span>
-                <span>{isAvatarPlaying ? 'Pause Sign Reader' : 'Play ISL Sign'}</span>
-              </button>
             </div>
           </div>
 
