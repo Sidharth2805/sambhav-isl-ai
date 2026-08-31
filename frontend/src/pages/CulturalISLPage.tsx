@@ -167,6 +167,16 @@ export const CulturalISLPage: React.FC = () => {
     }
   }, [allLetters]);
 
+  const handlePlayFromIndex = useCallback((index: number) => {
+    setIsCompleted(false);
+    setActiveLetterIndex(index);
+    setIsPlaying(true);
+    if (canvasRef.current && allLetters[index]) {
+      const remainingLetters = allLetters.slice(index).join(' ');
+      canvasRef.current.signText(remainingLetters);
+    }
+  }, [allLetters]);
+
   const handleChangeSpeed = useCallback((speed: number) => {
     setPlaybackSpeed(speed);
   }, []);
@@ -241,6 +251,7 @@ export const CulturalISLPage: React.FC = () => {
               activeLetterIndex={activeLetterIndex}
               totalLetters={allLetters.length}
               onSelectLetter={handleSelectLetter}
+              onPlayFromIndex={handlePlayFromIndex}
             />
           </div>
 
