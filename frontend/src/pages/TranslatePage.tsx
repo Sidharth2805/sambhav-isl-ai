@@ -1444,7 +1444,7 @@ export const TranslatePage: React.FC = () => {
               </div>
               <div>
                 <h2 className="text-xl font-bold text-[#030813]">Communication Ended</h2>
-                <p className="text-xs text-[#45474c]">Session captured and ready to save</p>
+                <p className="text-xs text-[#45474c]">Session summary complete</p>
               </div>
             </div>
 

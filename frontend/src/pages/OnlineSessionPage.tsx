@@ -883,8 +883,8 @@ const ActiveCallWorkspace: React.FC<ActiveCallWorkspaceProps> = ({
                 </h2>
                 <p className="text-xs text-[#45474c] dark:text-[#828796]">
                   {remoteLeftNotice
-                    ? 'The other user left the call. You can save the chat history below.'
-                    : `Room Code: ${roomCode || ''} • Save conversation or exit`}
+                    ? 'The other participant has disconnected from the session.'
+                    : `Room Code: ${roomCode || ''} • Confirm exit`}
                 </p>
               </div>
             </div>
