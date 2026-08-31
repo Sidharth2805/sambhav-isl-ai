@@ -172,7 +172,7 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
       }
     }
 
-    // 3. Robust finger geometry classification (returns exact labels recognized by hand landmarks)
+    // 3. Strict finger geometry classification (no false positive common word guesses)
     const activeHand = (landmarks.rightHand && landmarks.rightHand.length >= 21)
       ? landmarks.rightHand
       : (landmarks.leftHand && landmarks.leftHand.length >= 21)
@@ -198,60 +198,37 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
     const dist = (p1: ISLLandmark, p2: ISLLandmark) =>
       Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
 
-    const isThumbExt = dist(thumbTip, wrist) > dist(thumbIP, wrist) * 1.15;
-    const isIndexExt = dist(indexTip, wrist) > dist(indexPip, wrist) * 1.15;
-    const isMiddleExt = dist(middleTip, wrist) > dist(middlePip, wrist) * 1.15;
-    const isRingExt = dist(ringTip, wrist) > dist(ringPip, wrist) * 1.15;
-    const isPinkyExt = dist(pinkyTip, wrist) > dist(pinkyPip, wrist) * 1.15;
+    const isThumbExt = dist(thumbTip, wrist) > dist(thumbIP, wrist) * 1.25;
+    const isIndexExt = dist(indexTip, wrist) > dist(indexPip, wrist) * 1.25;
+    const isMiddleExt = dist(middleTip, wrist) > dist(middlePip, wrist) * 1.25;
+    const isRingExt = dist(ringTip, wrist) > dist(ringPip, wrist) * 1.25;
+    const isPinkyExt = dist(pinkyTip, wrist) > dist(pinkyPip, wrist) * 1.25;
 
-    // Both hands raised near chest/head -> Thank You
-    const rY = landmarks.rightHand?.[0]?.y;
-    const lY = landmarks.leftHand?.[0]?.y;
-    if (rY !== undefined && lY !== undefined && rY < 0.45 && lY < 0.45) {
-      return { gesture: 'THANK YOU', confidence: 0.94, label: 'THANK YOU', phrase: 'Thank You', isRealModel: false };
-    }
-
-    // Exact Finger Postures (A-Z & Key Signs)
-    if (!isIndexExt && !isMiddleExt && !isRingExt && !isPinkyExt && isThumbExt && thumbTip.y < wrist.y) {
-      return { gesture: 'GOOD', confidence: 0.92, label: 'GOOD', phrase: 'Good', isRealModel: false };
-    }
-    if (!isIndexExt && !isMiddleExt && !isRingExt && !isPinkyExt && isThumbExt && thumbTip.y > wrist.y) {
-      return { gesture: 'BAD', confidence: 0.89, label: 'BAD', phrase: 'Bad', isRealModel: false };
-    }
+    // Strict Single-Letter Posture Patterns (only triggered when finger geometry is 100% distinct)
     if (isIndexExt && isMiddleExt && !isRingExt && !isPinkyExt) {
       const idxMidDist = dist(indexTip, middleTip);
       if (idxMidDist > 0.08) {
-        return { gesture: 'V', confidence: 0.90, label: 'V', phrase: 'V', isRealModel: false };
+        return { gesture: 'V', confidence: 0.88, label: 'V', phrase: 'V', isRealModel: false };
       }
-      return { gesture: 'U', confidence: 0.88, label: 'U', phrase: 'U', isRealModel: false };
+      return { gesture: 'U', confidence: 0.85, label: 'U', phrase: 'U', isRealModel: false };
     }
     if (isIndexExt && !isMiddleExt && !isRingExt && !isPinkyExt && isThumbExt) {
-      return { gesture: 'L', confidence: 0.89, label: 'L', phrase: 'L', isRealModel: false };
+      return { gesture: 'L', confidence: 0.86, label: 'L', phrase: 'L', isRealModel: false };
     }
-    if (isIndexExt && !isMiddleExt && !isRingExt && !isPinkyExt) {
-      return { gesture: 'D', confidence: 0.88, label: 'D', phrase: 'D', isRealModel: false };
+    if (isIndexExt && !isMiddleExt && !isRingExt && !isPinkyExt && !isThumbExt) {
+      return { gesture: 'D', confidence: 0.85, label: 'D', phrase: 'D', isRealModel: false };
     }
-    if (isIndexExt && isMiddleExt && isRingExt && !isPinkyExt) {
-      return { gesture: 'W', confidence: 0.87, label: 'W', phrase: 'W', isRealModel: false };
+    if (isIndexExt && isMiddleExt && isRingExt && !isPinkyExt && !isThumbExt) {
+      return { gesture: 'W', confidence: 0.85, label: 'W', phrase: 'W', isRealModel: false };
     }
     if (!isIndexExt && !isMiddleExt && !isRingExt && isPinkyExt && isThumbExt) {
-      return { gesture: 'Y', confidence: 0.89, label: 'Y', phrase: 'Y', isRealModel: false };
+      return { gesture: 'Y', confidence: 0.86, label: 'Y', phrase: 'Y', isRealModel: false };
     }
-    if (isIndexExt && !isMiddleExt && !isRingExt && isPinkyExt && isThumbExt) {
-      return { gesture: 'I LOVE YOU', confidence: 0.93, label: 'I LOVE YOU', phrase: 'I Love You', isRealModel: false };
-    }
-    if (dist(indexTip, thumbTip) < 0.05 && isMiddleExt && isRingExt && isPinkyExt) {
-      return { gesture: 'F', confidence: 0.88, label: 'F', phrase: 'F', isRealModel: false };
-    }
-    if (!isIndexExt && !isMiddleExt && !isRingExt && !isPinkyExt) {
-      return { gesture: 'A', confidence: 0.86, label: 'A', phrase: 'A', isRealModel: false };
+    if (dist(indexTip, thumbTip) < 0.04 && isMiddleExt && isRingExt && isPinkyExt) {
+      return { gesture: 'F', confidence: 0.85, label: 'F', phrase: 'F', isRealModel: false };
     }
 
-    // Standard open hand wave -> Hello
-    if (isIndexExt && isMiddleExt && isRingExt && isPinkyExt && indexTip.y < 0.4) {
-      return { gesture: 'HELLO', confidence: 0.90, label: 'HELLO', phrase: 'Hello', isRealModel: false };
-    }
-
+    // Default neutral state when no strict gesture match is present
     return { gesture: '', confidence: 0.0, label: '', phrase: '', isRealModel: false };
   }
 }

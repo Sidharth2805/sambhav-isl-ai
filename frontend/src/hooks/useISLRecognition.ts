@@ -221,7 +221,7 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
               const inference = await classifier.classify(landmarksPayload);
               setIsModelOnline(!!inference.isRealModel);
 
-              if (inference.gesture && inference.gesture !== 'G_UNKNOWN' && inference.gesture !== 'NO_HANDS') {
+              if (inference.gesture && inference.confidence >= 0.75 && inference.gesture !== 'G_UNKNOWN' && inference.gesture !== 'NO_HANDS') {
                 setCurrentGesture(inference.label || inference.gesture);
                 setConfidence(inference.confidence);
                 const phrase = inference.phrase || ISL_VOCABULARY[inference.gesture] || inference.gesture;
@@ -229,6 +229,7 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
               } else {
                 setCurrentGesture(null);
                 setConfidence(0);
+                setTranslatedText('');
               }
             } catch (classifyErr) {
               console.error('[Sambhav ML] Inference error:', classifyErr);
