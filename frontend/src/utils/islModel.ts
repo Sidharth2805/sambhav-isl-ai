@@ -41,32 +41,50 @@ export interface ISLClassifier {
 /**
  * Vocabulary dictionary representing 169 ISL classes and exact English translations.
  */
+/**
+ * Vocabulary dictionary representing all 171 ISL classes (Letters A-Z, lowercase a, and 144 ISL words).
+ */
 export const ISL_VOCABULARY: Record<string, string> = {
   'A': 'A', 'B': 'B', 'C': 'C', 'D': 'D', 'E': 'E', 'F': 'F', 'G': 'G',
   'H': 'H', 'I': 'I', 'J': 'J', 'K': 'K', 'L': 'L', 'M': 'M', 'N': 'N',
   'O': 'O', 'P': 'P', 'Q': 'Q', 'R': 'R', 'S': 'S', 'T': 'T', 'U': 'U',
-  'V': 'V', 'W': 'W', 'X': 'X', 'Y': 'Y', 'Z': 'Z',
-  'hello': 'Hello',
-  'thank you': 'Thank You',
-  'thank_you': 'Thank You',
-  'help': 'Help',
-  'please': 'Please',
-  'yes': 'Yes',
-  'no': 'No',
-  'good': 'Good',
-  'bad': 'Bad',
-  'happy': 'Happy',
-  'sad': 'Sad',
-  'doctor': 'Doctor',
-  'hospital': 'Hospital',
-  'school': 'School',
-  'home': 'Home',
-  'water': 'Water',
-  'food': 'Food',
-  'communicate': 'Communicate',
-  'good_morning': 'Good Morning',
-  'good_night': 'Good Night',
-  'good_afternoon': 'Good Afternoon',
+  'V': 'V', 'W': 'W', 'X': 'X', 'Y': 'Y', 'Z': 'Z', 'a': 'A',
+  'again': 'Again', 'am': 'Am', 'an': 'An', 'answer': 'Answer', 'april': 'April', 'august': 'August', 'aunt': 'Aunt',
+  'bad': 'Bad', 'beautiful': 'Beautiful', 'book': 'Book', 'boy': 'Boy', 'bright': 'Bright', 'brother': 'Brother', 'bye': 'Bye',
+  'camera': 'Camera', 'car': 'Car', 'chair': 'Chair', 'child': 'Child', 'come': 'Come', 'correct': 'Correct', 'dark': 'Dark',
+  'daughter': 'Daughter', 'day': 'Day', 'deaf': 'Deaf', 'december': 'December', 'difficult': 'Difficult', 'do': 'Do', 'drink': 'Drink',
+  'easy': 'Easy', 'eat': 'Eat', 'face': 'Face', 'family': 'Family', 'fat': 'Fat', 'father': 'Father', 'february': 'February',
+  'fine': 'Fine', 'food': 'Food', 'friday': 'Friday', 'friend': 'Friend', 'girl': 'Girl', 'give': 'Give', 'go': 'Go',
+  'good': 'Good', 'good_afternoon': 'Good Afternoon', 'good_morning': 'Good Morning', 'good_night': 'Good Night',
+  'grandfather': 'Grandfather', 'grandmother': 'Grandmother', 'happy': 'Happy', 'he': 'He', 'hearing': 'Hearing',
+  'hello': 'Hello', 'help': 'Help', 'her': 'Her', 'his': 'His', 'home': 'Home', 'hospital': 'Hospital', 'house': 'House',
+  'how': 'How', 'husband': 'Husband', 'i': 'I', 'indian': 'Indian', 'is': 'Is', 'it': 'It', 'january': 'January',
+  'july': 'July', 'june': 'June', 'know': 'Know', 'language': 'Language', 'man': 'Man', 'march': 'March', 'market': 'Market',
+  'married': 'Married', 'marry': 'Marry', 'may': 'May', 'monday': 'Monday', 'money': 'Money', 'month': 'Month',
+  'mother': 'Mother', 'my': 'My', 'namaste': 'Namaste', 'name': 'Name', 'no': 'No', 'november': 'November',
+  'october': 'October', 'our': 'Our', 'paper': 'Paper', 'place': 'Place', 'please': 'Please', 'practice': 'Practice',
+  'question': 'Question', 'remember': 'Remember', 'sad': 'Sad', 'saturday': 'Saturday', 'school': 'School',
+  'september': 'September', 'she': 'She', 'short': 'Short', 'sign': 'Sign', 'sister': 'Sister', 'son': 'Son',
+  'sorry': 'Sorry', 'strong': 'Strong', 'sunday': 'Sunday', 'table': 'Table', 'take': 'Take', 'tall': 'Tall',
+  'teacher': 'Teacher', 'thank_you': 'Thank You', 'thank you': 'Thank You', 'their': 'Their', 'they': 'They',
+  'thin': 'Thin', 'this': 'This', 'thursday': 'Thursday', 'time': 'Time', 'to': 'To', 'tree': 'Tree',
+  'tuesday': 'Tuesday', 'ugly': 'Ugly', 'uncle': 'Uncle', 'understand': 'Understand', 'want': 'Want', 'water': 'Water',
+  'we': 'We', 'weak': 'Weak', 'wednesday': 'Wednesday', 'week': 'Week', 'welcome': 'Welcome', 'what': 'What',
+  'when': 'When', 'where': 'Where', 'which': 'Which', 'who': 'Who', 'why': 'Why', 'wife': 'Wife', 'women': 'Women',
+  'work': 'Work', 'wrong': 'Wrong', 'year': 'Year', 'yes': 'Yes', 'you': 'You', 'your': 'Your'
+};
+
+/**
+ * Format any raw ISL class label into clean, title-cased English text.
+ */
+export const formatISLLabel = (label: string): string => {
+  if (!label || label === 'G_UNKNOWN' || label === 'NO_HANDS' || label === 'UNKNOWN') return '';
+  if (ISL_VOCABULARY[label]) return ISL_VOCABULARY[label];
+  if (ISL_VOCABULARY[label.toLowerCase()]) return ISL_VOCABULARY[label.toLowerCase()];
+  
+  const clean = label.replace(/_/g, ' ').trim();
+  if (clean.length <= 1) return clean.toUpperCase();
+  return clean.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 };
 
 /**
@@ -74,7 +92,7 @@ export const ISL_VOCABULARY: Record<string, string> = {
  * Evaluates 60-frame landmark sequences (126 features) using your trained saanket_bilstm.keras model.
  */
 export class SaanketBiLSTMClassifier implements ISLClassifier {
-  public name = 'Saanket BiLSTM Neural Network (169 ISL Classes)';
+  public name = 'Saanket BiLSTM Neural Network (171 ISL Classes)';
   public isDemo = false;
   private serviceUrl: string;
   private landmarkBuffer: number[][] = [];
@@ -155,13 +173,12 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
           const result = await response.json();
           if (result.gesture && result.gesture !== 'UNKNOWN' && result.gesture !== 'NO_HANDS') {
             const rawLabel = result.gesture;
-            const cleanLabel = rawLabel.replace(/_/g, ' ').toUpperCase();
-            const cleanPhrase = ISL_VOCABULARY[rawLabel.toLowerCase()] || ISL_VOCABULARY[rawLabel] || cleanLabel;
+            const formattedText = formatISLLabel(rawLabel);
             return {
-              gesture: cleanLabel,
+              gesture: formattedText,
               confidence: result.confidence,
-              label: cleanLabel,
-              phrase: cleanPhrase,
+              label: formattedText,
+              phrase: formattedText,
               isRealModel: true,
               top_3: result.top_3
             };
