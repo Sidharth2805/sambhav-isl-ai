@@ -189,63 +189,7 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
       }
     }
 
-    // 3. Strict finger geometry classification (no false positive common word guesses)
-    const activeHand = (landmarks.rightHand && landmarks.rightHand.length >= 21)
-      ? landmarks.rightHand
-      : (landmarks.leftHand && landmarks.leftHand.length >= 21)
-      ? landmarks.leftHand
-      : null;
-
-    if (!activeHand) {
-      return { gesture: '', confidence: 0.0, label: '', phrase: '', isRealModel: false };
-    }
-
-    const wrist = activeHand[0];
-    const thumbTip = activeHand[4];
-    const thumbIP = activeHand[3];
-    const indexTip = activeHand[8];
-    const indexPip = activeHand[6];
-    const middleTip = activeHand[12];
-    const middlePip = activeHand[10];
-    const ringTip = activeHand[16];
-    const ringPip = activeHand[14];
-    const pinkyTip = activeHand[20];
-    const pinkyPip = activeHand[18];
-
-    const dist = (p1: ISLLandmark, p2: ISLLandmark) =>
-      Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
-
-    const isThumbExt = dist(thumbTip, wrist) > dist(thumbIP, wrist) * 1.25;
-    const isIndexExt = dist(indexTip, wrist) > dist(indexPip, wrist) * 1.25;
-    const isMiddleExt = dist(middleTip, wrist) > dist(middlePip, wrist) * 1.25;
-    const isRingExt = dist(ringTip, wrist) > dist(ringPip, wrist) * 1.25;
-    const isPinkyExt = dist(pinkyTip, wrist) > dist(pinkyPip, wrist) * 1.25;
-
-    // Strict Single-Letter Posture Patterns (only triggered when finger geometry is 100% distinct)
-    if (isIndexExt && isMiddleExt && !isRingExt && !isPinkyExt) {
-      const idxMidDist = dist(indexTip, middleTip);
-      if (idxMidDist > 0.08) {
-        return { gesture: 'V', confidence: 0.88, label: 'V', phrase: 'V', isRealModel: false };
-      }
-      return { gesture: 'U', confidence: 0.85, label: 'U', phrase: 'U', isRealModel: false };
-    }
-    if (isIndexExt && !isMiddleExt && !isRingExt && !isPinkyExt && isThumbExt) {
-      return { gesture: 'L', confidence: 0.86, label: 'L', phrase: 'L', isRealModel: false };
-    }
-    if (isIndexExt && !isMiddleExt && !isRingExt && !isPinkyExt && !isThumbExt) {
-      return { gesture: 'D', confidence: 0.85, label: 'D', phrase: 'D', isRealModel: false };
-    }
-    if (isIndexExt && isMiddleExt && isRingExt && !isPinkyExt && !isThumbExt) {
-      return { gesture: 'W', confidence: 0.85, label: 'W', phrase: 'W', isRealModel: false };
-    }
-    if (!isIndexExt && !isMiddleExt && !isRingExt && isPinkyExt && isThumbExt) {
-      return { gesture: 'Y', confidence: 0.86, label: 'Y', phrase: 'Y', isRealModel: false };
-    }
-    if (dist(indexTip, thumbTip) < 0.04 && isMiddleExt && isRingExt && isPinkyExt) {
-      return { gesture: 'F', confidence: 0.85, label: 'F', phrase: 'F', isRealModel: false };
-    }
-
-    // Default neutral state when no strict gesture match is present
+    // 3. Neutral state when ML service is starting or offline (no hardcoded guesses or static letter outputs)
     return { gesture: '', confidence: 0.0, label: '', phrase: '', isRealModel: false };
   }
 }
