@@ -7,28 +7,28 @@ export const ExplorePage: React.FC = () => {
   const updates = [
     {
       version: 'v2.4.0 (Current Stable)',
-      date: 'August 2026',
+      date: 'October 2026',
       tag: 'Avatar Engine',
       title: 'Full Word & Sentence Avatar Interpretation',
       description: 'Engineered our 3D avatar model to read and sign complete words, phrases, and natural sentences with fluid bone transitions and real-time speed adjustments.',
     },
     {
       version: 'v2.3.0',
-      date: 'August 2026',
+      date: 'October 2026',
       tag: 'AI Accuracy',
       title: 'High-Precision Sign Recognition Model Upgrade',
       description: 'Achieved a major increase in accuracy for the sign reading vision model, providing heightened gesture tracking confidence across diverse camera setups and lighting conditions.',
     },
     {
       version: 'v2.2.0',
-      date: 'July 2026',
+      date: 'October 2026',
       tag: 'Ecosystem Expansion',
       title: 'Comprehensive Ecosystem for Varied Application Areas',
       description: 'Established a proper, modular ISL ecosystem enabling seamless integration across multi-domain environments including news broadcasting, 1-on-1 video calls, education, and daily translation.',
     },
     {
       version: 'v2.0.0',
-      date: 'June 2026',
+      date: 'October 2026',
       tag: 'Core Platform',
       title: 'SAMBHAV Platform Public Launch',
       description: 'Official introduction of AI-powered Indian Sign Language interpretation, interactive 3D avatars, and dual user role dashboards.',
