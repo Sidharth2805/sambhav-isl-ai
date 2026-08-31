@@ -385,47 +385,56 @@ export const ProfilePage: React.FC = () => {
         {/* ========================================================================= */}
         <div className="lg:col-span-5 flex flex-col gap-6">
           
-          {/* SECTION 3: ACCESSIBILITY NEEDS PRESETS */}
+          {/* SECTION 3: ACCESSIBILITY NEEDS PRESETS (Shown ONLY for Accessibility Users) */}
+          {user?.accountType === 'ACCESSIBILITY_USER' && (
+            <section className="bg-white dark:bg-[#1a202c] rounded-[24px] p-6 border border-[#e0e3e5] dark:border-[#2d3133] shadow-xs flex flex-col gap-4">
+              <div className="flex items-center gap-2 border-b border-[#e0e3e5] dark:border-[#2d3133] pb-3">
+                <span className="material-symbols-outlined text-[#fe9832] text-[22px]">accessibility</span>
+                <h2 className="text-base font-bold text-[#030813] dark:text-white">Accessibility Needs Profile</h2>
+              </div>
+              
+              <p className="text-xs text-[#45474c] dark:text-[#828796]">
+                Select presets that describe your communication preferences for AI assistance:
+              </p>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {[
+                  { key: 'DEAF', label: 'Deaf' },
+                  { key: 'HARD_OF_HEARING', label: 'Hard of Hearing' },
+                  { key: 'NON_SPEAKING', label: 'Non-speaking' },
+                  { key: 'BLIND', label: 'Blind' },
+                  { key: 'LOW_VISION', label: 'Low Vision' },
+                  { key: 'OTHER', label: 'Other Needs' }
+                ].map((item) => (
+                  <label 
+                    key={item.key} 
+                    className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
+                      needs.includes(item.key) 
+                        ? 'border-[#fe9832] bg-[#fe9832]/10 text-[#030813] dark:text-white' 
+                        : 'border-[#e0e3e5] dark:border-[#2d3133] bg-[#f7fafc] dark:bg-[#030813] text-[#45474c] dark:text-[#c1c6d7] hover:border-[#fe9832]'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={needs.includes(item.key)}
+                      onChange={() => handleNeedToggle(item.key)}
+                      className="w-4 h-4 rounded text-[#fe9832] focus:ring-[#fe9832] cursor-pointer"
+                    />
+                    <span className="text-xs font-bold">{item.label}</span>
+                  </label>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* SECTION 4: LANGUAGE & COMMUNICATION PREFERENCES */}
           <section className="bg-white dark:bg-[#1a202c] rounded-[24px] p-6 border border-[#e0e3e5] dark:border-[#2d3133] shadow-xs flex flex-col gap-4">
             <div className="flex items-center gap-2 border-b border-[#e0e3e5] dark:border-[#2d3133] pb-3">
-              <span className="material-symbols-outlined text-[#fe9832] text-[22px]">accessibility</span>
-              <h2 className="text-base font-bold text-[#030813] dark:text-white">Accessibility Needs Profile</h2>
-            </div>
-            
-            <p className="text-xs text-[#45474c] dark:text-[#828796]">
-              Select presets that describe your communication preferences for AI assistance:
-            </p>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {[
-                { key: 'DEAF', label: 'Deaf' },
-                { key: 'HARD_OF_HEARING', label: 'Hard of Hearing' },
-                { key: 'NON_SPEAKING', label: 'Non-speaking' },
-                { key: 'BLIND', label: 'Blind' },
-                { key: 'LOW_VISION', label: 'Low Vision' },
-                { key: 'OTHER', label: 'Other Needs' }
-              ].map((item) => (
-                <label 
-                  key={item.key} 
-                  className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
-                    needs.includes(item.key) 
-                      ? 'border-[#fe9832] bg-[#fe9832]/10 text-[#030813] dark:text-white' 
-                      : 'border-[#e0e3e5] dark:border-[#2d3133] bg-[#f7fafc] dark:bg-[#030813] text-[#45474c] dark:text-[#c1c6d7] hover:border-[#fe9832]'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={needs.includes(item.key)}
-                    onChange={() => handleNeedToggle(item.key)}
-                    className="w-4 h-4 rounded text-[#fe9832] focus:ring-[#fe9832] cursor-pointer"
-                  />
-                  <span className="text-xs font-bold">{item.label}</span>
-                </label>
-              ))}
+              <span className="material-symbols-outlined text-[#fe9832] text-[22px]">translate</span>
+              <h2 className="text-base font-bold text-[#030813] dark:text-white">Language &amp; System Preferences</h2>
             </div>
 
-            {/* Language & Workspace Dropdowns */}
-            <div className="flex flex-col gap-3 pt-3 border-t border-[#e0e3e5] dark:border-[#2d3133] text-xs">
+            <div className="flex flex-col gap-3 text-xs">
               <div className="flex flex-col gap-1">
                 <label htmlFor="pref-lang" className="font-bold text-[#181c1e] dark:text-white">Preferred Spoken Language</label>
                 <select
@@ -479,7 +488,7 @@ export const ProfilePage: React.FC = () => {
               className="w-full py-2.5 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] rounded-xl font-bold text-xs transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer mt-1"
             >
               <span className="material-symbols-outlined text-[16px]">save</span>
-              <span>{savingPrefs ? 'Saving...' : 'Save Accessibility Settings'}</span>
+              <span>{savingPrefs ? 'Saving...' : 'Save Settings'}</span>
             </button>
           </section>
 

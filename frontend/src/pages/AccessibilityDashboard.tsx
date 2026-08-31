@@ -165,73 +165,75 @@ export const AccessibilityDashboard: React.FC = () => {
 
             <form onSubmit={handleSavePreferences} className="flex flex-col gap-6">
               
-              {/* Select Needs fieldset */}
-              <fieldset className="flex flex-col gap-4">
-                <legend className="font-bold text-base mb-2">Accessibility Needs Profile</legend>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  
-                  <label className="flex items-center gap-3.5 p-3.5 rounded-lg border border-border bg-bg hover:border-primary cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={needs.includes('DEAF')}
-                      onChange={() => handleNeedToggle('DEAF')}
-                      className="w-6 h-6 rounded accent-primary"
-                    />
-                    <span className="text-base font-semibold">Deaf</span>
-                  </label>
+              {/* Select Needs fieldset (Accessibility Users Only) */}
+              {user?.accountType === 'ACCESSIBILITY_USER' && (
+                <fieldset className="flex flex-col gap-4">
+                  <legend className="font-bold text-base mb-2">Accessibility Needs Profile</legend>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    
+                    <label className="flex items-center gap-3.5 p-3.5 rounded-lg border border-border bg-bg hover:border-primary cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={needs.includes('DEAF')}
+                        onChange={() => handleNeedToggle('DEAF')}
+                        className="w-6 h-6 rounded accent-primary"
+                      />
+                      <span className="text-base font-semibold">Deaf</span>
+                    </label>
 
-                  <label className="flex items-center gap-3.5 p-3.5 rounded-lg border border-border bg-bg hover:border-primary cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={needs.includes('HARD_OF_HEARING')}
-                      onChange={() => handleNeedToggle('HARD_OF_HEARING')}
-                      className="w-6 h-6 rounded accent-primary"
-                    />
-                    <span className="text-base font-semibold">Hard of Hearing</span>
-                  </label>
+                    <label className="flex items-center gap-3.5 p-3.5 rounded-lg border border-border bg-bg hover:border-primary cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={needs.includes('HARD_OF_HEARING')}
+                        onChange={() => handleNeedToggle('HARD_OF_HEARING')}
+                        className="w-6 h-6 rounded accent-primary"
+                      />
+                      <span className="text-base font-semibold">Hard of Hearing</span>
+                    </label>
 
-                  <label className="flex items-center gap-3.5 p-3.5 rounded-lg border border-border bg-bg hover:border-primary cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={needs.includes('NON_SPEAKING')}
-                      onChange={() => handleNeedToggle('NON_SPEAKING')}
-                      className="w-6 h-6 rounded accent-primary"
-                    />
-                    <span className="text-base font-semibold">Non-speaking</span>
-                  </label>
+                    <label className="flex items-center gap-3.5 p-3.5 rounded-lg border border-border bg-bg hover:border-primary cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={needs.includes('NON_SPEAKING')}
+                        onChange={() => handleNeedToggle('NON_SPEAKING')}
+                        className="w-6 h-6 rounded accent-primary"
+                      />
+                      <span className="text-base font-semibold">Non-speaking</span>
+                    </label>
 
-                  <label className="flex items-center gap-3.5 p-3.5 rounded-lg border border-border bg-bg hover:border-primary cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={needs.includes('BLIND')}
-                      onChange={() => handleNeedToggle('BLIND')}
-                      className="w-6 h-6 rounded accent-primary"
-                    />
-                    <span className="text-base font-semibold">Blind</span>
-                  </label>
+                    <label className="flex items-center gap-3.5 p-3.5 rounded-lg border border-border bg-bg hover:border-primary cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={needs.includes('BLIND')}
+                        onChange={() => handleNeedToggle('BLIND')}
+                        className="w-6 h-6 rounded accent-primary"
+                      />
+                      <span className="text-base font-semibold">Blind</span>
+                    </label>
 
-                  <label className="flex items-center gap-3.5 p-3.5 rounded-lg border border-border bg-bg hover:border-primary cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={needs.includes('LOW_VISION')}
-                      onChange={() => handleNeedToggle('LOW_VISION')}
-                      className="w-6 h-6 rounded accent-primary"
-                    />
-                    <span className="text-base font-semibold">Low Vision</span>
-                  </label>
+                    <label className="flex items-center gap-3.5 p-3.5 rounded-lg border border-border bg-bg hover:border-primary cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={needs.includes('LOW_VISION')}
+                        onChange={() => handleNeedToggle('LOW_VISION')}
+                        className="w-6 h-6 rounded accent-primary"
+                      />
+                      <span className="text-base font-semibold">Low Vision</span>
+                    </label>
 
-                  <label className="flex items-center gap-3.5 p-3.5 rounded-lg border border-border bg-bg hover:border-primary cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={needs.includes('OTHER')}
-                      onChange={() => handleNeedToggle('OTHER')}
-                      className="w-6 h-6 rounded accent-primary"
-                    />
-                    <span className="text-base font-semibold">Other Accessibility Needs</span>
-                  </label>
+                    <label className="flex items-center gap-3.5 p-3.5 rounded-lg border border-border bg-bg hover:border-primary cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={needs.includes('OTHER')}
+                        onChange={() => handleNeedToggle('OTHER')}
+                        className="w-6 h-6 rounded accent-primary"
+                      />
+                      <span className="text-base font-semibold">Other Accessibility Needs</span>
+                    </label>
 
-                </div>
-              </fieldset>
+                  </div>
+                </fieldset>
+              )}
 
               <hr className="border-border" />
 
