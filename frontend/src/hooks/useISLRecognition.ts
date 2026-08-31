@@ -177,12 +177,14 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
         hands.onResults(async (results: any) => {
           if (isPaused) return;
 
-          const canvas = document.querySelector('canvas');
+          // Target specific camera overlay canvas rather than Three.js avatar canvas
+          const vid = videoElementRef.current;
+          const canvas = vid?.parentElement?.querySelector('canvas') || document.querySelector('canvas[data-gesture-canvas="true"]');
           let ctx: CanvasRenderingContext2D | null = null;
           if (canvas) {
-            ctx = canvas.getContext('2d');
+            ctx = (canvas as HTMLCanvasElement).getContext('2d');
             if (ctx) {
-              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              ctx.clearRect(0, 0, (canvas as HTMLCanvasElement).width, (canvas as HTMLCanvasElement).height);
             }
           }
 
@@ -199,12 +201,12 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
               if (handedness === 'Right' || idx === 0) {
                 landmarksPayload.rightHand = handPoints;
                 if (ctx && canvas) {
-                  drawHandSkeleton(ctx, handPoints, canvas.width, canvas.height, '#fe9832');
+                  drawHandSkeleton(ctx, handPoints, (canvas as HTMLCanvasElement).width, (canvas as HTMLCanvasElement).height, '#fe9832');
                 }
               } else {
                 landmarksPayload.leftHand = handPoints;
                 if (ctx && canvas) {
-                  drawHandSkeleton(ctx, handPoints, canvas.width, canvas.height, '#059669');
+                  drawHandSkeleton(ctx, handPoints, (canvas as HTMLCanvasElement).width, (canvas as HTMLCanvasElement).height, '#059669');
                 }
               }
             });
@@ -239,11 +241,12 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
 
       // 5. Continuous frame processing loop
       const processLoop = async () => {
-        if (!streamRef.current || !videoElementRef.current) return;
+        if (!videoElementRef.current) return;
 
-        if (!isPaused && handsInstanceRef.current && videoElementRef.current.readyState >= 2) {
+        const vid = videoElementRef.current;
+        if (!isPaused && handsInstanceRef.current && vid.videoWidth > 0 && vid.videoHeight > 0) {
           try {
-            await handsInstanceRef.current.send({ image: videoElementRef.current });
+            await handsInstanceRef.current.send({ image: vid });
           } catch {
             // Frame processing catch
           }

@@ -172,24 +172,85 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
       }
     }
 
-    // 3. Fallback heuristic classification when backend ML server is starting or offline
-    const rHandY = landmarks.rightHand?.[0]?.y ?? 1.0;
-    const lHandY = landmarks.leftHand?.[0]?.y ?? 1.0;
+    // 3. Robust geometry & finger posture classification (works offline or when backend ML service is starting)
+    const activeHand = (landmarks.rightHand && landmarks.rightHand.length >= 21)
+      ? landmarks.rightHand
+      : (landmarks.leftHand && landmarks.leftHand.length >= 21)
+      ? landmarks.leftHand
+      : null;
 
-    if (rHandY < 0.1 || lHandY < 0.1 || rHandY > 0.95 || lHandY > 0.95) {
+    if (!activeHand) {
       return { gesture: 'G_UNKNOWN', confidence: 0.1, label: 'Adjust hand position', isRealModel: false };
     }
-    if (rHandY < 0.3 && lHandY < 0.3) {
-      return { gesture: 'thank you', confidence: 0.91, label: 'Thank you', phrase: 'Thank you!', isRealModel: false };
-    }
-    if (rHandY < 0.4) {
-      return { gesture: 'hello', confidence: 0.88, label: 'Hello', phrase: 'Hello!', isRealModel: false };
-    }
-    if (lHandY < 0.4) {
-      return { gesture: 'help', confidence: 0.84, label: 'Help', phrase: 'Need help.', isRealModel: false };
+
+    const wrist = activeHand[0];
+    const thumbTip = activeHand[4];
+    const thumbIP = activeHand[3];
+    const indexTip = activeHand[8];
+    const indexPip = activeHand[6];
+    const middleTip = activeHand[12];
+    const middlePip = activeHand[10];
+    const ringTip = activeHand[16];
+    const ringPip = activeHand[14];
+    const pinkyTip = activeHand[20];
+    const pinkyPip = activeHand[18];
+
+    const dist = (p1: ISLLandmark, p2: ISLLandmark) =>
+      Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+
+    const isThumbExt = dist(thumbTip, wrist) > dist(thumbIP, wrist) * 1.15;
+    const isIndexExt = dist(indexTip, wrist) > dist(indexPip, wrist) * 1.15;
+    const isMiddleExt = dist(middleTip, wrist) > dist(middlePip, wrist) * 1.15;
+    const isRingExt = dist(ringTip, wrist) > dist(ringPip, wrist) * 1.15;
+    const isPinkyExt = dist(pinkyTip, wrist) > dist(pinkyPip, wrist) * 1.15;
+
+    // Both hands raised near chest/head -> Thank You / Welcome
+    const rY = landmarks.rightHand?.[0]?.y;
+    const lY = landmarks.leftHand?.[0]?.y;
+    if (rY !== undefined && lY !== undefined && rY < 0.45 && lY < 0.45) {
+      return { gesture: 'thank you', confidence: 0.94, label: 'Thank You', phrase: 'Thank you very much!', isRealModel: false };
     }
 
-    return { gesture: 'communicate', confidence: 0.76, label: 'Communicate', phrase: 'Indian Sign Language', isRealModel: false };
+    // Geometry Match Patterns
+    if (!isIndexExt && !isMiddleExt && !isRingExt && !isPinkyExt && isThumbExt && thumbTip.y < wrist.y) {
+      return { gesture: 'good', confidence: 0.92, label: 'Good / Thumbs Up', phrase: 'Good / Yes!', isRealModel: false };
+    }
+    if (!isIndexExt && !isMiddleExt && !isRingExt && !isPinkyExt && isThumbExt && thumbTip.y > wrist.y) {
+      return { gesture: 'bad', confidence: 0.89, label: 'Bad / Thumbs Down', phrase: 'Not good / No.', isRealModel: false };
+    }
+    if (isIndexExt && isMiddleExt && isRingExt && isPinkyExt) {
+      return { gesture: 'hello', confidence: 0.91, label: 'Hello / Open Hand', phrase: 'Hello! Welcome to Sambhav.', isRealModel: false };
+    }
+    if (isIndexExt && isMiddleExt && !isRingExt && !isPinkyExt) {
+      const idxMidDist = dist(indexTip, middleTip);
+      if (idxMidDist > 0.08) {
+        return { gesture: 'V', confidence: 0.90, label: 'Letter V / Victory', phrase: 'V', isRealModel: false };
+      }
+      return { gesture: 'U', confidence: 0.88, label: 'Letter U', phrase: 'U', isRealModel: false };
+    }
+    if (isIndexExt && !isMiddleExt && !isRingExt && !isPinkyExt && isThumbExt) {
+      return { gesture: 'L', confidence: 0.89, label: 'Letter L', phrase: 'L', isRealModel: false };
+    }
+    if (isIndexExt && !isMiddleExt && !isRingExt && !isPinkyExt) {
+      return { gesture: 'D', confidence: 0.88, label: 'Letter D', phrase: 'D', isRealModel: false };
+    }
+    if (isIndexExt && isMiddleExt && isRingExt && !isPinkyExt) {
+      return { gesture: 'W', confidence: 0.87, label: 'Letter W', phrase: 'W', isRealModel: false };
+    }
+    if (!isIndexExt && !isMiddleExt && !isRingExt && isPinkyExt && isThumbExt) {
+      return { gesture: 'Y', confidence: 0.89, label: 'Letter Y', phrase: 'Y', isRealModel: false };
+    }
+    if (isIndexExt && !isMiddleExt && !isRingExt && isPinkyExt && isThumbExt) {
+      return { gesture: 'i love you', confidence: 0.93, label: 'I Love You', phrase: 'I love you.', isRealModel: false };
+    }
+    if (dist(indexTip, thumbTip) < 0.05 && isMiddleExt && isRingExt && isPinkyExt) {
+      return { gesture: 'F', confidence: 0.88, label: 'Letter F / OK Sign', phrase: 'F', isRealModel: false };
+    }
+    if (!isIndexExt && !isMiddleExt && !isRingExt && !isPinkyExt) {
+      return { gesture: 'A', confidence: 0.86, label: 'Letter A / Fist', phrase: 'A', isRealModel: false };
+    }
+
+    return { gesture: 'communicate', confidence: 0.78, label: 'ISL Sign', phrase: 'Indian Sign Language', isRealModel: false };
   }
 }
 
