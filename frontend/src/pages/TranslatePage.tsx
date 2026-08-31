@@ -3,6 +3,7 @@ import { useTextToSpeech } from '../hooks/useTextToSpeech';
 import { ISLAvatarCanvas, type ISLAvatarCanvasRef } from '../components/cultural/ISLAvatarCanvas';
 import { useISLRecognition } from '../hooks/useISLRecognition';
 import { ISLMessageComposer } from '../components/communication/ISLMessageComposer';
+import { DraggableCameraWindow } from '../components/communication/DraggableCameraWindow';
 
 interface SignAssetDto {
   assetId: string;
@@ -307,10 +308,27 @@ export const TranslatePage: React.FC = () => {
           const cleanFinal = finalStr.trim();
           if (cleanFinal) {
             const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const msgId = `msg-speech-${Date.now()}`;
+            const words = cleanFinal.split(/\s+/);
+
             setFinalTranscript(cleanFinal);
             setSessionHistoryLogs((prev) => [...prev, { mode: 'SPEECH', text: cleanFinal, time: timestamp }]);
+
+            // Add speech message to persistent conversation history feed
+            setTextMessages((prev) => [
+              ...prev,
+              {
+                id: msgId,
+                sender: 'user',
+                mode: 'SPEECH',
+                text: cleanFinal,
+                words,
+                timestamp,
+              },
+            ]);
+
             setLiveCaption('');
-            translateTextToSign(cleanFinal);
+            translateTextToSign(cleanFinal, msgId);
           }
         }
       };
@@ -979,23 +997,11 @@ export const TranslatePage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Live Presenter Camera Window */}
-                  <div className="absolute top-3 right-3 w-32 h-24 sm:w-40 sm:h-28 bg-[#0a0f1d] rounded-2xl overflow-hidden border border-white/25 shadow-2xl z-20 transition-all hover:scale-105 group">
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      muted
-                      className="w-full h-full object-cover transform -scale-x-100"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none" />
-                    <div className="absolute bottom-1.5 left-2 right-2 flex items-center justify-between pointer-events-none">
-                      <span className="flex items-center gap-1 text-[9px] font-bold text-white bg-black/60 px-1.5 py-0.5 rounded-md backdrop-blur-xs">
-                        <span className={`w-1.5 h-1.5 rounded-full ${cameraActive ? 'bg-[#8dfc75] animate-pulse' : 'bg-gray-400'}`} />
-                        <span>{cameraActive ? 'Presenter Live' : 'Camera Off'}</span>
-                      </span>
-                    </div>
-                  </div>
+                  {/* Repositionable Draggable Presenter Camera Window */}
+                  <DraggableCameraWindow
+                    videoRef={videoRef}
+                    cameraActive={cameraActive}
+                  />
                 </>
               )}
             </div>
@@ -1093,10 +1099,24 @@ export const TranslatePage: React.FC = () => {
                         const val = inputText.trim();
                         if (!val) return;
                         const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const msgId = `msg-typed-${Date.now()}`;
+                        const words = val.split(/\s+/);
+
                         setFinalTranscript(val);
                         setSessionHistoryLogs((prev) => [...prev, { mode: 'SPEECH', text: val, time: timestamp }]);
+                        setTextMessages((prev) => [
+                          ...prev,
+                          {
+                            id: msgId,
+                            sender: 'user',
+                            mode: 'SPEECH',
+                            text: val,
+                            words,
+                            timestamp,
+                          },
+                        ]);
                         setLiveCaption('');
-                        translateTextToSign(val);
+                        translateTextToSign(val, msgId);
                         setInputText('');
                       }}
                       className="pt-2 flex items-center gap-2 border-t border-[#e0e3e5] dark:border-[#2d3133] shrink-0"
@@ -1277,11 +1297,21 @@ export const TranslatePage: React.FC = () => {
                                     </span>
                                   ) : null}
 
+                                  {/* Dedicated Per-Message Sign on Avatar Button */}
+                                  <button
+                                    type="button"
+                                    onClick={() => translateTextToSign(msg.text, msg.id)}
+                                    title="Sign message again on 3D Avatar"
+                                    className="px-2 py-0.5 bg-[#fe9832]/10 hover:bg-[#fe9832]/30 text-[#8f4e00] dark:text-[#fe9832] rounded-md text-[10px] font-bold transition flex items-center gap-1 cursor-pointer border border-[#fe9832]/30"
+                                  >
+                                    <span className="material-symbols-outlined text-[13px]">play_arrow</span>
+                                    <span>Sign on Avatar</span>
+                                  </button>
+
                                   {/* Dedicated Per-Message Speak / Read Aloud Button */}
                                   <button
                                     type="button"
                                     onClick={() => speak(msg.text)}
-                                    disabled={speaking}
                                     title="Read message aloud"
                                     className="px-2 py-0.5 bg-[#f1f4f6] dark:bg-slate-800 hover:bg-[#fe9832]/20 dark:hover:bg-[#fe9832]/30 text-[#0C1322] dark:text-white rounded-md text-[10px] font-bold transition flex items-center gap-1 cursor-pointer border border-[#e0e3e5] dark:border-[#2d3133]"
                                   >

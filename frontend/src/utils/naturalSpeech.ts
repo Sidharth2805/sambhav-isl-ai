@@ -126,55 +126,69 @@ class NaturalSpeechEngine {
     const cleaned = this.cleanTextForSpeech(text);
     if (!cleaned) return;
 
-    // Cancel previous speech smoothly
+    // Cancel previous speech smoothly and resume if paused
     window.speechSynthesis.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(cleaned);
-
-    // Pick best voice
-    let selectedVoice: SpeechSynthesisVoice | null = null;
-    if (options?.voiceName) {
-      selectedVoice = this.voices.find((v) => v.name === options.voiceName) || null;
-    }
-    if (!selectedVoice) {
-      selectedVoice = this.findBestNaturalVoice();
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
     }
 
-    if (selectedVoice) {
-      utterance.voice = selectedVoice;
-      utterance.lang = selectedVoice.lang;
-    } else {
-      utterance.lang = 'en-US';
-    }
+    const playSpeech = () => {
+      try {
+        if (!this.voices.length) {
+          this.loadVoices();
+        }
 
-    // Natural human cadence settings (smoother flow without choppy breaking)
-    utterance.rate = options?.rate ?? 0.96; // Slightly relaxed conversational pace
-    utterance.pitch = options?.pitch ?? 1.02; // Warm, natural inflection
-    utterance.volume = 1.0;
+        const utterance = new SpeechSynthesisUtterance(cleaned);
 
-    // Prevent browser garbage collection bug on long utterances
-    this.activeUtterance = utterance;
+        // Pick best voice
+        let selectedVoice: SpeechSynthesisVoice | null = null;
+        if (options?.voiceName) {
+          selectedVoice = this.voices.find((v) => v.name === options.voiceName) || null;
+        }
+        if (!selectedVoice) {
+          selectedVoice = this.findBestNaturalVoice();
+        }
 
-    utterance.onstart = () => {
-      this.isSpeaking = true;
-    };
+        if (selectedVoice) {
+          utterance.voice = selectedVoice;
+          utterance.lang = selectedVoice.lang;
+        } else {
+          utterance.lang = 'en-US';
+        }
 
-    utterance.onend = () => {
-      this.isSpeaking = false;
-      this.activeUtterance = null;
-      options?.onEnd?.();
-    };
+        // Natural human cadence settings
+        utterance.rate = options?.rate ?? 0.96;
+        utterance.pitch = options?.pitch ?? 1.02;
+        utterance.volume = 1.0;
 
-    utterance.onerror = (e) => {
-      if (e.error !== 'interrupted' && e.error !== 'canceled') {
-        console.warn('[NaturalSpeech] synthesis error:', e);
+        this.activeUtterance = utterance;
+
+        utterance.onstart = () => {
+          this.isSpeaking = true;
+        };
+
+        utterance.onend = () => {
+          this.isSpeaking = false;
+          this.activeUtterance = null;
+          options?.onEnd?.();
+        };
+
+        utterance.onerror = (e) => {
+          if (e.error !== 'interrupted' && e.error !== 'canceled') {
+            console.warn('[NaturalSpeech] synthesis error:', e);
+          }
+          this.isSpeaking = false;
+          this.activeUtterance = null;
+          options?.onError?.();
+        };
+
+        window.speechSynthesis.speak(utterance);
+      } catch (err) {
+        console.error('[NaturalSpeech] Speak error:', err);
       }
-      this.isSpeaking = false;
-      this.activeUtterance = null;
-      options?.onError?.();
     };
 
-    window.speechSynthesis.speak(utterance);
+    setTimeout(playSpeech, 40);
   }
 
   public stop() {

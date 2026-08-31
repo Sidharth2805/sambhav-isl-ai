@@ -51,11 +51,11 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
 
   useEffect(() => {
     speedMultiplierRef.current = speed;
-  }, [speed]);
-
-  useEffect(() => {
     pauseTimeMsRef.current = pauseTimeMs;
-  }, [pauseTimeMs]);
+    if (pauseEndTimeRef.current > performance.now()) {
+      pauseEndTimeRef.current = performance.now() + pauseTimeMs;
+    }
+  }, [speed, pauseTimeMs]);
 
   // Mutable state container matching Avatar-realtime structure
   const avatarStateRef = useRef<{
