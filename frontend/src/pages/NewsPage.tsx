@@ -138,23 +138,17 @@ export const NewsPage: React.FC = () => {
     return tokens;
   }, [selectedArticle]);
 
-  // Step through article words during playback
-  useEffect(() => {
-    if (!isAvatarPlaying || articleTokens.length === 0) return;
-    const intervalMs = Math.round(550 / playbackSpeed);
-
-    const timer = setInterval(() => {
-      setCurrentWordIndex((prev) => {
-        if (prev >= articleTokens.length - 1) {
-          setIsAvatarPlaying(false);
-          return 0;
-        }
-        return prev + 1;
-      });
-    }, intervalMs);
-
-    return () => clearInterval(timer);
-  }, [isAvatarPlaying, playbackSpeed, articleTokens.length]);
+  // 1-to-1 Synchronized avatar progress handler (calculates word index based on actual avatar signing progress)
+  const handleAvatarProgressChar = useCallback((char: string, processedText: string) => {
+    setActiveAvatarChar(char);
+    if (!articleTokens.length) return;
+    const wordsSigned = processedText.trim().split(/\s+/).filter(Boolean);
+    const count = wordsSigned.length;
+    if (count > 0) {
+      const targetIdx = Math.min(count - 1, articleTokens.length - 1);
+      setCurrentWordIndex(targetIdx);
+    }
+  }, [articleTokens.length]);
 
   // Keep active green highlighted word visible inside article text
   useEffect(() => {
@@ -411,16 +405,16 @@ export const NewsPage: React.FC = () => {
                   </span>
                 </div>
 
-                {/* 3D ISL AVATAR ARENA */}
-                <div className="w-full min-h-[480px] sm:min-h-[560px] lg:min-h-[600px] bg-gradient-to-br from-[#080e1b] via-[#101a2d] to-[#04070d] rounded-2xl overflow-hidden relative border border-white/15 shadow-2xl flex flex-col justify-between p-4 text-white">
+                {/* 3D ISL AVATAR ARENA (Fitted Screen Container) */}
+                <div className="w-full h-[320px] sm:h-[360px] lg:h-[380px] bg-gradient-to-br from-[#080e1b] via-[#101a2d] to-[#04070d] rounded-2xl overflow-hidden relative border border-white/15 shadow-xl flex flex-col justify-between p-3 text-white">
                   
                   {/* Top Status & Model Selector */}
                   <div className="flex items-center justify-between z-10">
-                    <span className="text-[11px] font-mono font-bold bg-black/70 backdrop-blur-md px-3 py-1 rounded-xl border border-white/15 shadow-sm">
+                    <span className="text-[10px] sm:text-[11px] font-mono font-bold bg-black/70 backdrop-blur-md px-2.5 py-0.5 rounded-xl border border-white/15 shadow-sm">
                       Word {currentWordIndex + 1} / {articleTokens.length}
                     </span>
 
-                    <div className="flex items-center gap-1.5 bg-black/70 backdrop-blur-md px-2 py-1 rounded-xl border border-white/15 text-[11px]">
+                    <div className="flex items-center gap-1 bg-black/70 backdrop-blur-md p-0.5 rounded-xl border border-white/15 text-[10px]">
                       <button
                         type="button"
                         onClick={() => setModelPath('/models/ybot.glb')}
@@ -442,48 +436,48 @@ export const NewsPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Real 3D Avatar WebGL Canvas */}
-                  <div className="flex-1 w-full h-full min-h-[360px] flex items-center justify-center relative overflow-hidden my-2 rounded-xl">
+                  {/* Real 3D Avatar WebGL Canvas (Fitted Viewport) */}
+                  <div className="flex-1 w-full h-full min-h-[200px] flex items-center justify-center relative overflow-hidden my-1 rounded-xl">
                     <ISLAvatarCanvas
                       ref={avatarCanvasRef}
                       modelPath={modelPath}
                       speed={playbackSpeed}
                       pauseTimeMs={Math.round(400 / playbackSpeed)}
-                      onProgressChar={(char) => setActiveAvatarChar(char)}
+                      onProgressChar={handleAvatarProgressChar}
                       onFinish={() => setIsAvatarPlaying(false)}
                       className="w-full h-full"
                     />
 
                     {/* Target Letter Overlay Badge */}
                     {activeAvatarChar && (
-                      <div className="absolute bottom-3 left-3 bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/15 text-xs font-mono font-bold text-[#8dfc75] shadow-lg z-10 flex items-center gap-2">
-                        <span className="text-[10px] text-white/60 uppercase">Target Signal:</span>
-                        <span className="text-sm text-[#fe9832]">"{activeAvatarChar}"</span>
+                      <div className="absolute bottom-2 left-2 bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-xl border border-white/15 text-xs font-mono font-bold text-[#8dfc75] shadow-lg z-10 flex items-center gap-1.5">
+                        <span className="text-[9px] text-white/60 uppercase">Signal:</span>
+                        <span className="text-xs text-[#fe9832]">"{activeAvatarChar}"</span>
                       </div>
                     )}
                   </div>
 
                   {/* Synchronized Live Sign Gloss Display Banner */}
-                  <div className="bg-black/85 backdrop-blur-md p-3 rounded-2xl border border-white/20 text-center flex flex-col gap-0.5 shadow-xl z-10">
-                    <span className="text-[10px] uppercase tracking-widest text-[#fe9832] font-black">
+                  <div className="bg-black/85 backdrop-blur-md p-2 rounded-xl border border-white/20 text-center flex flex-col gap-0.5 shadow-xl z-10">
+                    <span className="text-[9px] uppercase tracking-widest text-[#fe9832] font-black">
                       Current Sign Token
                     </span>
-                    <span className="font-mono text-lg sm:text-xl font-black text-[#8dfc75] tracking-widest">
+                    <span className="font-mono text-base sm:text-lg font-black text-[#8dfc75] tracking-widest">
                       [{currentToken?.cleanToken || 'IDLE'}]
                     </span>
                   </div>
                 </div>
 
                 {/* Avatar Control Deck */}
-                <div className="flex flex-col gap-3.5 pt-1">
+                <div className="flex flex-col gap-2.5 pt-1">
                   
                   {/* Article Reading Progress Slider */}
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-col gap-1">
                     <div className="flex justify-between text-[11px] font-bold text-[#828796]">
                       <span>Reading Progress</span>
                       <span>{Math.round(((currentWordIndex + 1) / (articleTokens.length || 1)) * 100)}%</span>
                     </div>
-                    <div className="w-full bg-[#f1f4f6] dark:bg-[#0c121e] rounded-full h-3 overflow-hidden border border-[#e0e3e5] dark:border-[#243044]">
+                    <div className="w-full bg-[#f1f4f6] dark:bg-[#0c121e] rounded-full h-2.5 overflow-hidden border border-[#e0e3e5] dark:border-[#243044]">
                       <div
                         className="bg-gradient-to-r from-[#fe9832] via-emerald-400 to-[#8dfc75] h-full transition-all duration-200"
                         style={{
@@ -494,12 +488,12 @@ export const NewsPage: React.FC = () => {
                   </div>
 
                   {/* Play / Pause / Replay & Speed Controls */}
-                  <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <button
                       onClick={handleToggleAvatarPlay}
-                      className="flex-1 py-3.5 bg-gradient-to-r from-[#fe9832] to-[#e8872b] hover:brightness-110 text-[#542900] font-black text-xs sm:text-sm rounded-2xl transition-all shadow-md flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
+                      className="flex-1 py-2.5 bg-gradient-to-r from-[#fe9832] to-[#e8872b] hover:brightness-110 text-[#542900] font-black text-xs sm:text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
                     >
-                      <span className="material-symbols-outlined text-[22px]">
+                      <span className="material-symbols-outlined text-[20px]">
                         {isAvatarPlaying ? 'pause' : 'play_arrow'}
                       </span>
                       <span>{isAvatarPlaying ? 'Pause Sign Reader' : 'Play Sign Reader'}</span>
@@ -514,20 +508,21 @@ export const NewsPage: React.FC = () => {
                           avatarCanvasRef.current.signText(fullText);
                         }
                       }}
-                      className="px-4 py-3.5 bg-[#f8fafc] dark:bg-[#0c121e] hover:bg-[#fe9832]/10 border border-[#e0e3e5] dark:border-[#243044] text-[#030813] dark:text-white rounded-2xl text-xs font-bold transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
+                      className="px-3.5 py-2.5 bg-[#f8fafc] dark:bg-[#0c121e] hover:bg-[#fe9832]/10 border border-[#e0e3e5] dark:border-[#243044] text-[#030813] dark:text-white rounded-xl text-xs font-bold transition-all active:scale-95 flex items-center gap-1 cursor-pointer"
                       title="Restart reading from start"
                     >
-                      <span className="material-symbols-outlined text-[18px]">replay</span>
+                      <span className="material-symbols-outlined text-[16px]">replay</span>
                       <span className="hidden sm:inline">Restart</span>
                     </button>
 
-                    {/* Speed Selector */}
-                    <div className="flex items-center bg-[#f8fafc] dark:bg-[#0c121e] border border-[#e0e3e5] dark:border-[#243044] rounded-2xl p-1 overflow-x-auto">
+                    {/* Interactive Speed Selector */}
+                    <div className="flex items-center gap-1 bg-[#f8fafc] dark:bg-[#0c121e] border border-[#e0e3e5] dark:border-[#243044] rounded-xl p-1 overflow-x-auto">
+                      <span className="text-[10px] font-bold text-[#828796] px-1 hidden sm:inline">Speed:</span>
                       {[0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0].map((speed) => (
                         <button
                           key={speed}
                           onClick={() => setPlaybackSpeed(speed)}
-                          className={`px-2 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                          className={`px-1.5 py-0.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all cursor-pointer ${
                             playbackSpeed === speed
                               ? 'bg-[#fe9832] text-[#542900] shadow-xs font-black'
                               : 'text-[#45474c] dark:text-[#828796] hover:text-[#030813] dark:hover:text-white'
