@@ -420,6 +420,16 @@ export const TranslatePage: React.FC = () => {
     }
   }, [inSession, activeMode, cameraActive]);
 
+  // Auto-start ISL gesture recognition whenever entering ISL_TO_TEXT mode in session
+  useEffect(() => {
+    if (inSession && activeMode === 'ISL_TO_TEXT') {
+      const vid = gestureVideoRef.current || videoRef.current;
+      if (vid) {
+        startISLRecognition(vid);
+      }
+    }
+  }, [inSession, activeMode, startISLRecognition]);
+
   // Start Communication Flow (Enables Camera & Mic)
   const handleStartCommunication = async () => {
     setInSession(true);
