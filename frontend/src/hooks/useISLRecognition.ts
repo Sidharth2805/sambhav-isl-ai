@@ -9,7 +9,7 @@ async function loadMediaPipeHands(): Promise<any> {
 
   return new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js';
+    script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js';
     script.crossOrigin = 'anonymous';
     script.onload = () => {
       resolve((window as any).Hands);
@@ -19,6 +19,37 @@ async function loadMediaPipeHands(): Promise<any> {
     };
     document.head.appendChild(script);
   });
+}
+
+// Singleton MediaPipe Hands instance cache to prevent repeated WASM/Data fetching and net::ERR_INSUFFICIENT_RESOURCES
+let sharedHandsPromise: Promise<any> | null = null;
+let sharedHandsInstance: any = null;
+
+async function getSharedMediaPipeHands(): Promise<any> {
+  if (sharedHandsInstance) return sharedHandsInstance;
+  if (sharedHandsPromise) return sharedHandsPromise;
+
+  sharedHandsPromise = (async () => {
+    const HandsClass = await loadMediaPipeHands();
+    if (!HandsClass) return null;
+
+    const instance = new HandsClass({
+      locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/${file}`
+    });
+
+    instance.setOptions({
+      maxNumHands: 2,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5
+    });
+
+    await instance.initialize();
+    sharedHandsInstance = instance;
+    return instance;
+  })();
+
+  return sharedHandsPromise;
 }
 
 export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMClassifier()) {
@@ -76,21 +107,14 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
     });
   };
 
-  // Stop recognition and release camera tracks & MediaPipe
+  // Stop recognition and release camera tracks
   const stopRecognition = useCallback(() => {
     if (animFrameIdRef.current) {
       cancelAnimationFrame(animFrameIdRef.current);
       animFrameIdRef.current = null;
     }
 
-    if (handsInstanceRef.current) {
-      try {
-        handsInstanceRef.current.close();
-      } catch {
-        // Ignore close error
-      }
-      handsInstanceRef.current = null;
-    }
+    handsInstanceRef.current = null;
 
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
@@ -157,22 +181,10 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
       setIsRecognizing(true);
       setIsPaused(false);
 
-      // 3. Load & Initialize MediaPipe Hands
-      const HandsClass = await loadMediaPipeHands();
-      let hands: any = null;
+      // 3. Obtain shared MediaPipe Hands singleton instance (loads WASM/Data ONLY ONCE)
+      const hands = await getSharedMediaPipeHands();
 
-      if (HandsClass) {
-        hands = new HandsClass({
-          locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-        });
-
-        hands.setOptions({
-          maxNumHands: 2,
-          modelComplexity: 1,
-          minDetectionConfidence: 0.5,
-          minTrackingConfidence: 0.5
-        });
-
+      if (hands) {
         // 4. Handle MediaPipe landmark results
         hands.onResults(async (results: any) => {
           if (isPaused) return;
