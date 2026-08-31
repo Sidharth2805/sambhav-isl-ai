@@ -93,7 +93,7 @@ export const ISLAvatarContainer: React.FC<ISLAvatarContainerProps> = ({
         <ISLAvatarCanvas
           ref={canvasRef}
           modelPath={modelPath}
-          speed={0.12 * playbackSpeed}
+          speed={playbackSpeed}
           pauseTimeMs={Math.round(400 / playbackSpeed)}
           onProgressChar={onProgressChar}
           onFinish={onFinish}
