@@ -147,21 +147,22 @@ export const LearnISLPage: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-base font-bold text-white tracking-tight">
-                National Anthem & Song in ISL
+                Jana Gana Mana in ISL
               </h2>
               <span className="px-2 py-0.5 bg-[#fe9832]/20 text-[#fe9832] border border-[#fe9832]/30 rounded-full text-[10px] font-bold">
                 Cultural ISL
               </span>
             </div>
             <p className="text-xs text-white/70 mt-0.5">
-              Experience Jana Gana Mana & Vande Mataram rendered with verified Indian Sign Language gestures.
+              Experience India&apos;s National Anthem rendered in Indian Sign Language with word-by-word tokenized performance.
             </p>
           </div>
         </div>
 
         <button
+          type="button"
           onClick={() => navigate('/cultural-isl')}
-          className="self-stretch sm:self-auto px-4 py-2.5 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shrink-0 shadow-sm group"
+          className="self-stretch sm:self-auto px-4 py-2.5 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shrink-0 shadow-sm group cursor-pointer"
         >
           <span>Explore Cultural ISL</span>
           <span className="material-symbols-outlined text-[16px] group-hover:translate-x-0.5 transition-transform">

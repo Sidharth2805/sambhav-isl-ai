@@ -118,7 +118,7 @@ export const CHATBOT_TOPICS: ChatTopic[] = [
     id: 'national-culture',
     name: 'National & Culture',
     icon: 'flag',
-    description: 'National Anthem, Vande Mataram, and Indian cultural heritage in ISL',
+    description: 'National Anthem and Indian cultural heritage in ISL',
     questions: [
       {
         id: 'culture-jana-gana-what',
@@ -127,38 +127,18 @@ export const CHATBOT_TOPICS: ChatTopic[] = [
         keywords: ['jana gana mana', 'national anthem', 'tagore', 'india', 'anthem'],
       },
       {
-        id: 'culture-vande-mataram-what',
-        question: 'Tell me about Vande Mataram',
-        answer: 'Vande Mataram is the National Song of India, composed by Bankim Chandra Chatterjee in 1882. It played a pivotal role in the Indian Independence Movement, inspiring millions as an ode to the Motherland.',
-        keywords: ['vande mataram', 'national song', 'bankim', 'history', 'patriotism'],
-      },
-      {
         id: 'culture-jana-gana-isl',
         question: 'Show Jana Gana Mana in ISL',
-        answer: 'Explore our dedicated Cultural ISL module to experience the Indian National Anthem "Jana Gana Mana" translated into Indian Sign Language with verified stanza-by-stanza gestures and national motifs.',
+        answer: 'Explore our dedicated Cultural ISL module to experience the Indian National Anthem "Jana Gana Mana" translated into Indian Sign Language with word-by-word tokenized performance.',
         actionLabel: 'View Jana Gana Mana in ISL',
         actionRoute: '/cultural-isl',
         keywords: ['show jana gana mana', 'anthem in isl', 'national anthem sign', 'video'],
-      },
-      {
-        id: 'culture-vande-mataram-isl',
-        question: 'Show Vande Mataram in ISL',
-        answer: 'Experience the National Song "Vande Mataram" in Indian Sign Language on our Cultural ISL page, showcasing expressive gestures honoring the Motherland.',
-        actionLabel: 'View Vande Mataram in ISL',
-        actionRoute: '/cultural-isl',
-        keywords: ['show vande mataram', 'national song sign', 'vande mataram in isl'],
       },
       {
         id: 'culture-anthem-importance',
         question: 'What is the importance of the Indian National Anthem?',
         answer: 'Jana Gana Mana embodies the unity, sovereignty, and rich pluralism of India. Presenting it in ISL guarantees that every deaf citizen can participate in national celebrations with dignity and pride.',
         keywords: ['importance of anthem', 'significance', 'national pride', 'unity'],
-      },
-      {
-        id: 'culture-vande-importance',
-        question: 'What is the cultural importance of Vande Mataram?',
-        answer: 'Vande Mataram symbolizes sacrifice, devotion, and collective identity. Sign language renditions bring its poetic devotion alive for the deaf community across the nation.',
-        keywords: ['importance of vande mataram', 'culture', 'heritage', 'devotion'],
       },
     ],
   },

@@ -1276,7 +1276,7 @@ export const SUPPORT_CATEGORIES: SupportCategory[] = [
           '1. Real-Time Speech-to-ISL and Text-to-ISL Studio with 3D avatar animations.',
           '2. Two-Way Live Video Calls with real-time captioning and sign streaming.',
           '3. Learn ISL Video Academy and interactive gesture dictionary.',
-          '4. Cultural ISL: National Anthem (Jana Gana Mana) and Song (Vande Mataram) in ISL.',
+          '4. Cultural ISL: National Anthem (Jana Gana Mana) in ISL.',
           '5. Accessible Daily News portal with sign summaries.',
           '6. High Contrast and Accessibility Personalization profiles.',
         ],
