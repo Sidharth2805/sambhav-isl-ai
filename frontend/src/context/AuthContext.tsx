@@ -71,6 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     localStorage.removeItem('sambhav_access_token');
     localStorage.removeItem('sambhav_auth_user');
+    localStorage.removeItem('sambhav_saved_translations');
   };
 
   // Attempt token refresh and verification on app mount (browser refresh restore)

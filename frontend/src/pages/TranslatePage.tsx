@@ -102,7 +102,6 @@ export const TranslatePage: React.FC = () => {
   // ISL Avatar Sequence State
   const [currentSequence, setCurrentSequence] = useState<SignSequenceDto | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [savedSuccess, setSavedSuccess] = useState(false);
 
   // Settings & Speed Control (0.75x, 1.0x, 1.25x, 1.5x)
   const [captionFontSize, setCaptionFontSize] = useState<'sm' | 'md' | 'lg'>('lg');
@@ -492,7 +491,6 @@ export const TranslatePage: React.FC = () => {
     setTextMessages([]);
     setSessionHistoryLogs([]);
     setCurrentSequence(null);
-    setSavedSuccess(false);
     setActiveStepIndex(-1);
     setMicError(null);
   };
@@ -539,21 +537,6 @@ export const TranslatePage: React.FC = () => {
 
   const handleSimulateGestureRecognition = (phrase: string) => {
     setTranslatedText(phrase);
-  };
-
-  const handleSaveCommunication = () => {
-    const existing = JSON.parse(localStorage.getItem('sambhav_saved_translations') || '[]');
-    const record = {
-      id: `saved-session-${Date.now()}`,
-      type: 'REAL_TIME_TRANSLATION',
-      sourceText: sessionHistoryLogs.map((l) => `[${l.mode}] ${l.text}`).join(' | ') || 'ISL Translation Session',
-      historyLogs: sessionHistoryLogs,
-      messages: textMessages,
-      timestamp: new Date().toISOString(),
-      sequence: currentSequence,
-    };
-    localStorage.setItem('sambhav_saved_translations', JSON.stringify([record, ...existing]));
-    setSavedSuccess(true);
   };
 
   return (
@@ -1499,24 +1482,13 @@ export const TranslatePage: React.FC = () => {
               )}
             </div>
 
-            {/* Actions: Save Communication & Done */}
-            <div className="flex flex-col sm:flex-row gap-3 pt-2">
-              <button
-                onClick={handleSaveCommunication}
-                disabled={savedSuccess}
-                className="flex-1 py-3 px-4 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm"
-              >
-                <span className="material-symbols-outlined text-[18px]">
-                  {savedSuccess ? 'bookmark_added' : 'bookmark_add'}
-                </span>
-                <span>{savedSuccess ? 'Communication Saved!' : 'Save Communication'}</span>
-              </button>
-
+            {/* Actions: Done */}
+            <div className="flex pt-2">
               <button
                 onClick={handleDoneSummary}
-                className="flex-1 py-3 px-4 bg-[#030813] hover:bg-[#1a202c] text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm"
+                className="w-full py-3 px-4 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer"
               >
-                <span>Done</span>
+                <span>Done (Close Session)</span>
                 <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
               </button>
             </div>

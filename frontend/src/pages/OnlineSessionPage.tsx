@@ -374,24 +374,9 @@ const ActiveCallWorkspace: React.FC<ActiveCallWorkspaceProps> = ({
   // Transcripts & Chat Stream
   const { finalTranscripts, interimTranscripts, addTranscriptEvent, clearTranscript } = useTranscript(sessionId);
 
-  // End Call & Save History Modal States
+  // End Call Modal States
   const [showEndModal, setShowEndModal] = useState(false);
-  const [savedCallSuccess, setSavedCallSuccess] = useState(false);
   const [remoteLeftNotice, setRemoteLeftNotice] = useState(false);
-
-  const handleSaveCallChat = () => {
-    const existing = JSON.parse(localStorage.getItem('sambhav_saved_translations') || '[]');
-    const record = {
-      id: `saved-call-${Date.now()}`,
-      type: '1_ON_1_VIDEO_CALL',
-      sourceText: finalTranscripts.map((t) => `${t.senderName}: ${t.text}`).join(' | ') || `1-on-1 Call Session (${roomCode || ''})`,
-      roomCode: roomCode,
-      transcripts: finalTranscripts,
-      timestamp: new Date().toISOString(),
-    };
-    localStorage.setItem('sambhav_saved_translations', JSON.stringify([record, ...existing]));
-    setSavedCallSuccess(true);
-  };
 
   const handleConfirmEndCall = async () => {
     try {
@@ -939,34 +924,16 @@ const ActiveCallWorkspace: React.FC<ActiveCallWorkspaceProps> = ({
               )}
             </div>
 
-            {/* Action Buttons: Save Chat, End & Leave, Cancel */}
+            {/* Action Buttons: End & Leave, Cancel */}
             <div className="flex flex-col gap-2.5 pt-1">
-              <div className="flex flex-col sm:flex-row gap-2.5">
-                <button
-                  type="button"
-                  onClick={handleSaveCallChat}
-                  disabled={savedCallSuccess || finalTranscripts.length === 0}
-                  className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm ${
-                    savedCallSuccess
-                      ? 'bg-green-600 text-white'
-                      : 'bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] disabled:opacity-50'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[18px]">
-                    {savedCallSuccess ? 'bookmark_added' : 'bookmark_add'}
-                  </span>
-                  <span>{savedCallSuccess ? 'Chat Saved to History!' : 'Save Chat to History'}</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleConfirmEndCall}
-                  className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm"
-                >
-                  <span className="material-symbols-outlined text-[18px]">logout</span>
-                  <span>{remoteLeftNotice ? 'Exit to Communicate' : 'End & Leave Call'}</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleConfirmEndCall}
+                className="w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">logout</span>
+                <span>{remoteLeftNotice ? 'Exit to Communicate' : 'End & Leave Call'}</span>
+              </button>
 
               {!remoteLeftNotice && (
                 <button

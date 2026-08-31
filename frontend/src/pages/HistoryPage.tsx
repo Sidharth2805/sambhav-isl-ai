@@ -41,9 +41,9 @@ export const HistoryPage: React.FC = () => {
         const data = await getSessions(accessToken);
         setSessions(data);
 
-        // Load local saved translations & saved 1-on-1 call chats
-        const saved = JSON.parse(localStorage.getItem('sambhav_saved_translations') || '[]');
-        setSavedTranslations(saved);
+        // Purge any local saved translation logs from localStorage for privacy
+        localStorage.removeItem('sambhav_saved_translations');
+        setSavedTranslations([]);
       } catch (err: any) {
         console.error('Failed to retrieve session history:', err);
       } finally {
@@ -62,7 +62,7 @@ export const HistoryPage: React.FC = () => {
   const handleDeleteSavedTranslation = (id: string) => {
     const updated = savedTranslations.filter((t) => t.id !== id);
     setSavedTranslations(updated);
-    localStorage.setItem('sambhav_saved_translations', JSON.stringify(updated));
+    localStorage.removeItem('sambhav_saved_translations');
   };
 
   const toggleExpand = (id: string) => {
