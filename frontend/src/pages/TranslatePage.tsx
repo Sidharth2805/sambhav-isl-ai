@@ -56,8 +56,8 @@ export const TranslatePage: React.FC = () => {
   const [inSession, setInSession] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
 
-  // Active Mode (3 core modes: Speech <-> ISL, Text -> ISL, ISL -> Text)
-  const [activeMode, setActiveMode] = useState<'SPEECH_TO_ISL' | 'TEXT_TO_ISL' | 'ISL_TO_TEXT'>('SPEECH_TO_ISL');
+  // Active Mode (Unified Speech/Text <-> ISL and ISL <-> Text)
+  const [activeMode, setActiveMode] = useState<'SPEECH_TEXT_TO_ISL' | 'ISL_TO_TEXT'>('SPEECH_TEXT_TO_ISL');
 
   // Persistent Media Stream State (Camera & Mic stay active across all mode switches)
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -117,8 +117,8 @@ export const TranslatePage: React.FC = () => {
 
   // Auto-trigger letter-by-letter 3D avatar signing when speech live caption or text changes
   useEffect(() => {
-    if (activeMode === 'SPEECH_TO_ISL') {
-      const activeText = liveCaption || finalTranscript;
+    if (activeMode === 'SPEECH_TEXT_TO_ISL') {
+      const activeText = liveCaption;
       if (activeText.trim()) {
         avatarCanvasRef.current?.signText(activeText);
       }
@@ -450,17 +450,17 @@ export const TranslatePage: React.FC = () => {
       console.warn('Camera/mic hardware track access note:', err);
     }
 
-    if (activeMode === 'SPEECH_TO_ISL') {
+    if (activeMode === 'SPEECH_TEXT_TO_ISL') {
       startContinuousListening();
     }
   };
 
   // Mode Switch Handler (Preserves Camera & Mic; logs mid-conversation mode switch)
-  const handleSwitchMode = (newMode: 'SPEECH_TO_ISL' | 'TEXT_TO_ISL' | 'ISL_TO_TEXT') => {
+  const handleSwitchMode = (newMode: 'SPEECH_TEXT_TO_ISL' | 'ISL_TO_TEXT') => {
     if (newMode === activeMode) return;
 
     const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const modeLabel = newMode === 'SPEECH_TO_ISL' ? 'Speech <-> ISL' : newMode === 'TEXT_TO_ISL' ? 'Text -> ISL' : 'ISL -> Text';
+    const modeLabel = newMode === 'SPEECH_TEXT_TO_ISL' ? 'Speech / Text ↔ ISL' : 'ISL ↔ Text';
 
     // Log mid-conversation mode transition in history
     setSessionHistoryLogs((prev) => [
@@ -474,15 +474,17 @@ export const TranslatePage: React.FC = () => {
       {
         id: `sys-${Date.now()}`,
         sender: 'system',
-        mode: newMode === 'SPEECH_TO_ISL' ? 'SPEECH' : newMode === 'TEXT_TO_ISL' ? 'TEXT' : 'GESTURE',
+        mode: newMode === 'SPEECH_TEXT_TO_ISL' ? 'SPEECH' : 'GESTURE',
         text: `Mode changed to ${modeLabel}`,
         words: [],
         timestamp,
       },
     ]);
 
+    setActiveMode(newMode);
+
     // Manage continuous speech recognition and ISL gesture tracking
-    if (newMode === 'SPEECH_TO_ISL') {
+    if (newMode === 'SPEECH_TEXT_TO_ISL') {
       stopISLRecognition();
       startContinuousListening();
     } else if (newMode === 'ISL_TO_TEXT') {
@@ -492,12 +494,7 @@ export const TranslatePage: React.FC = () => {
           startISLRecognition(gestureVideoRef.current || videoRef.current);
         }
       }, 100);
-    } else {
-      stopContinuousListening();
-      stopISLRecognition();
     }
-
-    setActiveMode(newMode);
   };
 
   const stopMediaStream = () => {
@@ -750,34 +747,22 @@ export const TranslatePage: React.FC = () => {
           <div className="flex flex-wrap items-center justify-between gap-2 bg-[#e0e3e5] p-1.5 rounded-xl shrink-0">
             <div className="flex items-center gap-1">
               <button
-                onClick={() => handleSwitchMode('SPEECH_TO_ISL')}
-                className={`py-1.5 px-3.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  activeMode === 'SPEECH_TO_ISL'
-                    ? 'bg-white text-[#030813] shadow-sm'
+                onClick={() => handleSwitchMode('SPEECH_TEXT_TO_ISL')}
+                className={`py-1.5 px-4 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  activeMode === 'SPEECH_TEXT_TO_ISL'
+                    ? 'bg-white text-[#030813] shadow-sm font-black'
                     : 'text-[#45474c] hover:text-[#030813]'
                 }`}
               >
                 <span className="material-symbols-outlined text-[16px]">mic</span>
-                <span>Speech &harr; ISL</span>
-              </button>
-
-              <button
-                onClick={() => handleSwitchMode('TEXT_TO_ISL')}
-                className={`py-1.5 px-3.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  activeMode === 'TEXT_TO_ISL'
-                    ? 'bg-white text-[#030813] shadow-sm'
-                    : 'text-[#45474c] hover:text-[#030813]'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[16px]">edit_note</span>
-                <span>Text &rarr; ISL</span>
+                <span>Speech / Text &harr; ISL</span>
               </button>
 
               <button
                 onClick={() => handleSwitchMode('ISL_TO_TEXT')}
-                className={`py-1.5 px-3.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                className={`py-1.5 px-4 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   activeMode === 'ISL_TO_TEXT'
-                    ? 'bg-white text-[#030813] shadow-sm'
+                    ? 'bg-white text-[#030813] shadow-sm font-black'
                     : 'text-[#45474c] hover:text-[#030813]'
                 }`}
               >
@@ -1012,19 +997,22 @@ export const TranslatePage: React.FC = () => {
               {/* ========================================================= */}
               {/* MODE 1: SPEECH <-> ISL (With Live Captions Stream)         */}
               {/* ========================================================= */}
-              {activeMode === 'SPEECH_TO_ISL' && (
+              {/* ========================================================= */}
+              {/* UNIFIED MODE: SPEECH / TEXT ↔ ISL                         */}
+              {/* ========================================================= */}
+              {activeMode === 'SPEECH_TEXT_TO_ISL' && (
                 <>
-                  <div className="flex-1 bg-white dark:bg-[#1a202c] rounded-2xl p-4 border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col justify-between min-h-0">
-                    <div className="flex items-center justify-between border-b border-[#e0e3e5] dark:border-[#2d3133] pb-2 shrink-0">
+                  {/* Stretched Speech / Text Conversation History with Live Green Word Sync */}
+                  <div className="relative flex-1 bg-white dark:bg-[#1a202c] rounded-2xl p-4 border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col justify-between min-h-0">
+                    {/* Header with Language Selector, Mic Status, & Auto-Read */}
+                    <div className="flex flex-wrap items-center justify-between border-b border-[#e0e3e5] dark:border-[#2d3133] pb-2 shrink-0 gap-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-[#012700] dark:text-[#8dfc75] flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[18px]">chat</span>
+                        Speech / Text &harr; ISL Conversation Feed
+                      </span>
+                      
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold uppercase tracking-wider text-[#8f4e00] dark:text-[#ffb77a] flex items-center gap-1.5">
-                          <span className="material-symbols-outlined text-[18px]">subtitles</span>
-                          Speech Live Captions Stream
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {/* Language Selector */}
+                        {/* Spoken Language Selector */}
                         <select
                           value={speechLang}
                           onChange={(e) => {
@@ -1033,37 +1021,63 @@ export const TranslatePage: React.FC = () => {
                               setTimeout(() => startContinuousListening(), 50);
                             }
                           }}
-                          className="bg-white dark:bg-[#0d121d] border border-[#e0e3e5] dark:border-[#2d3133] text-[11px] font-bold text-[#181c1e] dark:text-white rounded-lg px-2 py-1 outline-none cursor-pointer"
+                          className="bg-[#f1f4f6] dark:bg-[#0d121d] border border-[#e0e3e5] dark:border-[#2d3133] text-[11px] font-bold text-[#181c1e] dark:text-white rounded-lg px-2 py-0.5 outline-none cursor-pointer"
                         >
                           <option value="en-IN">🇮🇳 English (India)</option>
                           <option value="en-US">🇺🇸 English (US)</option>
                           <option value="hi-IN">🇮🇳 Hindi (हिन्दी)</option>
                         </select>
 
-                        {/* Status Badge */}
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1.5 ${
-                          isListening
-                            ? 'bg-green-100 dark:bg-green-950/80 text-green-700 dark:text-green-300 border border-green-300'
-                            : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
-                        }`}>
-                          <span className={`w-2 h-2 rounded-full ${isListening ? 'bg-green-500 animate-ping' : 'bg-gray-400'}`} />
-                          {isListening ? 'Live Listening' : 'Mic Paused'}
+                        {/* Auto-Read Out Toggle */}
+                        <label className="flex items-center gap-1 cursor-pointer select-none bg-[#f1f4f6] dark:bg-[#0d121d] px-2 py-0.5 rounded-lg border border-[#e0e3e5] dark:border-[#2d3133]">
+                          <input
+                            type="checkbox"
+                            checked={autoReadOutChat}
+                            onChange={(e) => setAutoReadOutChat(e.target.checked)}
+                            className="w-3 h-3 accent-[#4046A8] rounded cursor-pointer"
+                          />
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-[#4046A8] dark:text-[#fe9832]">
+                            <span className="material-symbols-outlined text-[13px]">
+                              {autoReadOutChat ? 'volume_up' : 'volume_off'}
+                            </span>
+                            Auto-Read
+                          </span>
+                        </label>
+
+                        {/* Mic Pause / Resume Button */}
+                        <button
+                          type="button"
+                          onClick={toggleListening}
+                          className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 shadow-xs cursor-pointer ${
+                            isListening
+                              ? 'bg-red-600 hover:bg-red-700 text-white'
+                              : 'bg-[#fe9832] hover:bg-[#e8872b] text-[#683700]'
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-[14px]">
+                            {isListening ? 'mic_off' : 'mic'}
+                          </span>
+                          <span>{isListening ? 'Pause Mic' : 'Resume Mic'}</span>
+                        </button>
+
+                        <span className="text-[10px] text-[#45474c] dark:text-[#828796] font-semibold hidden sm:inline">
+                          {textMessages.filter((m) => m.sender !== 'system').length} Msgs
                         </span>
                       </div>
                     </div>
 
-                    {/* Microphone Permission / Support Error Notice */}
+                    {/* Microphone Support / Permission Error Notice */}
                     {(micError || !isMicSupported) && (
-                      <div className="my-2 p-2.5 bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 rounded-xl text-xs text-amber-900 dark:text-amber-200 flex items-center justify-between gap-2 shrink-0">
+                      <div className="my-1.5 p-2 bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 rounded-xl text-xs text-amber-900 dark:text-amber-200 flex items-center justify-between gap-2 shrink-0">
                         <div className="flex items-center gap-2">
-                          <span className="material-symbols-outlined text-amber-600 text-[18px]">warning</span>
-                          <span>{micError || 'Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.'}</span>
+                          <span className="material-symbols-outlined text-amber-600 text-[16px]">warning</span>
+                          <span className="text-[11px]">{micError || 'Speech recognition is not supported.'}</span>
                         </div>
                         {isMicSupported && (
                           <button
                             type="button"
                             onClick={() => startContinuousListening()}
-                            className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[10px] font-bold shrink-0 cursor-pointer"
+                            className="px-2 py-0.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[10px] font-bold shrink-0 cursor-pointer"
                           >
                             Retry Mic
                           </button>
@@ -1071,161 +1085,16 @@ export const TranslatePage: React.FC = () => {
                       </div>
                     )}
 
-                    {/* Captions Output Display */}
-                    <div className="flex-1 overflow-y-auto my-2 p-3 bg-[#f7fafc] dark:bg-[#0d121d] rounded-xl border border-[#e0e3e5] dark:border-[#2d3133] flex flex-col justify-center">
-                      <p className={`font-semibold leading-relaxed text-[#181c1e] dark:text-white ${
-                        captionFontSize === 'lg' ? 'text-xl' : captionFontSize === 'md' ? 'text-base' : 'text-sm'
-                      }`}>
-                        {liveCaption ? (
-                          <span className="text-[#fe9832] font-bold flex items-center gap-2">
-                            <span className="material-symbols-outlined text-[18px] animate-pulse text-[#fe9832]">graphic_eq</span>
-                            {liveCaption}
-                          </span>
-                        ) : finalTranscript ? (
-                          <span className="text-[#030813] dark:text-white font-medium">{finalTranscript}</span>
-                        ) : (
-                          <span className="text-[#45474c]/60 dark:text-[#828796] italic flex items-center gap-2 justify-center text-center">
-                            <span className="material-symbols-outlined text-[20px] opacity-70">mic</span>
-                            {isListening ? 'Listening... Speak into your microphone now' : 'Click "Resume Mic" to begin speech recognition'}
-                          </span>
-                        )}
-                      </p>
-                    </div>
-
-                    {/* Quick Spoken Phrase Bar (Fallback & Testing) */}
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        const val = inputText.trim();
-                        if (!val) return;
-                        const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                        const msgId = `msg-typed-${Date.now()}`;
-                        const words = val.split(/\s+/);
-
-                        setFinalTranscript(val);
-                        setSessionHistoryLogs((prev) => [...prev, { mode: 'SPEECH', text: val, time: timestamp }]);
-                        setTextMessages((prev) => [
-                          ...prev,
-                          {
-                            id: msgId,
-                            sender: 'user',
-                            mode: 'SPEECH',
-                            text: val,
-                            words,
-                            timestamp,
-                          },
-                        ]);
-                        setLiveCaption('');
-                        translateTextToSign(val, msgId);
-                        setInputText('');
-                      }}
-                      className="pt-2 flex items-center gap-2 border-t border-[#e0e3e5] dark:border-[#2d3133] shrink-0"
-                    >
-                      <input
-                        type="text"
-                        value={inputText}
-                        onChange={(e) => setInputText(e.target.value)}
-                        placeholder="Or type speech phrase to translate (e.g. 'Hello welcome')..."
-                        className="flex-1 px-3 py-1.5 text-xs bg-white dark:bg-[#0d121d] border border-[#e0e3e5] dark:border-[#2d3133] text-[#181c1e] dark:text-white rounded-xl outline-none focus:border-[#fe9832]"
-                      />
-                      <button
-                        type="submit"
-                        disabled={!inputText.trim()}
-                        className="px-3 py-1.5 bg-[#4046A8] hover:bg-[#353A8F] disabled:opacity-40 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-[14px]">send</span>
-                        <span>Send</span>
-                      </button>
-                    </form>
-
-                    {finalTranscript && (
-                      <div className="flex items-center justify-between pt-2 shrink-0">
-                        <span className="text-[11px] text-[#45474c] dark:text-[#828796]">Voice Transcription Logged</span>
-                        <button
-                          onClick={() => speak(finalTranscript)}
-                          disabled={speaking}
-                          className="px-3 py-1 bg-[#e0e3e5] dark:bg-[#2d3133] hover:bg-[#c6c6cc] text-[#030813] dark:text-white rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer"
-                        >
-                          <span className="material-symbols-outlined text-[14px]">volume_up</span>
-                          <span>Speak Aloud</span>
-                        </button>
+                    {/* Live Listening Caption Streaming Banner (active while speaking) */}
+                    {liveCaption && (
+                      <div className="my-1.5 p-2.5 bg-[#fe9832]/10 border border-[#fe9832]/30 rounded-xl text-xs font-bold text-[#fe9832] flex items-center gap-2 shrink-0 shadow-xs">
+                        <span className="material-symbols-outlined text-[18px] animate-pulse text-[#fe9832]">graphic_eq</span>
+                        <span className="text-[#181c1e] dark:text-white font-semibold">Speaking:</span>
+                        <span className="italic">"{liveCaption}"</span>
                       </div>
                     )}
-                  </div>
 
-                  {/* Speech Controls Bar */}
-                  <div className="bg-white dark:bg-[#1a202c] rounded-2xl p-4 border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm shrink-0 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${
-                        isListening
-                          ? 'bg-green-100 dark:bg-green-950/80 text-green-700 dark:text-green-400'
-                          : 'bg-[#fe9832]/10 text-[#fe9832]'
-                      }`}>
-                        <span className="material-symbols-outlined text-[20px]">
-                          {isListening ? 'mic' : 'mic_off'}
-                        </span>
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-[#181c1e] dark:text-white">Continuous Speech Recognition</p>
-                        <p className="text-[11px] text-[#45474c] dark:text-[#828796]">
-                          {isListening ? 'Microphone is active with auto-recovery' : 'Microphone is paused'}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={toggleListening}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
-                        isListening
-                          ? 'bg-red-600 hover:bg-red-700 text-white'
-                          : 'bg-[#fe9832] hover:bg-[#e8872b] text-[#683700]'
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-[16px]">
-                        {isListening ? 'mic_off' : 'mic'}
-                      </span>
-                      <span>{isListening ? 'Pause Mic' : 'Resume Mic'}</span>
-                    </button>
-                  </div>
-                </>
-              )}
-
-              {/* ========================================================= */}
-              {/* MODE 2: TEXT -> ISL (Conversation History with GREEN Text) */}
-              {/* ========================================================= */}
-              {activeMode === 'TEXT_TO_ISL' && (
-                <>
-                  {/* Stretched Text Conversation History with Live Green Word Sync */}
-                  <div className="relative flex-1 bg-white dark:bg-[#1a202c] rounded-2xl p-4 border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col justify-between min-h-0">
-                    <div className="flex items-center justify-between border-b border-[#e0e3e5] dark:border-[#2d3133] pb-2 shrink-0">
-                      <span className="text-xs font-bold uppercase tracking-wider text-[#012700] dark:text-[#8dfc75] flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-[18px]">chat</span>
-                        Text Conversation & Translation History
-                      </span>
-                      
-                      <div className="flex items-center gap-3">
-                        {/* Auto-Read Out Toggle */}
-                        <label className="flex items-center gap-1.5 cursor-pointer select-none bg-[#f1f4f6] dark:bg-[#0d121d] px-2.5 py-1 rounded-lg border border-[#e0e3e5] dark:border-[#2d3133]">
-                          <input
-                            type="checkbox"
-                            checked={autoReadOutChat}
-                            onChange={(e) => setAutoReadOutChat(e.target.checked)}
-                            className="w-3.5 h-3.5 accent-[#4046A8] rounded cursor-pointer"
-                          />
-                          <span className="flex items-center gap-1 text-[11px] font-bold text-[#4046A8] dark:text-[#fe9832]">
-                            <span className="material-symbols-outlined text-[14px]">
-                              {autoReadOutChat ? 'volume_up' : 'volume_off'}
-                            </span>
-                            Auto-Read Out
-                          </span>
-                        </label>
-
-                        <span className="text-[10px] text-[#45474c] dark:text-[#828796] font-semibold">
-                          {textMessages.filter((m) => m.sender !== 'system').length} Messages
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Messages Scroll View (Supports Scrolling Up & History Browsing) */}
+                    {/* Messages Scroll View (Displays ALL past chats throughout the conversation) */}
                     <div
                       ref={chatScrollContainerRef}
                       onScroll={handleChatScroll}
@@ -1233,9 +1102,9 @@ export const TranslatePage: React.FC = () => {
                     >
                       {textMessages.length === 0 ? (
                         <div className="my-auto text-center p-6 text-[#45474c]/60 dark:text-[#828796] flex flex-col items-center gap-2">
-                          <span className="material-symbols-outlined text-3xl text-[#c6c6cc] dark:text-gray-600">edit_note</span>
-                          <p className="text-xs font-semibold">No messages entered yet.</p>
-                          <p className="text-[11px]">Type any sentence below to watch the avatar animate ISL signs and hear speech read out aloud.</p>
+                          <span className="material-symbols-outlined text-3xl text-[#fe9832]">graphic_eq</span>
+                          <p className="text-xs font-bold text-[#181c1e] dark:text-white">Start Speaking or Type a Sentence</p>
+                          <p className="text-[11px] max-w-xs">Speak into your mic or type text below. The 3D Avatar will sign each letter/word live with GREEN text highlighting!</p>
                         </div>
                       ) : (
                         textMessages.map((msg) => {
@@ -1253,7 +1122,7 @@ export const TranslatePage: React.FC = () => {
                           return (
                             <div
                               key={msg.id}
-                              className="self-end max-w-[90%] bg-white dark:bg-[#1a202c] p-3.5 rounded-2xl rounded-tr-sm border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col gap-2"
+                              className="self-end max-w-[92%] bg-white dark:bg-[#1a202c] p-3.5 rounded-2xl rounded-tr-sm border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col gap-2"
                             >
                               {/* Word by word rendering with synchronized GREEN highlight */}
                               <div className={`flex flex-wrap items-center gap-1.5 ${
@@ -1280,7 +1149,7 @@ export const TranslatePage: React.FC = () => {
                                 })}
                               </div>
 
-                              {/* Message Footer with Timestamp and Read Aloud Button */}
+                              {/* Message Footer with Timestamp, Sign on Avatar, and Read Aloud */}
                               <div className="flex items-center justify-between text-[10px] text-[#45474c] dark:text-[#828796] pt-1.5 border-t border-[#e0e3e5]/60 dark:border-[#2d3133]">
                                 <div className="flex items-center gap-2">
                                   <span className="font-bold text-[#012700] dark:text-[#8dfc75] uppercase text-[9px] bg-[#dde2f3] dark:bg-slate-800 px-1.5 py-0.2 rounded">
@@ -1327,7 +1196,7 @@ export const TranslatePage: React.FC = () => {
                       <div ref={messagesEndRef} />
                     </div>
 
-                    {/* Floating Scroll to Bottom / Latest Button */}
+                    {/* Floating Scroll to Bottom Button */}
                     {isChatScrolledUp && (
                       <button
                         type="button"
@@ -1350,11 +1219,11 @@ export const TranslatePage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Text Input Panel */}
+                  {/* Text & Speech Input Panel */}
                   <form onSubmit={handleSendTextMessage} className="bg-white dark:bg-[#1a202c] rounded-2xl p-3 border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm shrink-0 flex items-center gap-2">
                     <input
                       type="text"
-                      placeholder="Type a sentence (e.g. 'Hello welcome to our accessible office')..."
+                      placeholder="Type a sentence to sign & translate (e.g. 'Hello welcome to our accessible office')..."
                       value={inputText}
                       onChange={(e) => setInputText(e.target.value)}
                       className="flex-1 px-4 py-2.5 bg-[#f7fafc] dark:bg-[#0d121d] border border-[#c6c6cc] dark:border-[#2d3133] rounded-xl text-xs sm:text-sm text-[#181c1e] dark:text-white focus:border-[#fe9832] outline-none"
@@ -1363,7 +1232,7 @@ export const TranslatePage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setAutoReadOutChat(!autoReadOutChat)}
-                      title={autoReadOutChat ? 'Auto-Read Out is ON (Click to disable)' : 'Auto-Read Out is OFF (Click to enable)'}
+                      title={autoReadOutChat ? 'Auto-Read Out is ON' : 'Auto-Read Out is OFF'}
                       className={`p-2.5 rounded-xl border transition-all flex items-center justify-center cursor-pointer ${
                         autoReadOutChat
                           ? 'bg-[#4046A8]/10 text-[#4046A8] dark:bg-[#fe9832]/20 dark:text-[#fe9832] border-[#4046A8]/30 dark:border-[#fe9832]/40'
