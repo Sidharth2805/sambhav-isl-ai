@@ -11,11 +11,22 @@ export const DraggableCameraWindow: React.FC<DraggableCameraWindowProps> = ({
   cameraActive,
   className = '',
 }) => {
-  const [position, setPosition] = useState({ x: 16, y: 16 });
+  const [position, setPosition] = useState({ x: 12, y: 12 });
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef({ x: 0, y: 0 });
-  const initialPosRef = useRef({ x: 16, y: 16 });
+  const initialPosRef = useRef({ x: 12, y: 12 });
   const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Initialize camera window docked at top-right corner inside parent camera/avatar area
+  useEffect(() => {
+    const parent = containerRef.current?.parentElement;
+    if (parent && containerRef.current) {
+      const parentW = parent.clientWidth;
+      const selfW = containerRef.current.offsetWidth || 160;
+      const initialX = Math.max(12, parentW - selfW - 12);
+      setPosition({ x: initialX, y: 12 });
+    }
+  }, []);
 
   const handlePointerDown = useCallback((clientX: number, clientY: number) => {
     setIsDragging(true);
@@ -41,8 +52,22 @@ export const DraggableCameraWindow: React.FC<DraggableCameraWindowProps> = ({
       const deltaX = clientX - dragStartRef.current.x;
       const deltaY = clientY - dragStartRef.current.y;
       
-      const newX = Math.max(8, initialPosRef.current.x + deltaX);
-      const newY = Math.max(8, initialPosRef.current.y + deltaY);
+      const parent = containerRef.current?.parentElement;
+      const parentW = parent ? parent.clientWidth : window.innerWidth;
+      const parentH = parent ? parent.clientHeight : window.innerHeight;
+      const selfW = containerRef.current ? containerRef.current.offsetWidth : 160;
+      const selfH = containerRef.current ? containerRef.current.offsetHeight : 120;
+
+      const minX = 8;
+      const minY = 8;
+      const maxX = Math.max(minX, parentW - selfW - 8);
+      const maxY = Math.max(minY, parentH - selfH - 8);
+
+      const calculatedX = initialPosRef.current.x + deltaX;
+      const calculatedY = initialPosRef.current.y + deltaY;
+
+      const newX = Math.min(Math.max(minX, calculatedX), maxX);
+      const newY = Math.min(Math.max(minY, calculatedY), maxY);
 
       setPosition({ x: newX, y: newY });
     };
