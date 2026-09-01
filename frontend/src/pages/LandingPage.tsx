@@ -188,17 +188,17 @@ export const LandingPage: React.FC = () => {
             {/* Top Status Badge */}
             <div className="inline-flex items-center space-x-2 bg-[#fe9832]/10 border border-[#fe9832]/30 text-[#8f4e00] dark:text-[#fe9832] px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold mb-5 shadow-xs">
               <span className="w-2 h-2 rounded-full bg-[#fe9832] animate-ping" />
-              <span>Empowering Indian Sign Language Communication</span>
+              <span>SAMBHAV — Indian Sign Language AI</span>
             </div>
 
             {/* Main Headline */}
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-[#030813] dark:text-white mb-5 leading-[1.15] sm:leading-[1.12] font-headline max-w-4xl">
-              Bridging worlds with accessible AI.
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight text-[#030813] dark:text-white mb-5 leading-[1.15] sm:leading-[1.12] font-headline max-w-5xl">
+              Transforming <span className="text-[#fe9832]">Indian Sign Language</span> Into Meaningful Human Connection
             </h1>
 
             {/* Subtext */}
-            <p className="text-base sm:text-lg md:text-xl text-[#475569] dark:text-[#94a3b8] mb-8 leading-relaxed font-body-lg max-w-3xl">
-              India's leading AI-powered accessibility platform, enabling seamless bidirectional communication through Indian Sign Language (ISL), 3D Avatars, and live speech translation.
+            <p className="text-base sm:text-lg md:text-xl text-[#475569] dark:text-[#94a3b8] mb-8 leading-relaxed font-body-lg max-w-4xl">
+              Cross-Platform Neural Framework for Real-Time Sign Language Interpretation, Linguistic Synchronization &amp; Multi-Modal Communication Bridging.
             </p>
 
             {/* Action CTA Buttons */}
