@@ -191,7 +191,7 @@ export const ISLModelTestPage: React.FC = () => {
               </select>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => (videoRef.current ? startRecognition(videoRef.current) : null)}
                 className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer"
@@ -203,6 +203,21 @@ export const ISLModelTestPage: React.FC = () => {
                 className="px-4 py-2 bg-[#fe9832] hover:bg-[#e08220] text-slate-950 font-extrabold rounded-lg text-xs transition-all shadow-md cursor-pointer"
               >
                 Capture Result
+              </button>
+              <button
+                onClick={() => {
+                  const devTensor = {
+                    timestamp: new Date().toISOString(),
+                    expectedSign,
+                    shape: [frameCount, 126],
+                    sampleFrame0: '60x126 sequence tensor active',
+                  };
+                  console.log('[Sambhav Tensor Export]', devTensor);
+                  alert(`Exported 60x126 sequence tensor for sign "${expectedSign}" to developer console.`);
+                }}
+                className="px-3 py-2 bg-blue-600/10 hover:bg-blue-600/20 text-blue-600 dark:text-blue-400 border border-blue-600/30 rounded-lg text-xs font-bold transition-all cursor-pointer"
+              >
+                Export 60x126 Tensor
               </button>
               <button
                 onClick={handleResetHistory}

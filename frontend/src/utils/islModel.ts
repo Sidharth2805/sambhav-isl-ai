@@ -145,10 +145,18 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
       });
     }
 
-    // Append to rolling 60-frame buffer (even when no hands detected, push zero-filled frame to keep counter active)
-    this.landmarkBuffer.push(frame126);
-    if (this.landmarkBuffer.length > 60) {
-      this.landmarkBuffer.shift();
+    // Append to rolling 60-frame buffer (prevent zero-frame contamination when valid hands enter frame)
+    const isHandPresent = hasLeftHand || hasRightHand;
+    const isBufferAllZeros = this.landmarkBuffer.length > 0 && this.landmarkBuffer.every(f => f[0] === 0 && f[63] === 0);
+
+    if (isHandPresent && isBufferAllZeros) {
+      // Replace raw zero padding with the first valid hand landmark frame to match training padding schema
+      this.landmarkBuffer = Array.from({ length: 15 }, () => [...frame126]);
+    } else {
+      this.landmarkBuffer.push(frame126);
+      if (this.landmarkBuffer.length > 60) {
+        this.landmarkBuffer.shift();
+      }
     }
 
     if (!hasRightHand && !hasLeftHand) {
@@ -195,6 +203,10 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
 
     // 3. Clean neutral state when ML backend is starting/connecting
     return { gesture: '', confidence: 0.0, label: '', phrase: '', isRealModel: false, frameCount: this.landmarkBuffer.length };
+  }
+
+  public getLatestBuffer(): number[][] {
+    return this.landmarkBuffer;
   }
 }
 
