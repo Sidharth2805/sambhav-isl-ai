@@ -66,6 +66,7 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
   const animFrameIdRef = useRef<number | null>(null);
   const handsInstanceRef = useRef<any | null>(null);
   const lastProcessedTimeRef = useRef<number>(0);
+  const isInferenceBusyRef = useRef<boolean>(false);
 
   // Draw hand skeleton connections onto the canvas
   const drawHandSkeleton = (ctx: CanvasRenderingContext2D, landmarks: ISLLandmark[], width: number, height: number, color = '#fe9832') => {
@@ -237,28 +238,31 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
             }
           }
 
-          // Throttle inference: classify ~10 FPS (every 100ms)
+          // Non-blocking asynchronous inference: process ~8 FPS without blocking MediaPipe frame loop
           const now = performance.now();
-          if (now - lastProcessedTimeRef.current >= 100) {
+          if (now - lastProcessedTimeRef.current >= 120 && !isInferenceBusyRef.current) {
             lastProcessedTimeRef.current = now;
+            isInferenceBusyRef.current = true;
 
-            try {
-              const inference = await classifier.classify(landmarksPayload);
+            classifier.classify(landmarksPayload).then((inference) => {
               setIsModelOnline(!!inference.isRealModel);
 
-              if (inference.gesture && inference.confidence >= 0.40 && inference.gesture !== 'G_UNKNOWN' && inference.gesture !== 'NO_HANDS') {
-                setCurrentGesture(inference.label || inference.gesture);
+              if (inference.gesture && inference.confidence >= 0.35 && inference.gesture !== 'G_UNKNOWN' && inference.gesture !== 'NO_HANDS') {
+                const label = inference.label || inference.gesture;
+                setCurrentGesture((prev) => (prev !== label ? label : prev));
                 setConfidence(inference.confidence);
                 const phrase = inference.phrase || ISL_VOCABULARY[inference.gesture] || inference.gesture;
-                setTranslatedText(phrase);
+                setTranslatedText((prev) => (prev !== phrase ? phrase : prev));
               } else {
-                setCurrentGesture(null);
+                setCurrentGesture((prev) => (prev !== null ? null : prev));
                 setConfidence(0);
-                setTranslatedText('');
+                setTranslatedText((prev) => (prev !== '' ? '' : prev));
               }
-            } catch (classifyErr) {
+            }).catch((classifyErr) => {
               console.error('[Sambhav ML] Inference error:', classifyErr);
-            }
+            }).finally(() => {
+              isInferenceBusyRef.current = false;
+            });
           }
         });
 
