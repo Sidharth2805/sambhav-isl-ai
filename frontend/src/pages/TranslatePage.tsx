@@ -690,8 +690,8 @@ export const TranslatePage: React.FC = () => {
             </button>
           </div>
 
-          {/* Bottom Overview of the 3 Modes */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 z-10 mt-auto">
+          {/* Bottom Overview of the 2 Modes */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto w-full z-10 mt-auto">
             
             {/* Mode 1 */}
             <div className="bg-white/90 dark:bg-[#1a202c]/90 backdrop-blur-sm p-4 rounded-2xl border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex items-start gap-3">
@@ -701,25 +701,12 @@ export const TranslatePage: React.FC = () => {
               <div>
                 <h3 className="text-sm font-bold text-[#181c1e] dark:text-white">Text/Speech &rarr; ISL</h3>
                 <p className="text-xs text-[#45474c] dark:text-[#c1c6d7] mt-0.5 leading-relaxed">
-                  Real-time microphone capture with live captions and avatar animation.
+                  Real-time microphone capture or typed text with live captions and avatar animation.
                 </p>
               </div>
             </div>
 
             {/* Mode 2 */}
-            <div className="bg-white/90 dark:bg-[#1a202c]/90 backdrop-blur-sm p-4 rounded-2xl border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[22px]">edit_note</span>
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-[#181c1e] dark:text-white">Text &rarr; ISL Avatar</h3>
-                <p className="text-xs text-[#45474c] dark:text-[#c1c6d7] mt-0.5 leading-relaxed">
-                  Conversation history with synchronized real-time green text highlighting as the avatar signs.
-                </p>
-              </div>
-            </div>
-
-            {/* Mode 3 */}
             <div className="bg-white/90 dark:bg-[#1a202c]/90 backdrop-blur-sm p-4 rounded-2xl border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex items-start gap-3">
               <div className="w-10 h-10 rounded-xl bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-[22px]">sign_language</span>
@@ -727,7 +714,7 @@ export const TranslatePage: React.FC = () => {
               <div>
                 <h3 className="text-sm font-bold text-[#181c1e] dark:text-white">ISL &rarr; Speech/Text</h3>
                 <p className="text-xs text-[#45474c] dark:text-[#c1c6d7] mt-0.5 leading-relaxed">
-                  Camera-based gesture tracking synthesizes natural spoken audio in real time.
+                  Camera-based gesture tracking synthesizes natural spoken audio and text in real time.
                 </p>
               </div>
             </div>
