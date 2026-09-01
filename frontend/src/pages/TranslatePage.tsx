@@ -73,6 +73,9 @@ export const TranslatePage: React.FC = () => {
     confidence: signConfidence,
     translatedText: recognizedSignPhrase,
     isModelOnline,
+    isCapturingManual,
+    startManualCapture,
+    stopManualCapture,
     startRecognition: startISLRecognition,
     stopRecognition: stopISLRecognition,
   } = useISLRecognition();
@@ -860,7 +863,21 @@ export const TranslatePage: React.FC = () => {
                       <h3 className="text-sm font-bold text-white">Full Sign Recognition Camera</h3>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1.5 ${
+                      <button
+                        type="button"
+                        onClick={isCapturingManual ? stopManualCapture : startManualCapture}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center gap-2 shadow-lg cursor-pointer border ${
+                          isCapturingManual
+                            ? 'bg-rose-500 hover:bg-rose-600 text-white border-rose-400/50 animate-pulse'
+                            : 'bg-[#fe9832] hover:bg-[#e08328] text-gray-950 border-amber-300/50'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[16px]">
+                          {isCapturingManual ? 'stop_circle' : 'radio_button_checked'}
+                        </span>
+                        <span>{isCapturingManual ? 'Stop & Classify Sign' : 'Record Sign'}</span>
+                      </button>
+                      <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold flex items-center gap-1.5 ${
                         isModelOnline
                           ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                           : 'bg-[#fe9832]/20 text-[#fe9832] border border-[#fe9832]/30'

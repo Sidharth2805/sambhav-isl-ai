@@ -39,9 +39,9 @@ async function getSharedMediaPipeHands(): Promise<any> {
 
     instance.setOptions({
       maxNumHands: 2,
-      modelComplexity: 1,
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.5
+      modelComplexity: 0,
+      minDetectionConfidence: 0.4,
+      minTrackingConfidence: 0.4
     });
 
     await instance.initialize();
@@ -74,6 +74,7 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
   const [onResultsCount, setOnResultsCount] = useState<number>(0);
   const [handsDetectedCount, setHandsDetectedCount] = useState<number>(0);
   const [gestureState, setGestureState] = useState<GestureCaptureState>('WAITING');
+  const [isCapturingManual, setIsCapturingManual] = useState<boolean>(false);
 
   const streamRef = useRef<MediaStream | null>(null);
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
@@ -385,6 +386,19 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
     };
   }, [stopRecognition]);
 
+  const startManualCapture = useCallback(() => {
+    if (classifier && (classifier as any).clearBuffer) {
+      (classifier as any).clearBuffer();
+    }
+    setIsCapturingManual(true);
+    setGestureState('COLLECTING');
+  }, [classifier]);
+
+  const stopManualCapture = useCallback(() => {
+    setIsCapturingManual(false);
+    setGestureState('INFERENCE');
+  }, []);
+
   return {
     isRecognizing,
     isPaused,
@@ -398,6 +412,9 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
     handsDetectedCount,
     gestureState,
     isModelOnline,
+    isCapturingManual,
+    startManualCapture,
+    stopManualCapture,
     startRecognition,
     pauseRecognition,
     resumeRecognition,

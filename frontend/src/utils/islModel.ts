@@ -37,6 +37,7 @@ export interface ISLClassifier {
   isDemo: boolean;
   isOnline: boolean;
   getIsOnline(): boolean;
+  clearBuffer?(): void;
   initialize(): Promise<void>;
   classify(landmarks: ISLLandmarks): Promise<ISLInferenceResult>;
 }
@@ -124,6 +125,10 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
 
   public getIsOnline(): boolean {
     return this.isOnline;
+  }
+
+  public clearBuffer(): void {
+    this.landmarkBuffer = [];
   }
 
   public async classify(landmarks: ISLLandmarks): Promise<ISLInferenceResult> {
