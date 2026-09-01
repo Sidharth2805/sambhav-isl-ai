@@ -210,34 +210,38 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
           };
 
           if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-            if (results.multiHandLandmarks.length === 1) {
-              // 1 Hand: Map to primary slot (leftHand -> features 0..62) matching dataset extraction schema
-              const handPoints: ISLLandmark[] = results.multiHandLandmarks[0].map((p: any) => ({ x: p.x, y: p.y, z: p.z }));
-              landmarksPayload.leftHand = handPoints;
-              landmarksPayload.rightHand = [];
-              if (ctx && canvas) {
-                drawHandSkeleton(ctx, handPoints, (canvas as HTMLCanvasElement).width, (canvas as HTMLCanvasElement).height, '#fe9832');
-              }
-            } else {
-              // 2 Hands: Sort hands spatially by X coordinate so left-most hand is 0..62 and right-most hand is 63..125
-              const h1 = results.multiHandLandmarks[0].map((p: any) => ({ x: p.x, y: p.y, z: p.z }));
-              const h2 = results.multiHandLandmarks[1].map((p: any) => ({ x: p.x, y: p.y, z: p.z }));
+            for (let i = 0; i < Math.min(results.multiHandLandmarks.length, 2); i++) {
+              const rawLandmarks = results.multiHandLandmarks[i];
+              const handednessObj = results.multiHandedness && results.multiHandedness[i];
+              const handLabel = handednessObj?.label || (i === 0 ? 'Left' : 'Right');
 
-              const avgX1 = h1.reduce((sum: number, p: ISLLandmark) => sum + p.x, 0) / 21;
-              const avgX2 = h2.reduce((sum: number, p: ISLLandmark) => sum + p.x, 0) / 21;
+              const handPoints: ISLLandmark[] = rawLandmarks.map((p: any) => ({
+                x: p.x,
+                y: p.y,
+                z: p.z
+              }));
 
-              if (avgX1 <= avgX2) {
-                landmarksPayload.leftHand = h1;
-                landmarksPayload.rightHand = h2;
+              if (handLabel === 'Left') {
+                landmarksPayload.leftHand = handPoints;
+                if (ctx && canvas) {
+                  drawHandSkeleton(ctx, handPoints, (canvas as HTMLCanvasElement).width, (canvas as HTMLCanvasElement).height, '#fe9832');
+                }
               } else {
-                landmarksPayload.leftHand = h2;
-                landmarksPayload.rightHand = h1;
+                landmarksPayload.rightHand = handPoints;
+                if (ctx && canvas) {
+                  drawHandSkeleton(ctx, handPoints, (canvas as HTMLCanvasElement).width, (canvas as HTMLCanvasElement).height, '#059669');
+                }
               }
+            }
 
-              if (ctx && canvas) {
-                if (landmarksPayload.leftHand) drawHandSkeleton(ctx, landmarksPayload.leftHand, (canvas as HTMLCanvasElement).width, (canvas as HTMLCanvasElement).height, '#fe9832');
-                if (landmarksPayload.rightHand) drawHandSkeleton(ctx, landmarksPayload.rightHand, (canvas as HTMLCanvasElement).width, (canvas as HTMLCanvasElement).height, '#059669');
-              }
+            // Diagnostic Logging in Development
+            if (import.meta.env.DEV) {
+              console.log('[Sambhav Diagnostic]', {
+                detectedHandCount: results.multiHandLandmarks.length,
+                handedness: results.multiHandedness?.map((h: any) => h.label),
+                hasLeftFeatures: !!landmarksPayload.leftHand?.length,
+                hasRightFeatures: !!landmarksPayload.rightHand?.length,
+              });
             }
           }
 
