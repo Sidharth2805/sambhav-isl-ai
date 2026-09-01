@@ -386,6 +386,34 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
     };
   }, [stopRecognition]);
 
+  const [captureCountdown, setCaptureCountdown] = useState<number | null>(null);
+  const countdownTimerRef = useRef<any>(null);
+
+  const start5sTestCapture = useCallback(() => {
+    if (classifier && (classifier as any).clearBuffer) {
+      (classifier as any).clearBuffer();
+    }
+    setIsCapturingManual(true);
+    setGestureState('COLLECTING');
+    setCaptureCountdown(5);
+
+    if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+
+    let secondsLeft = 5;
+    countdownTimerRef.current = setInterval(() => {
+      secondsLeft -= 1;
+      if (secondsLeft <= 0) {
+        clearInterval(countdownTimerRef.current);
+        countdownTimerRef.current = null;
+        setCaptureCountdown(null);
+        setIsCapturingManual(false);
+        setGestureState('INFERENCE');
+      } else {
+        setCaptureCountdown(secondsLeft);
+      }
+    }, 1000);
+  }, [classifier]);
+
   const startManualCapture = useCallback(() => {
     if (classifier && (classifier as any).clearBuffer) {
       (classifier as any).clearBuffer();
@@ -395,6 +423,11 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
   }, [classifier]);
 
   const stopManualCapture = useCallback(() => {
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+      countdownTimerRef.current = null;
+    }
+    setCaptureCountdown(null);
     setIsCapturingManual(false);
     setGestureState('INFERENCE');
   }, []);
@@ -413,6 +446,8 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
     gestureState,
     isModelOnline,
     isCapturingManual,
+    captureCountdown,
+    start5sTestCapture,
     startManualCapture,
     stopManualCapture,
     startRecognition,

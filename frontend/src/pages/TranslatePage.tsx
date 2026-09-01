@@ -74,6 +74,8 @@ export const TranslatePage: React.FC = () => {
     translatedText: recognizedSignPhrase,
     isModelOnline,
     isCapturingManual,
+    captureCountdown,
+    start5sTestCapture,
     startManualCapture,
     stopManualCapture,
     startRecognition: startISLRecognition,
@@ -865,18 +867,36 @@ export const TranslatePage: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
+                        onClick={start5sTestCapture}
+                        disabled={isCapturingManual}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-md cursor-pointer border ${
+                          captureCountdown !== null
+                            ? 'bg-rose-500 text-white border-rose-400 animate-pulse'
+                            : 'bg-gradient-to-r from-amber-500 to-[#fe9832] hover:from-amber-600 hover:to-[#e08328] text-gray-950 border-amber-300/50'
+                        }`}
+                        title="Record hand movement continuously for 5 seconds matching training video length"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">
+                          {captureCountdown !== null ? 'hourglass_top' : 'timer'}
+                        </span>
+                        <span>{captureCountdown !== null ? `Recording (${captureCountdown}s)` : 'Test 5s Sign'}</span>
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={isCapturingManual ? stopManualCapture : startManualCapture}
                         className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center gap-2 shadow-lg cursor-pointer border ${
-                          isCapturingManual
+                          isCapturingManual && captureCountdown === null
                             ? 'bg-rose-500 hover:bg-rose-600 text-white border-rose-400/50 animate-pulse'
-                            : 'bg-[#fe9832] hover:bg-[#e08328] text-gray-950 border-amber-300/50'
+                            : 'bg-white/10 hover:bg-white/20 text-white border-white/20'
                         }`}
                       >
                         <span className="material-symbols-outlined text-[16px]">
-                          {isCapturingManual ? 'stop_circle' : 'radio_button_checked'}
+                          {isCapturingManual && captureCountdown === null ? 'stop_circle' : 'radio_button_checked'}
                         </span>
-                        <span>{isCapturingManual ? 'Stop & Classify Sign' : 'Record Sign'}</span>
+                        <span>{isCapturingManual && captureCountdown === null ? 'Stop Sign' : 'Manual Record'}</span>
                       </button>
+
                       <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold flex items-center gap-1.5 ${
                         isModelOnline
                           ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
@@ -927,9 +947,6 @@ export const TranslatePage: React.FC = () => {
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-black text-white uppercase tracking-wide">
                                 Sign: {recognizedSign}
-                              </span>
-                              <span className="text-[11px] font-mono text-emerald-400 font-bold px-1.5 py-0.2 rounded bg-emerald-950/80 border border-emerald-500/30">
-                                {Math.round(signConfidence * 100)}% Match
                               </span>
                             </div>
                             <p className="text-xs text-gray-300 font-medium truncate max-w-xs">

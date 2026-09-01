@@ -176,7 +176,6 @@ export const ISLMessageComposer: React.FC<ISLMessageComposerProps> = ({
             <span className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-700/60 px-2 py-0.5 rounded-md text-[11px] font-bold text-emerald-800 dark:text-emerald-300">
               <span>ML Detected:</span>
               <span className="uppercase font-black text-[#fe9832] dark:text-[#fe9832]">"{lastDetectedToken.word}"</span>
-              <span className="text-[10px] font-mono opacity-80">({Math.round(lastDetectedToken.confidence * 100)}%)</span>
             </span>
           ) : (
             <span className="text-[11px] text-[#45474c] dark:text-[#828796] font-medium">
