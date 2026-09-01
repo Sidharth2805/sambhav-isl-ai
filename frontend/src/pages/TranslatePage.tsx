@@ -862,6 +862,7 @@ export const TranslatePage: React.FC = () => {
                       className="w-full h-full object-cover transform -scale-x-100"
                     />
                     <canvas
+                      data-gesture-canvas="true"
                       className="absolute inset-0 w-full h-full pointer-events-none transform -scale-x-100"
                       width={640}
                       height={480}

@@ -193,9 +193,9 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
 
           // Target specific camera overlay canvas rather than Three.js avatar canvas
           const vid = videoElementRef.current;
-          const canvas = vid?.parentElement?.querySelector('canvas') || document.querySelector('canvas[data-gesture-canvas="true"]');
+          const canvas = vid?.parentElement?.querySelector('canvas[data-gesture-canvas="true"]') || document.querySelector('canvas[data-gesture-canvas="true"]');
           let ctx: CanvasRenderingContext2D | null = null;
-          if (canvas) {
+          if (canvas && (canvas as HTMLCanvasElement).getContext) {
             ctx = (canvas as HTMLCanvasElement).getContext('2d');
             if (ctx) {
               ctx.clearRect(0, 0, (canvas as HTMLCanvasElement).width, (canvas as HTMLCanvasElement).height);
@@ -239,9 +239,9 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
             }
           }
 
-          // Non-blocking asynchronous inference: process ~8 FPS without blocking MediaPipe frame loop
+          // Fast non-blocking asynchronous inference: process ~20 FPS (50ms) for instant word display
           const now = performance.now();
-          if (now - lastProcessedTimeRef.current >= 120 && !isInferenceBusyRef.current) {
+          if (now - lastProcessedTimeRef.current >= 50 && !isInferenceBusyRef.current) {
             lastProcessedTimeRef.current = now;
             isInferenceBusyRef.current = true;
 
