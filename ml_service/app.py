@@ -65,6 +65,18 @@ else:
     std_vec = np.ones(NUM_FEATURES, dtype=np.float32)
     print('[Sambhav ML] Using default normalization.')
 
+# Strict Startup Validation Checks
+input_shape_valid = (model.input_shape == (None, 60, 126))
+output_shape_valid = (model.output_shape == (None, 169))
+label_mapping_valid = (len(LABEL_MAPPING) == 169)
+mean_valid = (mean_vec.shape == (126,))
+std_valid = (std_vec.shape == (126,))
+
+print(f'[Sambhav ML Audit] Input Shape (60x126) Valid: {input_shape_valid}')
+print(f'[Sambhav ML Audit] Output Classes (169) Valid: {output_shape_valid}')
+print(f'[Sambhav ML Audit] Label Mapping Count: {len(LABEL_MAPPING)} / 169')
+print(f'[Sambhav ML Audit] Normalization Statistics Dimensions: {mean_vec.shape}/{std_vec.shape}')
+
 hand_detector = None
 if os.path.exists(TASK_PATH):
     try:
@@ -202,6 +214,14 @@ async def health_check():
         'num_classes': len(LABEL_MAPPING),
         'sequence_length': SEQUENCE_LENGTH,
         'num_features': NUM_FEATURES,
+        'validation': {
+            'input_shape_valid': input_shape_valid,
+            'output_shape_valid': output_shape_valid,
+            'label_mapping_valid': label_mapping_valid,
+            'mean_valid': mean_valid,
+            'std_valid': std_valid,
+            'index_range': '0..168',
+        }
     }
 
 @app.get('/labels')
