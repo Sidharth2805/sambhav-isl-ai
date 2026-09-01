@@ -507,7 +507,7 @@ export const TranslatePage: React.FC = () => {
     if (newMode === activeMode) return;
 
     const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const modeLabel = newMode === 'SPEECH_TEXT_TO_ISL' ? 'Speech / Text ↔ ISL' : 'ISL ↔ Text';
+    const modeLabel = newMode === 'SPEECH_TEXT_TO_ISL' ? 'Text/Speech → ISL' : 'ISL → Speech/Text';
 
     // Log mid-conversation mode transition in history
     setSessionHistoryLogs((prev) => [
@@ -699,7 +699,7 @@ export const TranslatePage: React.FC = () => {
                 <span className="material-symbols-outlined text-[22px]">mic</span>
               </div>
               <div>
-                <h3 className="text-sm font-bold text-[#181c1e] dark:text-white">Speech &harr; ISL</h3>
+                <h3 className="text-sm font-bold text-[#181c1e] dark:text-white">Text/Speech &rarr; ISL</h3>
                 <p className="text-xs text-[#45474c] dark:text-[#c1c6d7] mt-0.5 leading-relaxed">
                   Real-time microphone capture with live captions and avatar animation.
                 </p>
@@ -712,7 +712,7 @@ export const TranslatePage: React.FC = () => {
                 <span className="material-symbols-outlined text-[22px]">edit_note</span>
               </div>
               <div>
-                <h3 className="text-sm font-bold text-[#181c1e] dark:text-white">Text &rarr; ISL</h3>
+                <h3 className="text-sm font-bold text-[#181c1e] dark:text-white">Text &rarr; ISL Avatar</h3>
                 <p className="text-xs text-[#45474c] dark:text-[#c1c6d7] mt-0.5 leading-relaxed">
                   Conversation history with synchronized real-time green text highlighting as the avatar signs.
                 </p>
@@ -725,7 +725,7 @@ export const TranslatePage: React.FC = () => {
                 <span className="material-symbols-outlined text-[22px]">sign_language</span>
               </div>
               <div>
-                <h3 className="text-sm font-bold text-[#181c1e] dark:text-white">ISL &rarr; Text / Voice</h3>
+                <h3 className="text-sm font-bold text-[#181c1e] dark:text-white">ISL &rarr; Speech/Text</h3>
                 <p className="text-xs text-[#45474c] dark:text-[#c1c6d7] mt-0.5 leading-relaxed">
                   Camera-based gesture tracking synthesizes natural spoken audio in real time.
                 </p>
@@ -797,7 +797,7 @@ export const TranslatePage: React.FC = () => {
                 }`}
               >
                 <span className="material-symbols-outlined text-[16px]">mic</span>
-                <span>Speech / Text &harr; ISL</span>
+                <span>Text/Speech &rarr; ISL</span>
               </button>
 
               <button
@@ -809,7 +809,7 @@ export const TranslatePage: React.FC = () => {
                 }`}
               >
                 <span className="material-symbols-outlined text-[16px]">sign_language</span>
-                <span>ISL &rarr; Text</span>
+                <span>ISL &rarr; Speech/Text</span>
               </button>
             </div>
 
