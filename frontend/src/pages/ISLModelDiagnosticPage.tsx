@@ -74,6 +74,7 @@ export const ISLModelDiagnosticPage: React.FC = () => {
     frameCount,
     onResultsCount,
     handsDetectedCount,
+    gestureState,
     error: recognitionError,
     startRecognition,
   } = useISLRecognition();
@@ -491,14 +492,26 @@ export const ISLModelDiagnosticPage: React.FC = () => {
                 height={480}
               />
 
-              {/* Status Badges */}
-              <div className="absolute top-3 left-3 bg-black/85 px-3 py-1 rounded text-[11px] font-bold text-white flex items-center gap-2 border border-white/10">
-                <span className={`w-2 h-2 rounded-full ${isRecognizing ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
-                <span>Hands Detected: {handsDetectedCount}</span>
+              {/* Detailed Pipeline Diagnostic Badges Overlay */}
+              <div className="absolute top-3 left-3 bg-black/85 px-3 py-1.5 rounded-lg text-[11px] font-bold text-white flex flex-wrap items-center gap-2 border border-white/10 backdrop-blur-xs z-10">
+                <span className="flex items-center gap-1">
+                  <span className={`w-2 h-2 rounded-full ${isRecognizing ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
+                  <span>Camera: {isRecognizing ? 'ACTIVE' : 'ERROR'}</span>
+                </span>
+                <span>•</span>
+                <span>MediaPipe: {recognitionError ? 'ERROR' : 'READY'}</span>
+                <span>•</span>
+                <span>Hands: {handsDetectedCount} ({handsDetectedCount === 2 ? 'BOTH' : handsDetectedCount === 1 ? 'RIGHT' : 'NONE'})</span>
               </div>
 
-              <div className="absolute top-3 right-3 bg-black/85 px-3 py-1 rounded text-[11px] font-bold text-emerald-400 border border-white/10">
-                Buffer: {frameCount} / 60 frames
+              <div className="absolute top-3 right-3 bg-black/85 px-3 py-1.5 rounded-lg text-[11px] font-bold text-white flex items-center gap-2 border border-white/10 backdrop-blur-xs z-10">
+                <span className="text-amber-400 font-bold">State: {gestureState}</span>
+                <span>•</span>
+                <span className="text-emerald-400 font-extrabold">Frames: {frameCount} / 60</span>
+                <span>•</span>
+                <span>Tensor: {frameCount >= 30 ? 'VALID (60×126)' : 'COLLECTING'}</span>
+                <span>•</span>
+                <span>ML Service: {isModelOnline ? 'CONNECTED' : 'DISCONNECTED'}</span>
               </div>
 
               {recognitionError && (

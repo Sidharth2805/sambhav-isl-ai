@@ -234,7 +234,7 @@ public class AuthControllerTest {
         mockMvc.perform(post("/api/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(req)))
-                .andExpect(status().isInternalServerError()); // Rollback occurred on exception
+                .andExpect(status().isBadRequest());
     }
 
     @Test

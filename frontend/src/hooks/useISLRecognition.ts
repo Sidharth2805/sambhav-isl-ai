@@ -52,6 +52,14 @@ async function getSharedMediaPipeHands(): Promise<any> {
   return sharedHandsPromise;
 }
 
+export type GestureCaptureState =
+  | 'WAITING'
+  | 'HAND DETECTED'
+  | 'COLLECTING'
+  | 'INFERENCE'
+  | 'DISPLAY RESULT'
+  | 'READY FOR NEXT GESTURE';
+
 export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMClassifier()) {
   const [isRecognizing, setIsRecognizing] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -65,6 +73,7 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
   const [frameCount, setFrameCount] = useState<number>(0);
   const [onResultsCount, setOnResultsCount] = useState<number>(0);
   const [handsDetectedCount, setHandsDetectedCount] = useState<number>(0);
+  const [gestureState, setGestureState] = useState<GestureCaptureState>('WAITING');
 
   const streamRef = useRef<MediaStream | null>(null);
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
@@ -197,8 +206,17 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
         hands.onResults(async (results: any) => {
           if (isPaused) return;
 
+          const detectedCount = results.multiHandLandmarks?.length || 0;
           setOnResultsCount((prev) => prev + 1);
-          setHandsDetectedCount(results.multiHandLandmarks?.length || 0);
+          setHandsDetectedCount(detectedCount);
+
+          if (detectedCount === 0) {
+            setGestureState('WAITING');
+          } else if (frameCount < 60) {
+            setGestureState('COLLECTING');
+          } else {
+            setGestureState('INFERENCE');
+          }
 
           // Target specific camera overlay canvas rather than Three.js avatar canvas
           const vid = videoElementRef.current;
@@ -274,6 +292,8 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
                 setConfidence(inference.confidence);
                 const phrase = inference.phrase || ISL_VOCABULARY[smoothedLabel] || smoothedLabel;
                 setTranslatedText(phrase);
+                setGestureState('DISPLAY RESULT');
+                setTimeout(() => setGestureState('READY FOR NEXT GESTURE'), 600);
               } else {
                 const hasHandsInFrame = !!(landmarksPayload.leftHand?.length || landmarksPayload.rightHand?.length);
                 if (hasHandsInFrame && now - lastValidTimeRef.current > 1500) {
@@ -351,6 +371,7 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
     frameCount,
     onResultsCount,
     handsDetectedCount,
+    gestureState,
     isModelOnline,
     startRecognition,
     pauseRecognition,
