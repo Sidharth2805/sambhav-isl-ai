@@ -79,10 +79,14 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
   const animFrameIdRef = useRef<number | null>(null);
   const handsInstanceRef = useRef<any | null>(null);
+  const lastSendTimeRef = useRef<number>(0);
   const lastProcessedTimeRef = useRef<number>(0);
   const isInferenceBusyRef = useRef<boolean>(false);
   const lastValidTimeRef = useRef<number>(0);
   const recentPredictionsRef = useRef<string[]>([]);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const handsDetectedCountRef = useRef<number>(0);
+  const gestureStateRef = useRef<GestureCaptureState>('WAITING');
 
   // Draw hand skeleton connections onto the canvas
   const drawHandSkeleton = (ctx: CanvasRenderingContext2D, landmarks: ISLLandmark[], width: number, height: number, color = '#fe9832') => {
@@ -214,25 +218,35 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
           if (isPaused) return;
 
           const detectedCount = results.multiHandLandmarks?.length || 0;
-          setOnResultsCount((prev) => prev + 1);
-          setHandsDetectedCount(detectedCount);
-
-          if (detectedCount === 0) {
-            setGestureState('WAITING');
-          } else if (frameCount < 60) {
-            setGestureState('COLLECTING');
-          } else {
-            setGestureState('INFERENCE');
+          
+          if (performance.now() - lastProcessedTimeRef.current > 500) {
+            setOnResultsCount((prev) => prev + 1);
           }
 
-          // Target specific camera overlay canvas rather than Three.js avatar canvas
+          if (handsDetectedCountRef.current !== detectedCount) {
+            handsDetectedCountRef.current = detectedCount;
+            setHandsDetectedCount(detectedCount);
+          }
+
+          const nextState = detectedCount === 0 ? 'WAITING' : frameCount < 60 ? 'COLLECTING' : 'INFERENCE';
+          if (gestureStateRef.current !== nextState) {
+            gestureStateRef.current = nextState;
+            setGestureState(nextState);
+          }
+
+          // Target specific camera overlay canvas efficiently
           const vid = videoElementRef.current;
-          const canvas = vid?.parentElement?.querySelector('canvas[data-gesture-canvas="true"]') || document.querySelector('canvas[data-gesture-canvas="true"]');
+          let canvas = canvasRef.current;
+          if (!canvas || !document.body.contains(canvas)) {
+            canvas = (vid?.parentElement?.querySelector('canvas[data-gesture-canvas="true"]') || document.querySelector('canvas[data-gesture-canvas="true"]')) as HTMLCanvasElement;
+            canvasRef.current = canvas;
+          }
+          
           let ctx: CanvasRenderingContext2D | null = null;
-          if (canvas && (canvas as HTMLCanvasElement).getContext) {
-            ctx = (canvas as HTMLCanvasElement).getContext('2d');
+          if (canvas && canvas.getContext) {
+            ctx = canvas.getContext('2d');
             if (ctx) {
-              ctx.clearRect(0, 0, (canvas as HTMLCanvasElement).width, (canvas as HTMLCanvasElement).height);
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
             }
           }
 
@@ -334,7 +348,11 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
         if (!videoElementRef.current) return;
 
         const vid = videoElementRef.current;
-        if (!isPaused && handsInstanceRef.current && vid.videoWidth > 0 && vid.videoHeight > 0 && !isProcessingFrame) {
+        const now = performance.now();
+
+        // Throttle MediaPipe inputs to max 25 FPS (every 40ms) to ensure smooth 60fps UI performance
+        if (!isPaused && handsInstanceRef.current && vid.videoWidth > 0 && vid.videoHeight > 0 && !isProcessingFrame && now - lastSendTimeRef.current >= 40) {
+          lastSendTimeRef.current = now;
           isProcessingFrame = true;
           try {
             await handsInstanceRef.current.send({ image: vid });

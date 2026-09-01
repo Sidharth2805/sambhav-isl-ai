@@ -178,16 +178,6 @@ def run_bilstm_inference(sequence_126: np.ndarray) -> dict:
     raw_label = LABEL_MAPPING.get(str(top_idx), f'CLASS_{top_idx}')
     confidence = float(preds[top_idx])
 
-    # If active motion is detected (moving hand gesture) and top prediction is a static letter,
-    # check top predictions for a dynamic word gesture matching the trajectory
-    if motion_var > 0.0015 and len(raw_label) == 1:
-        for candidate in top_3:
-            cand_label = candidate['label']
-            if len(cand_label) > 1 and candidate['confidence'] >= 0.08:
-                raw_label = cand_label
-                confidence = candidate['confidence']
-                break
-
     phrase = FRIENDLY_PHRASES.get(raw_label.lower(), FRIENDLY_PHRASES.get(raw_label, raw_label))
 
     return {
