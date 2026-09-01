@@ -127,10 +127,12 @@ class NaturalSpeechEngine {
     if (!cleaned) return;
 
     // Cancel previous speech smoothly and resume if paused
-    window.speechSynthesis.cancel();
-    if (window.speechSynthesis.paused) {
-      window.speechSynthesis.resume();
-    }
+    try {
+      window.speechSynthesis.cancel();
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+    } catch {}
 
     const playSpeech = () => {
       try {
@@ -162,6 +164,8 @@ class NaturalSpeechEngine {
         utterance.volume = 1.0;
 
         this.activeUtterance = utterance;
+        // Keep global window reference to prevent Chrome V8 Garbage Collection bug
+        (window as any)._activeSpeechUtterance = utterance;
 
         utterance.onstart = () => {
           this.isSpeaking = true;
@@ -170,6 +174,7 @@ class NaturalSpeechEngine {
         utterance.onend = () => {
           this.isSpeaking = false;
           this.activeUtterance = null;
+          (window as any)._activeSpeechUtterance = null;
           options?.onEnd?.();
         };
 
@@ -179,16 +184,23 @@ class NaturalSpeechEngine {
           }
           this.isSpeaking = false;
           this.activeUtterance = null;
+          (window as any)._activeSpeechUtterance = null;
           options?.onError?.();
         };
+
+        // Resume if stalled
+        if (window.speechSynthesis.paused) {
+          window.speechSynthesis.resume();
+        }
 
         window.speechSynthesis.speak(utterance);
       } catch (err) {
         console.error('[NaturalSpeech] Speak error:', err);
+        options?.onError?.();
       }
     };
 
-    setTimeout(playSpeech, 40);
+    setTimeout(playSpeech, 100);
   }
 
   public stop() {
