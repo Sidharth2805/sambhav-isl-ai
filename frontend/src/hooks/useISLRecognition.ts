@@ -60,6 +60,7 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
   const [translatedText, setTranslatedText] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [isModelOnline, setIsModelOnline] = useState<boolean>(false);
+  const [unrecognizedNotice, setUnrecognizedNotice] = useState<string | null>(null);
 
   const streamRef = useRef<MediaStream | null>(null);
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
@@ -68,6 +69,7 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
   const lastProcessedTimeRef = useRef<number>(0);
   const isInferenceBusyRef = useRef<boolean>(false);
   const lastValidTimeRef = useRef<number>(0);
+  const recentPredictionsRef = useRef<string[]>([]);
 
   // Draw hand skeleton connections onto the canvas
   const drawHandSkeleton = (ctx: CanvasRenderingContext2D, landmarks: ISLLandmark[], width: number, height: number, color = '#fe9832') => {
@@ -248,14 +250,34 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
             classifier.classify(landmarksPayload).then((inference) => {
               setIsModelOnline(!!inference.isRealModel);
 
-              if (inference.gesture && inference.confidence >= 0.25 && inference.gesture !== 'G_UNKNOWN' && inference.gesture !== 'NO_HANDS') {
+              if (inference.gesture && inference.confidence >= 0.20 && inference.gesture !== 'G_UNKNOWN' && inference.gesture !== 'NO_HANDS') {
                 lastValidTimeRef.current = now;
+                setUnrecognizedNotice(null);
+
+                // Temporal Majority Voting Filter (smoothing over last 3 predictions)
                 const label = inference.label || inference.gesture;
-                setCurrentGesture(label);
+                recentPredictionsRef.current.push(label);
+                if (recentPredictionsRef.current.length > 3) {
+                  recentPredictionsRef.current.shift();
+                }
+
+                // Select most frequent prediction from voting window
+                const counts: Record<string, number> = {};
+                recentPredictionsRef.current.forEach((l) => { counts[l] = (counts[l] || 0) + 1; });
+                const smoothedLabel = Object.keys(counts).reduce((a, b) => (counts[a] >= counts[b] ? a : b), label);
+
+                setCurrentGesture(smoothedLabel);
                 setConfidence(inference.confidence);
-                const phrase = inference.phrase || ISL_VOCABULARY[inference.gesture] || inference.gesture;
+                const phrase = inference.phrase || ISL_VOCABULARY[smoothedLabel] || smoothedLabel;
                 setTranslatedText(phrase);
               } else {
+                const hasHandsInFrame = !!(landmarksPayload.leftHand?.length || landmarksPayload.rightHand?.length);
+                if (hasHandsInFrame && now - lastValidTimeRef.current > 1500) {
+                  setUnrecognizedNotice('Sign not recognized — please try signing again smoothly');
+                } else {
+                  setUnrecognizedNotice(null);
+                }
+
                 // Preserve recognized sign text on screen for 3 seconds so the user can read and speak it
                 if (now - lastValidTimeRef.current > 3000) {
                   setCurrentGesture(null);
@@ -321,6 +343,7 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
     confidence,
     translatedText,
     error,
+    unrecognizedNotice,
     isModelOnline,
     startRecognition,
     pauseRecognition,
