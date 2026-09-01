@@ -272,7 +272,7 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
                 setFrameCount(inference.frameCount);
               }
 
-              if (inference.gesture && inference.confidence >= 0.20 && inference.gesture !== 'G_UNKNOWN' && inference.gesture !== 'NO_HANDS') {
+              if (inference.gesture && inference.confidence >= 0.10 && inference.gesture !== 'G_UNKNOWN' && inference.gesture !== 'NO_HANDS') {
                 lastValidTimeRef.current = now;
                 setUnrecognizedNotice(null);
 

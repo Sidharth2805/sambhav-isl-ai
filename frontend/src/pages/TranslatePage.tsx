@@ -94,7 +94,6 @@ export const TranslatePage: React.FC = () => {
   const [textMessages, setTextMessages] = useState<ChatMessage[]>([]);
   const [activeSigningMessageId, setActiveSigningMessageId] = useState<string | null>(null);
   const [activeStepIndex, setActiveStepIndex] = useState<number>(-1);
-  const [translatedText, setTranslatedText] = useState('');
 
   // ISL to Text Signed Conversation Feed
   const [signedMessages, setSignedMessages] = useState<{ id: string; sign: string; phrase: string; confidence: number; timestamp: string }[]>([]);
@@ -150,13 +149,6 @@ export const TranslatePage: React.FC = () => {
     setIsChatScrolledUp(false);
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
-
-  // Synchronize Real-time ISL Sign Recognition Stream into Editable Draft
-  useEffect(() => {
-    if (recognizedSignPhrase && activeMode === 'ISL_TO_TEXT') {
-      setTranslatedText(recognizedSignPhrase);
-    }
-  }, [recognizedSignPhrase, activeMode]);
 
   // Handle WhatsApp-Style Consolidated Message Dispatch
   const handleSendSignedMessage = useCallback((finalSentence: string) => {
@@ -438,7 +430,6 @@ export const TranslatePage: React.FC = () => {
     setTextMessages([]);
     setLiveCaption('');
     setFinalTranscript('');
-    setTranslatedText('');
     setActiveStepIndex(-1);
     setMicError(null);
 
@@ -529,7 +520,6 @@ export const TranslatePage: React.FC = () => {
     setLiveCaption('');
     setFinalTranscript('');
     setInputText('');
-    setTranslatedText('');
     setTextMessages([]);
     setSessionHistoryLogs([]);
     setCurrentSequence(null);
@@ -575,10 +565,6 @@ export const TranslatePage: React.FC = () => {
     if (autoReadOutChat) {
       speak(trimmed);
     }
-  };
-
-  const handleSimulateGestureRecognition = (phrase: string) => {
-    setTranslatedText(phrase);
   };
 
   return (
@@ -915,14 +901,6 @@ export const TranslatePage: React.FC = () => {
                       <span>BiLSTM Neural Network (port 8000)</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleSimulateGestureRecognition('HELLO')}
-                        className="px-2.5 py-1 bg-white/10 hover:bg-[#fe9832]/20 hover:text-[#fe9832] text-gray-200 rounded-lg text-xs font-bold transition cursor-pointer border border-white/10"
-                        title="Simulate sign detection into composer draft"
-                      >
-                        + Test Sign
-                      </button>
                       <button
                         type="button"
                         onClick={() => {
@@ -1359,7 +1337,7 @@ export const TranslatePage: React.FC = () => {
                     {/* WhatsApp-Style Message Composition Area (ML Words + Manual Edits + Send Button) */}
                     <div className="shrink-0">
                       <ISLMessageComposer
-                        incomingMLWord={translatedText || recognizedSignPhrase}
+                        incomingMLWord={recognizedSignPhrase || recognizedSign}
                         incomingConfidence={signConfidence}
                         isModelActive={isISLRecognizing}
                         onSendMessage={handleSendSignedMessage}
