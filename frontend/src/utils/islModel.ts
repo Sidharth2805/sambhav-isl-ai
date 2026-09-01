@@ -25,6 +25,7 @@ export interface ISLInferenceResult {
   label?: string;
   phrase?: string;
   isRealModel?: boolean;
+  frameCount?: number;
   top_3?: Array<{ class_id: number; label: string; confidence: number }>;
 }
 
@@ -123,11 +124,6 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
     const hasRightHand = landmarks.rightHand && landmarks.rightHand.length > 0;
     const hasLeftHand = landmarks.leftHand && landmarks.leftHand.length > 0;
 
-    if (!hasRightHand && !hasLeftHand) {
-      this.landmarkBuffer = [];
-      return { gesture: '', confidence: 0.0, label: '', phrase: '', isRealModel: this.isOnline };
-    }
-
     // 1. Flatten into exact 126-dimensional coordinate vector matching saanket_bilstm.keras model schema:
     //    Index 0 (Features 0..62)   = Left Hand (21 landmarks * 3 coords)
     //    Index 1 (Features 63..125) = Right Hand (21 landmarks * 3 coords)
@@ -149,10 +145,14 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
       });
     }
 
-    // Append to rolling 60-frame buffer
+    // Append to rolling 60-frame buffer (even when no hands detected, push zero-filled frame to keep counter active)
     this.landmarkBuffer.push(frame126);
     if (this.landmarkBuffer.length > 60) {
       this.landmarkBuffer.shift();
+    }
+
+    if (!hasRightHand && !hasLeftHand) {
+      return { gesture: '', confidence: 0.0, label: '', phrase: '', isRealModel: this.isOnline, frameCount: this.landmarkBuffer.length };
     }
 
     // Check service health periodically every 2 seconds if offline
@@ -183,6 +183,7 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
               label: formattedText,
               phrase: formattedText,
               isRealModel: true,
+              frameCount: this.landmarkBuffer.length,
               top_3: result.top_3
             };
           }
@@ -192,8 +193,8 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
       }
     }
 
-    // 3. Clean neutral state when ML backend is starting/connecting (no hardcoded static heuristic overrides or false word guesses)
-    return { gesture: '', confidence: 0.0, label: '', phrase: '', isRealModel: false };
+    // 3. Clean neutral state when ML backend is starting/connecting
+    return { gesture: '', confidence: 0.0, label: '', phrase: '', isRealModel: false, frameCount: this.landmarkBuffer.length };
   }
 }
 

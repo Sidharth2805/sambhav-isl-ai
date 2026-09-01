@@ -24,14 +24,15 @@ export const ISLModelTestPage: React.FC = () => {
     confidence,
     translatedText,
     isModelOnline,
+    frameCount,
+    onResultsCount,
+    handsDetectedCount,
     error: recognitionError,
     startRecognition,
   } = useISLRecognition();
 
   const [expectedSign, setExpectedSign] = useState<string>('A');
   const [testResults, setTestResults] = useState<TestResult[]>([]);
-  const [detectedHandsLabel, setDetectedHandsLabel] = useState<'None' | 'Left' | 'Right' | 'Both'>('None');
-  const [frameCount, setFrameCount] = useState<number>(0);
   const [topPredictions, setTopPredictions] = useState<Array<{ label: string; confidence: number }>>([]);
 
   // Auto-start camera & recognition when mounted
@@ -45,24 +46,7 @@ export const ISLModelTestPage: React.FC = () => {
     };
   }, [videoRef, isRecognizing, startRecognition]);
 
-  // Listen for developer diagnostic events over HTTP/window or poll predictions
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch('http://127.0.0.1:8000/health');
-        if (res.ok) {
-          // Keep frame count active
-          setFrameCount((prev) => (prev >= 60 ? 60 : prev + 2));
-        }
-      } catch {
-        // Service check
-      }
-    }, 200);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // Update top predictions & hands label from prediction context
+  // Update top predictions from prediction context
   useEffect(() => {
     if (currentGesture) {
       const top1Label = translatedText || currentGesture;
@@ -71,7 +55,6 @@ export const ISLModelTestPage: React.FC = () => {
         { label: 'Secondary Class', confidence: Math.max(0.05, (confidence || 0.85) * 0.1) },
         { label: 'Alternative Pose', confidence: Math.max(0.02, (confidence || 0.85) * 0.05) },
       ]);
-      setDetectedHandsLabel('Both');
     }
   }, [currentGesture, confidence, translatedText]);
 
@@ -164,14 +147,24 @@ export const ISLModelTestPage: React.FC = () => {
               height={480}
             />
 
-            {/* Overlays */}
-            <div className="absolute top-3 left-3 bg-black/80 px-3 py-1.5 rounded-lg text-xs font-bold text-white flex items-center gap-2 border border-white/10 backdrop-blur-xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              <span>Hands Detected: {detectedHandsLabel}</span>
+            {/* Diagnostic Indicators Overlays */}
+            <div className="absolute top-3 left-3 bg-black/85 px-3 py-1.5 rounded-lg text-[11px] font-bold text-white flex flex-wrap items-center gap-2.5 border border-white/10 backdrop-blur-xs z-10">
+              <span className="flex items-center gap-1">
+                <span className={`w-2 h-2 rounded-full ${isRecognizing ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
+                <span>Camera: {isRecognizing ? 'ACTIVE' : 'INACTIVE'}</span>
+              </span>
+              <span>•</span>
+              <span>Video: {isRecognizing ? 'PLAYING' : 'NOT PLAYING'}</span>
+              <span>•</span>
+              <span>MediaPipe: {recognitionError ? 'ERROR' : 'READY'}</span>
             </div>
 
-            <div className="absolute top-3 right-3 bg-black/80 px-3 py-1.5 rounded-lg text-xs font-bold text-white flex items-center gap-2 border border-white/10 backdrop-blur-xs">
-              <span>Sequence Buffer: {frameCount} / 60 frames</span>
+            <div className="absolute top-3 right-3 bg-black/85 px-3 py-1.5 rounded-lg text-[11px] font-bold text-white flex items-center gap-2 border border-white/10 backdrop-blur-xs z-10">
+              <span>onResults: {onResultsCount}</span>
+              <span>•</span>
+              <span>Hands: {handsDetectedCount}</span>
+              <span>•</span>
+              <span className="text-emerald-400 font-extrabold">Buffer: {frameCount} / 60</span>
             </div>
 
             {recognitionError && (

@@ -62,6 +62,10 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
   const [isModelOnline, setIsModelOnline] = useState<boolean>(false);
   const [unrecognizedNotice, setUnrecognizedNotice] = useState<string | null>(null);
 
+  const [frameCount, setFrameCount] = useState<number>(0);
+  const [onResultsCount, setOnResultsCount] = useState<number>(0);
+  const [handsDetectedCount, setHandsDetectedCount] = useState<number>(0);
+
   const streamRef = useRef<MediaStream | null>(null);
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
   const animFrameIdRef = useRef<number | null>(null);
@@ -193,6 +197,9 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
         hands.onResults(async (results: any) => {
           if (isPaused) return;
 
+          setOnResultsCount((prev) => prev + 1);
+          setHandsDetectedCount(results.multiHandLandmarks?.length || 0);
+
           // Target specific camera overlay canvas rather than Three.js avatar canvas
           const vid = videoElementRef.current;
           const canvas = vid?.parentElement?.querySelector('canvas[data-gesture-canvas="true"]') || document.querySelector('canvas[data-gesture-canvas="true"]');
@@ -233,16 +240,6 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
                 }
               }
             }
-
-            // Diagnostic Logging in Development
-            if (import.meta.env.DEV) {
-              console.log('[Sambhav Diagnostic]', {
-                detectedHandCount: results.multiHandLandmarks.length,
-                handedness: results.multiHandedness?.map((h: any) => h.label),
-                hasLeftFeatures: !!landmarksPayload.leftHand?.length,
-                hasRightFeatures: !!landmarksPayload.rightHand?.length,
-              });
-            }
           }
 
           // Fast non-blocking asynchronous inference: process ~20 FPS (50ms) for instant word display
@@ -253,6 +250,9 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
 
             classifier.classify(landmarksPayload).then((inference) => {
               setIsModelOnline(!!inference.isRealModel);
+              if (typeof inference.frameCount === 'number') {
+                setFrameCount(inference.frameCount);
+              }
 
               if (inference.gesture && inference.confidence >= 0.20 && inference.gesture !== 'G_UNKNOWN' && inference.gesture !== 'NO_HANDS') {
                 lastValidTimeRef.current = now;
@@ -348,6 +348,9 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
     translatedText,
     error,
     unrecognizedNotice,
+    frameCount,
+    onResultsCount,
+    handsDetectedCount,
     isModelOnline,
     startRecognition,
     pauseRecognition,
