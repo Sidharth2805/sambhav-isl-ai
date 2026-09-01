@@ -25,6 +25,7 @@ import { HelpPage } from './pages/HelpPage';
 import { NewsPage } from './pages/NewsPage';
 import { CulturalISLPage } from './pages/CulturalISLPage';
 import { ISLModelTestPage } from './pages/ISLModelTestPage';
+import { ISLModelDiagnosticPage } from './pages/ISLModelDiagnosticPage';
 
 const OnlineSessionPage = lazy(() => import('./pages/OnlineSessionPage'));
 
@@ -91,6 +92,7 @@ const App: React.FC = () => {
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/settings" element={<ProfilePage />} />
                 <Route path="/dev/model-test" element={<ISLModelTestPage />} />
+                <Route path="/dev/model-diagnostic" element={<ISLModelDiagnosticPage />} />
 
                 <Route element={<ProtectedRoute allowedTypes={['ADMIN']} />}>
                   <Route path="/admin" element={<AdminDashboardPage />} />
