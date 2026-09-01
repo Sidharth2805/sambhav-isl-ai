@@ -5,6 +5,7 @@ import DraggableSelfView from './DraggableSelfView';
 import type { TranscriptEvent } from '../../types/transcript';
 import { ISLAvatarCanvas, type ISLAvatarCanvasRef } from '../cultural/ISLAvatarCanvas';
 import { useISLRecognition } from '../../hooks/useISLRecognition';
+import { naturalSpeech } from '../../utils/naturalSpeech';
 
 interface DeafUserWorkspaceProps {
   sessionId: string;
@@ -198,16 +199,9 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
     }
   }, [interimTranscripts, finalTranscripts]);
 
-  // Helper to read any text aloud in voice via Text-to-Speech (TTS)
   const handleSpeakMessageAloud = (text: string) => {
     if (!text || !text.trim()) return;
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-      window.speechSynthesis.speak(utterance);
-    }
+    naturalSpeech.speak(text);
   };
 
   // Caption Font Size Selector
