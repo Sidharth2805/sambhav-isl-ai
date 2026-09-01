@@ -453,8 +453,28 @@ export const TranslatePage: React.FC = () => {
 
     if (activeMode === 'SPEECH_TEXT_TO_ISL') {
       startContinuousListening();
+    } else if (activeMode === 'ISL_TO_TEXT') {
+      setTimeout(() => {
+        const vid = gestureVideoRef.current || videoRef.current;
+        if (vid) {
+          startISLRecognition(vid);
+        }
+      }, 200);
     }
   };
+
+  // Auto-trigger ISL Recognition when session is active in ISL_TO_TEXT mode
+  useEffect(() => {
+    if (inSession && activeMode === 'ISL_TO_TEXT') {
+      const timer = setTimeout(() => {
+        const vid = gestureVideoRef.current || videoRef.current;
+        if (vid && !isISLRecognizing) {
+          startISLRecognition(vid);
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [inSession, activeMode, isISLRecognizing, startISLRecognition]);
 
   // Mode Switch Handler (Preserves Camera & Mic; logs mid-conversation mode switch)
   const handleSwitchMode = (newMode: 'SPEECH_TEXT_TO_ISL' | 'ISL_TO_TEXT') => {
