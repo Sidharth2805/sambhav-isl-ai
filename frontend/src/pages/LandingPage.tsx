@@ -620,77 +620,77 @@ export const LandingPage: React.FC = () => {
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6">
               
-              {/* Card 1 */}
+              {/* Card 1: Anubhav Mohanty */}
               <div className="bg-white dark:bg-[#0d121d] rounded-2xl shadow-xs overflow-hidden flex flex-col h-full border border-[#e0e3e5] dark:border-[#2d3133] hover:border-[#fe9832]/50 transition-colors">
                 <div className="p-6 pb-14 flex-grow relative flex items-center justify-center text-center">
                   <p className="text-[#334155] dark:text-[#cbd5e1] text-sm sm:text-base italic leading-relaxed font-body-md">
-                    “Sambhav makes communication much easier and more inclusive. The ISL avatar is simple and helpful.”
+                    “We were impressed by the quality of service and attention to detail. Sambhav understood our requirements quickly and exceeded our expectations.”
                   </p>
                 </div>
                 <div className="relative">
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
                     <img
-                      alt="Avishek Raul"
+                      alt="Anubhav Mohanty"
                       className="w-14 h-14 rounded-full border-3 border-white dark:border-[#0d121d] object-cover shadow-sm"
-                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuAih-oeqLEzKEh5v1aD3o_vNApE-lnTw886yVND8nuDVCv76S3TaslpmDBHOIWhBDiGJckGkj4NfQUBX3LEU_6Oo2YidVrzNiX7jrGARDouQ5J-vb03EyUf__Pf7UWH4mWC3aJ_ho138XCdy3akTWfIlGmUMESRSYNO-l-j1U6WVSA6-d7ipoqmiirmMEx_sHV1anwI8fJewhSmfDP87TtRu1dbNr8WMN1TZfqlPG72L7m683A7r1bh"
-                    />
-                  </div>
-                  <div className="bg-[#059669] pt-9 pb-5 text-center text-white relative">
-                    <svg className="absolute top-0 left-0 w-full -translate-y-[99%]" preserveAspectRatio="none" viewBox="0 0 1440 320">
-                      <path d="M0,160L48,176C96,192,192,224,288,224C384,224,480,192,576,165.3C672,139,768,117,864,128C960,139,1056,181,1152,197.3C1248,213,1344,203,1392,197.3L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z" fill="#059669"></path>
-                    </svg>
-                    <h4 className="font-bold text-sm sm:text-base mb-0.5 font-headline">Avishek Raul</h4>
-                    <p className="text-[11px] text-white/90 uppercase tracking-wide">Community Beta Tester</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Card 2 */}
-              <div className="bg-white dark:bg-[#0d121d] rounded-2xl shadow-xs overflow-hidden flex flex-col h-full border border-[#e0e3e5] dark:border-[#2d3133] hover:border-[#fe9832]/50 transition-colors">
-                <div className="p-6 pb-14 flex-grow relative flex items-center justify-center text-center">
-                  <p className="text-[#334155] dark:text-[#cbd5e1] text-sm sm:text-base italic leading-relaxed font-body-md">
-                    “I love how Sambhav turns information into Indian Sign Language. It makes technology feel accessible to everyone.”
-                  </p>
-                </div>
-                <div className="relative">
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
-                    <img
-                      alt="Subham Nayak"
-                      className="w-14 h-14 rounded-full border-3 border-white dark:border-[#0d121d] object-cover shadow-sm"
-                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuAgBIarNZp3rQ9e4dKmX9UrQTP1s-rz_gS8JvJX0c7xif7GauNnuUVYc165mn80xbLD5qzjpYMxT7-ZMWMIT-V_bYOv8KQp5p8I_69RoIRNybgOx4JDtMFRvPlnXHUWTZRVmjlzuczNdEryunkZkS-Q8Yv68bEWhIvnj3aKeHkurSG2_MF-Sl8GLlJKz6dTuUQzIzaodLo_9kWR8hfZts7043wPbU4t6tebdTKPiIIUkqTfZbO-CxvJ"
+                      src="https://r.mobirisesite.com/3189180/assets/images/gc4f811ae8669f44688a2c0b044ee-h_mthqxsmc.jpg"
                     />
                   </div>
                   <div className="bg-[#fe9832] pt-9 pb-5 text-center text-[#683700] dark:text-[#3d1e00] relative">
                     <svg className="absolute top-0 left-0 w-full -translate-y-[99%]" preserveAspectRatio="none" viewBox="0 0 1440 320">
                       <path d="M0,160L48,176C96,192,192,224,288,224C384,224,480,192,576,165.3C672,139,768,117,864,128C960,139,1056,181,1152,197.3C1248,213,1344,203,1392,197.3L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z" fill="#fe9832"></path>
                     </svg>
-                    <h4 className="font-bold text-sm sm:text-base mb-0.5 font-headline">Subham Nayak</h4>
-                    <p className="text-[11px] opacity-90 uppercase tracking-wide font-semibold">Community Beta Tester</p>
+                    <h4 className="font-bold text-sm sm:text-base mb-0.5 font-headline">Anubhav Mohanty</h4>
+                    <p className="text-[11px] opacity-90 uppercase tracking-wide font-semibold">Business Owner</p>
                   </div>
                 </div>
               </div>
 
-              {/* Card 3 */}
+              {/* Card 2: Prachi Mohapatra */}
               <div className="bg-white dark:bg-[#0d121d] rounded-2xl shadow-xs overflow-hidden flex flex-col h-full border border-[#e0e3e5] dark:border-[#2d3133] hover:border-[#fe9832]/50 transition-colors">
                 <div className="p-6 pb-14 flex-grow relative flex items-center justify-center text-center">
                   <p className="text-[#334155] dark:text-[#cbd5e1] text-sm sm:text-base italic leading-relaxed font-body-md">
-                    “Sambhav shows how technology can bring people closer by making communication more accessible for everyone.”
+                    “Sambhav helped us save time and achieve better results. Their team is reliable, knowledgeable, and easy to work with.”
                   </p>
                 </div>
                 <div className="relative">
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
                     <img
-                      alt="Ananya Sharma"
+                      alt="Prachi Mohapatra"
                       className="w-14 h-14 rounded-full border-3 border-white dark:border-[#0d121d] object-cover shadow-sm"
-                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuA7zSAMdsHUBEh-OdUAeCWwrIg_LjSF-LErlS6pSMJyVq_hX99WZ9PX7tP2dAzxoL05TyRlo2fYQs46fxSFvvA5uYjoiSC_7rgiBE2TOy9Xb7FCBVezVt8xiQ9yc4dHLiEoSMNoHCq3ShvRGzAmzg9ljH4zcRHt6IrJ_1qCfXBRy4WL69v93wJ1EgmzmAcguix_8lxWQCjG2DTHto2964JWkeYHrzgAR1aN6Ge-1jAE9R2OADwbV0Qs"
+                      src="https://r.mobirisesite.com/3189180/assets/images/gb5292c91c0837a47d680af6360ca-h_mthqwd8l.jpg"
+                    />
+                  </div>
+                  <div className="bg-[#059669] pt-9 pb-5 text-center text-white relative">
+                    <svg className="absolute top-0 left-0 w-full -translate-y-[99%]" preserveAspectRatio="none" viewBox="0 0 1440 320">
+                      <path d="M0,160L48,176C96,192,192,224,288,224C384,224,480,192,576,165.3C672,139,768,117,864,128C960,139,1056,181,1152,197.3C1248,213,1344,203,1392,197.3L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z" fill="#059669"></path>
+                    </svg>
+                    <h4 className="font-bold text-sm sm:text-base mb-0.5 font-headline">Prachi Mohapatra</h4>
+                    <p className="text-[11px] text-white/90 uppercase tracking-wide">Happy Customer</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 3: Subrat Joshi */}
+              <div className="bg-white dark:bg-[#0d121d] rounded-2xl shadow-xs overflow-hidden flex flex-col h-full border border-[#e0e3e5] dark:border-[#2d3133] hover:border-[#fe9832]/50 transition-colors">
+                <div className="p-6 pb-14 flex-grow relative flex items-center justify-center text-center">
+                  <p className="text-[#334155] dark:text-[#cbd5e1] text-sm sm:text-base italic leading-relaxed font-body-md">
+                    “The service was excellent, the communication was clear, and the results were exactly what we hoped for. Highly recommended!”
+                  </p>
+                </div>
+                <div className="relative">
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+                    <img
+                      alt="Subrat Joshi"
+                      className="w-14 h-14 rounded-full border-3 border-white dark:border-[#0d121d] object-cover shadow-sm"
+                      src="https://r.mobirisesite.com/3189180/assets/images/g784e78d191e0fe3962c7db76cc06-h_mthqxgfq.jpg"
                     />
                   </div>
                   <div className="bg-[#181c1e] dark:bg-[#1a202c] pt-9 pb-5 text-center text-white relative">
                     <svg className="absolute top-0 left-0 w-full -translate-y-[99%]" preserveAspectRatio="none" viewBox="0 0 1440 320">
                       <path d="M0,160L48,176C96,192,192,224,288,224C384,224,480,192,576,165.3C672,139,768,117,864,128C960,139,1056,181,1152,197.3C1248,213,1344,203,1392,197.3L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z" fill="#181c1e"></path>
                     </svg>
-                    <h4 className="font-bold text-sm sm:text-base mb-0.5 font-headline">Ananya Sharma</h4>
-                    <p className="text-[11px] text-white/90 uppercase tracking-wide">Community Beta Tester</p>
+                    <h4 className="font-bold text-sm sm:text-base mb-0.5 font-headline">Subrat Joshi</h4>
+                    <p className="text-[11px] text-white/90 uppercase tracking-wide">Operations Head</p>
                   </div>
                 </div>
               </div>
@@ -702,21 +702,98 @@ export const LandingPage: React.FC = () => {
         {/* ------------------------------------------------------------------------- */}
         {/* 9. MEET OUR TEAM                                                          */}
         {/* ------------------------------------------------------------------------- */}
-        <section className="py-12 sm:py-16 lg:py-20">
+        {/* ------------------------------------------------------------------------- */}
+        {/* 9. MEET OUR TEAM                                                          */}
+        {/* ------------------------------------------------------------------------- */}
+        <section className="py-12 sm:py-16 lg:py-20 border-t border-[#e0e3e5] dark:border-[#2d3133]">
           <div className="max-w-6xl mx-auto px-4 sm:px-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 items-center">
-              <div className="text-left">
-                <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#030813] dark:text-white mb-4 font-headline">Meet Our Team</h2>
-                <p className="text-sm sm:text-base md:text-lg text-[#475569] dark:text-[#94a3b8] leading-relaxed mb-4 font-body-lg">
-                  We are a passionate team of engineers, designers, and accessibility advocates dedicated to bridging the communication gap. Together, we combine our expertise in AI and deep understanding of the Deaf community to create Sambhav.
+            <div className="text-center mb-12">
+              <span className="px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-widest bg-[#fe9832]/20 text-[#fe9832] border border-[#fe9832]/30 mb-3 inline-block">
+                Team HacKNomads
+              </span>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#030813] dark:text-white mb-4 font-headline">Meet Our Team</h2>
+              <p className="text-sm sm:text-base md:text-lg text-[#475569] dark:text-[#94a3b8] max-w-2xl mx-auto font-body-lg">
+                We are Team HacKNomads — a dedicated team building AI accessibility solutions for Indian Sign Language communication.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+              {/* Member 1: Subham Nayak */}
+              <div className="bg-white dark:bg-[#0d121d] rounded-2xl p-6 border border-[#e0e3e5] dark:border-[#2d3133] shadow-xs hover:border-[#fe9832]/50 transition-all flex flex-col items-center text-center group">
+                <img
+                  alt="Subham Nayak"
+                  className="w-24 h-24 rounded-full object-cover border-4 border-[#fe9832]/20 group-hover:scale-105 transition-transform mb-4 shadow-md"
+                  src="https://r.mobirisesite.com/3189180/assets/images/team1-h_mths0kza.jpg"
+                />
+                <h3 className="text-lg font-bold text-[#030813] dark:text-white font-headline mb-1">Subham Nayak</h3>
+                <p className="text-[#334155] dark:text-[#cbd5e1] text-xs sm:text-sm italic leading-relaxed">
+                  “SAMBHAV Began With a Simple Thought: Communication Should Never Be Limited By The Way We Speak.”
                 </p>
               </div>
-              <div className="relative rounded-2xl sm:rounded-3xl shadow-sm border border-[#e0e3e5] dark:border-[#2d3133] max-w-lg mx-auto lg:max-w-none overflow-hidden group">
+
+              {/* Member 2: Mohapatra S.H Gargi */}
+              <div className="bg-white dark:bg-[#0d121d] rounded-2xl p-6 border border-[#e0e3e5] dark:border-[#2d3133] shadow-xs hover:border-[#fe9832]/50 transition-all flex flex-col items-center text-center group">
                 <img
-                  alt="Sambhav Team"
-                  className="w-full h-auto object-cover rounded-2xl sm:rounded-3xl transition-transform duration-300 group-hover:scale-105"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuAR619udVh9TPr_uBuvwKPp2bMl9fMZ_hXnbJ4MnlpkFWGtRfwx9tW25FuZH3JJ5eI8O14ezBV9oXODCaXqYCJMPykR0gpQSUJTQ4wwt8c_Fwn0NjuhKkjibExPA5coorqz0UWbIqyLkQO9LRxq59cJv-PzxnhoRA7kOqGwbAmsMQ5S-SjPuqoyuepDUr5V5c-IdxuJizQ1iu8Tz1B8jr1dsYdo4H8NUWqLL1GxN2QW4xuqDXMrb7XSDH1Qitk4eUMT9Q"
+                  alt="Mohapatra S.H Gargi"
+                  className="w-24 h-24 rounded-full object-cover border-4 border-[#fe9832]/20 group-hover:scale-105 transition-transform mb-4 shadow-md"
+                  src="https://r.mobirisesite.com/3189180/assets/images/team6-h_mths5r90.jpg"
                 />
+                <h3 className="text-lg font-bold text-[#030813] dark:text-white font-headline mb-1">Mohapatra S.H Gargi</h3>
+                <p className="text-[#334155] dark:text-[#cbd5e1] text-xs sm:text-sm italic leading-relaxed">
+                  “For us, Indian Sign Language is not just a collection of gestures; it is a language, an identity, and a way of expressing emotions.”
+                </p>
+              </div>
+
+              {/* Member 3: B Vineet Patro */}
+              <div className="bg-white dark:bg-[#0d121d] rounded-2xl p-6 border border-[#e0e3e5] dark:border-[#2d3133] shadow-xs hover:border-[#fe9832]/50 transition-all flex flex-col items-center text-center group">
+                <img
+                  alt="B Vineet Patro"
+                  className="w-24 h-24 rounded-full object-cover border-4 border-[#fe9832]/20 group-hover:scale-105 transition-transform mb-4 shadow-md"
+                  src="https://r.mobirisesite.com/3189180/assets/images/team3-h_mths6br8.jpg"
+                />
+                <h3 className="text-lg font-bold text-[#030813] dark:text-white font-headline mb-1">B Vineet Patro</h3>
+                <p className="text-[#334155] dark:text-[#cbd5e1] text-xs sm:text-sm italic leading-relaxed">
+                  “SAMBHAV uses technology to understand these signs and create a bridge between people who communicate differently.”
+                </p>
+              </div>
+
+              {/* Member 4: Sidharth Kumar */}
+              <div className="bg-white dark:bg-[#0d121d] rounded-2xl p-6 border border-[#e0e3e5] dark:border-[#2d3133] shadow-xs hover:border-[#fe9832]/50 transition-all flex flex-col items-center text-center group">
+                <img
+                  alt="Sidharth Kumar"
+                  className="w-24 h-24 rounded-full object-cover border-4 border-[#fe9832]/20 group-hover:scale-105 transition-transform mb-4 shadow-md"
+                  src="https://r.mobirisesite.com/3189180/assets/images/team4-h_mthrnb56.jpg"
+                />
+                <h3 className="text-lg font-bold text-[#030813] dark:text-white font-headline mb-1">Sidharth Kumar</h3>
+                <p className="text-[#334155] dark:text-[#cbd5e1] text-xs sm:text-sm italic leading-relaxed">
+                  “From sign recognition to real-time communication and an expressive digital avatar, every part of SAMBHAV is built around accessibility.”
+                </p>
+              </div>
+
+              {/* Member 5: Shreya Kashyap */}
+              <div className="bg-white dark:bg-[#0d121d] rounded-2xl p-6 border border-[#e0e3e5] dark:border-[#2d3133] shadow-xs hover:border-[#fe9832]/50 transition-all flex flex-col items-center text-center group">
+                <img
+                  alt="Shreya Kashyap"
+                  className="w-24 h-24 rounded-full object-cover border-4 border-[#fe9832]/20 group-hover:scale-105 transition-transform mb-4 shadow-md"
+                  src="https://r.mobirisesite.com/3189180/assets/images/team5-h_mthrfmge.jpg"
+                />
+                <h3 className="text-lg font-bold text-[#030813] dark:text-white font-headline mb-1">Shreya Kashyap</h3>
+                <p className="text-[#334155] dark:text-[#cbd5e1] text-xs sm:text-sm italic leading-relaxed">
+                  “We believe technology should not make people adapt to it. Technology should adapt to people.”
+                </p>
+              </div>
+
+              {/* Member 6: Avishek Raul */}
+              <div className="bg-white dark:bg-[#0d121d] rounded-2xl p-6 border border-[#e0e3e5] dark:border-[#2d3133] shadow-xs hover:border-[#fe9832]/50 transition-all flex flex-col items-center text-center group">
+                <img
+                  alt="Avishek Raul"
+                  className="w-24 h-24 rounded-full object-cover border-4 border-[#fe9832]/20 group-hover:scale-105 transition-transform mb-4 shadow-md"
+                  src="https://r.mobirisesite.com/3189180/assets/images/team2-h_mthsbdlh.jpg"
+                />
+                <h3 className="text-lg font-bold text-[#030813] dark:text-white font-headline mb-1">Avishek Raul</h3>
+                <p className="text-[#334155] dark:text-[#cbd5e1] text-xs sm:text-sm italic leading-relaxed">
+                  “And that is what SAMBHAV stands for — making inclusive communication not just an idea, but something possible.”
+                </p>
               </div>
             </div>
           </div>
@@ -744,19 +821,16 @@ export const LandingPage: React.FC = () => {
                     </div>
                     <div className="space-y-1">
                       <p className="text-sm font-semibold text-[#030813] dark:text-white">E-mail</p>
-                      <a className="block text-xs sm:text-sm text-[#475569] dark:text-[#cbd5e1] hover:text-[#fe9832] transition" href="mailto:support@sambhav.ai">support@sambhav.ai</a>
-                      <a className="block text-xs sm:text-sm text-[#475569] dark:text-[#cbd5e1] hover:text-[#fe9832] transition" href="mailto:partnership@sambhav.ai">partnership@sambhav.ai</a>
-                      <a className="block text-xs sm:text-sm text-[#475569] dark:text-[#cbd5e1] hover:text-[#fe9832] transition" href="mailto:info@sambhav.ai">info@sambhav.ai</a>
+                      <a className="block text-xs sm:text-sm text-[#475569] dark:text-[#cbd5e1] hover:text-[#fe9832] transition" href="mailto:nayak.subham2426@gmail.com">nayak.subham2426@gmail.com</a>
                     </div>
                   </div>
                   <div className="flex items-start space-x-3.5 sm:space-x-4">
                     <div className="w-10 h-10 rounded-full bg-[#fe9832]/15 flex items-center justify-center flex-shrink-0 border border-[#fe9832]/30">
-                      <span className="material-symbols-outlined text-[#8f4e00] dark:text-[#fe9832] text-xl">call</span>
+                      <span className="material-symbols-outlined text-[#8f4e00] dark:text-[#fe9832] text-xl">location_on</span>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-sm font-semibold text-[#030813] dark:text-white">Contact</p>
-                      <p className="text-xs sm:text-sm text-[#475569] dark:text-[#cbd5e1]">+91 7488152499</p>
-                      <p className="text-xs sm:text-sm text-[#475569] dark:text-[#cbd5e1]">+91 9348682617</p>
+                      <p className="text-sm font-semibold text-[#030813] dark:text-white">Location</p>
+                      <p className="text-xs sm:text-sm text-[#475569] dark:text-[#cbd5e1]">ITER, Siksha 'O' Anusandhan, Jagamara, Bhubaneswar - 751030</p>
                     </div>
                   </div>
                 </div>
