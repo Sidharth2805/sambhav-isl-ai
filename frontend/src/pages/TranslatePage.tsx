@@ -334,33 +334,40 @@ export const TranslatePage: React.FC = () => {
         const err = e?.error;
         console.warn('[SAMBHAV Speech] Error event:', err);
         if (err === 'not-allowed' || err === 'service-not-allowed') {
-          setMicError('Microphone access was denied. Please allow microphone permission in your browser URL bar.');
+          setMicError('Microphone access was denied. Please allow microphone permission in browser settings.');
           shouldListenRef.current = false;
           setIsListening(false);
           return;
         }
 
-        // For transient errors like no-speech or network, auto-resume smoothly
+        if (err === 'aborted' || err === 'no-speech') {
+          // Normal transient pause; onend handler will manage single clean restart
+          return;
+        }
+
+        // For network errors, schedule single clean restart
         if (shouldListenRef.current) {
           if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
           restartTimeoutRef.current = setTimeout(() => {
-            if (shouldListenRef.current) {
+            if (shouldListenRef.current && !recognitionRef.current) {
               startContinuousListening();
             }
-          }, 400);
+          }, 500);
         }
       };
 
       recognition.onend = () => {
         setIsListening(false);
-        // Seamlessly restart if user wants continuous listening
+        recognitionRef.current = null;
+
+        // Seamlessly restart once if user wants continuous listening
         if (shouldListenRef.current) {
           if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
           restartTimeoutRef.current = setTimeout(() => {
-            if (shouldListenRef.current) {
+            if (shouldListenRef.current && !recognitionRef.current) {
               startContinuousListening();
             }
-          }, 250);
+          }, 300);
         }
       };
 
@@ -368,10 +375,11 @@ export const TranslatePage: React.FC = () => {
       recognition.start();
     } catch (err: any) {
       console.warn('[SAMBHAV Speech] Start error:', err);
+      recognitionRef.current = null;
       if (shouldListenRef.current) {
         if (restartTimeoutRef.current) clearTimeout(restartTimeoutRef.current);
         restartTimeoutRef.current = setTimeout(() => {
-          if (shouldListenRef.current) {
+          if (shouldListenRef.current && !recognitionRef.current) {
             startContinuousListening();
           }
         }, 800);
