@@ -67,6 +67,7 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
   const handsInstanceRef = useRef<any | null>(null);
   const lastProcessedTimeRef = useRef<number>(0);
   const isInferenceBusyRef = useRef<boolean>(false);
+  const lastValidTimeRef = useRef<number>(0);
 
   // Draw hand skeleton connections onto the canvas
   const drawHandSkeleton = (ctx: CanvasRenderingContext2D, landmarks: ISLLandmark[], width: number, height: number, color = '#fe9832') => {
@@ -247,16 +248,20 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
             classifier.classify(landmarksPayload).then((inference) => {
               setIsModelOnline(!!inference.isRealModel);
 
-              if (inference.gesture && inference.confidence >= 0.35 && inference.gesture !== 'G_UNKNOWN' && inference.gesture !== 'NO_HANDS') {
+              if (inference.gesture && inference.confidence >= 0.25 && inference.gesture !== 'G_UNKNOWN' && inference.gesture !== 'NO_HANDS') {
+                lastValidTimeRef.current = now;
                 const label = inference.label || inference.gesture;
-                setCurrentGesture((prev) => (prev !== label ? label : prev));
+                setCurrentGesture(label);
                 setConfidence(inference.confidence);
                 const phrase = inference.phrase || ISL_VOCABULARY[inference.gesture] || inference.gesture;
-                setTranslatedText((prev) => (prev !== phrase ? phrase : prev));
+                setTranslatedText(phrase);
               } else {
-                setCurrentGesture((prev) => (prev !== null ? null : prev));
-                setConfidence(0);
-                setTranslatedText((prev) => (prev !== '' ? '' : prev));
+                // Preserve recognized sign text on screen for 3 seconds so the user can read and speak it
+                if (now - lastValidTimeRef.current > 3000) {
+                  setCurrentGesture(null);
+                  setConfidence(0);
+                  setTranslatedText('');
+                }
               }
             }).catch((classifyErr) => {
               console.error('[Sambhav ML] Inference error:', classifyErr);

@@ -162,8 +162,8 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
       this.initialize();
     }
 
-    // 2. If ML service is online and landmark buffer has sufficient motion frames (>= 25), invoke BiLSTM neural inference
-    if (this.isOnline && this.landmarkBuffer.length >= 25) {
+    // 2. If ML service is online and landmark buffer has motion frames (>= 10), invoke BiLSTM neural inference
+    if (this.isOnline && this.landmarkBuffer.length >= 10) {
       try {
         const response = await fetch(`${this.serviceUrl}/predict-landmarks`, {
           method: 'POST',
