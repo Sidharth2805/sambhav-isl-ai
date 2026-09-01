@@ -103,8 +103,13 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
   public isOnline = false;
   private lastCheckTime = 0;
 
-  constructor(serviceUrl: string = (import.meta.env.VITE_ML_SERVICE_URL || 'http://127.0.0.1:8000')) {
-    this.serviceUrl = serviceUrl;
+  constructor(serviceUrl?: string) {
+    const defaultUrl = import.meta.env.VITE_ML_SERVICE_URL || 'http://127.0.0.1:8000';
+    let url = serviceUrl || defaultUrl;
+    if (typeof window !== 'undefined' && window.location.protocol === 'https:' && url.startsWith('http://127.0.0.1')) {
+      console.warn('[Sambhav ML] Deployed on HTTPS but VITE_ML_SERVICE_URL is set to insecure HTTP (127.0.0.1). Set VITE_ML_SERVICE_URL to your HTTPS ML service on Render.');
+    }
+    this.serviceUrl = url.replace(/\/+$/, '');
   }
 
   public async initialize(): Promise<void> {
@@ -212,13 +217,71 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
       }
     }
 
-    // 3. Clean neutral state when ML backend is starting/connecting
+    // 3. Fallback geometric gesture classifier when ML backend is offline or connecting
+    const geo = classifyGeometricGesture(landmarks);
+    if (geo) {
+      return {
+        gesture: geo.gesture,
+        confidence: geo.confidence,
+        label: geo.gesture,
+        phrase: geo.gesture,
+        isRealModel: false,
+        frameCount: this.landmarkBuffer.length
+      };
+    }
+
     return { gesture: '', confidence: 0.0, label: '', phrase: '', isRealModel: false, frameCount: this.landmarkBuffer.length };
   }
 
   public getLatestBuffer(): number[][] {
     return this.landmarkBuffer;
   }
+}
+
+/**
+ * Geometric Hand Posture & Landmark Classifier (Standalone Offline Fallback Engine)
+ */
+function classifyGeometricGesture(landmarks: ISLLandmarks): { gesture: string; confidence: number } | null {
+  const hand = landmarks.rightHand?.length ? landmarks.rightHand : landmarks.leftHand;
+  const isTwoHands = !!(landmarks.rightHand?.length && landmarks.leftHand?.length);
+
+  if (isTwoHands && landmarks.rightHand && landmarks.leftHand) {
+    const rWrist = landmarks.rightHand[0];
+    const lWrist = landmarks.leftHand[0];
+    const dist = Math.hypot(rWrist.x - lWrist.x, rWrist.y - lWrist.y);
+    if (dist < 0.35) {
+      return { gesture: 'Namaste', confidence: 0.88 };
+    }
+  }
+
+  if (!hand || hand.length < 21) return null;
+
+  const wrist = hand[0];
+  const distFromWrist = (idx: number) => Math.hypot(hand[idx].x - wrist.x, hand[idx].y - wrist.y);
+
+  const thumbUp = distFromWrist(4) > distFromWrist(2);
+  const indexUp = distFromWrist(8) > distFromWrist(6);
+  const middleUp = distFromWrist(12) > distFromWrist(10);
+  const ringUp = distFromWrist(16) > distFromWrist(14);
+  const pinkyUp = distFromWrist(20) > distFromWrist(18);
+
+  if (!indexUp && !middleUp && !ringUp && !pinkyUp) {
+    return { gesture: 'A', confidence: 0.85 };
+  }
+  if (indexUp && middleUp && ringUp && pinkyUp) {
+    return { gesture: 'B', confidence: 0.85 };
+  }
+  if (indexUp && middleUp && !ringUp && !pinkyUp) {
+    return { gesture: 'V', confidence: 0.85 };
+  }
+  if (indexUp && !middleUp && !ringUp && !pinkyUp) {
+    return { gesture: 'D', confidence: 0.82 };
+  }
+  if (thumbUp && pinkyUp && !indexUp && !middleUp && !ringUp) {
+    return { gesture: 'Y', confidence: 0.85 };
+  }
+
+  return null;
 }
 
 /**
