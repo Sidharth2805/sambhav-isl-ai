@@ -99,8 +99,15 @@ FRIENDLY_PHRASES = {
     'sad': 'Sad',
 }
 
+MIN_CONFIDENCE_THRESHOLD = 0.15
+
 def normalize_sequence(sequence: np.ndarray) -> np.ndarray:
-    norm = (sequence - mean_vec) / std_vec
+    seq = np.asarray(sequence, dtype=np.float32)
+    if seq.ndim == 3 and seq.shape[0] == 1:
+        seq = seq[0]
+    m = mean_vec.reshape(NUM_FEATURES)
+    s = std_vec.reshape(NUM_FEATURES)
+    norm = (seq - m) / s
     return norm.astype(np.float32)
 
 def extract_landmarks_from_cv2_frame(frame: np.ndarray):
@@ -139,7 +146,11 @@ def run_bilstm_inference(sequence_126: np.ndarray) -> dict:
         padded_seq = sequence_126
 
     norm_seq = normalize_sequence(padded_seq)
-    batch_input = np.expand_dims(norm_seq, axis=0)
+    if norm_seq.ndim == 2:
+        batch_input = np.expand_dims(norm_seq, axis=0)
+    else:
+        batch_input = norm_seq.reshape(1, SEQUENCE_LENGTH, NUM_FEATURES)
+
     preds = model(batch_input, training=False).numpy()[0]
 
     top_idx = int(np.argmax(preds))
@@ -156,11 +167,11 @@ def run_bilstm_inference(sequence_126: np.ndarray) -> dict:
 
     if confidence < MIN_CONFIDENCE_THRESHOLD:
         return {
-            'gesture': 'UNKNOWN',
-            'label': 'Analyzing gesture...',
+            'gesture': raw_label,
+            'label': raw_label,
             'raw_label': raw_label,
             'confidence': confidence,
-            'phrase': '',
+            'phrase': phrase,
             'top_3': top_3,
         }
 
