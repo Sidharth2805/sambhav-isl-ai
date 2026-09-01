@@ -446,6 +446,9 @@ export const TranslatePage: React.FC = () => {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
+        if (gestureVideoRef.current) {
+          gestureVideoRef.current.srcObject = stream;
+        }
       }
     } catch (err) {
       console.warn('Camera/mic hardware track access note:', err);
@@ -457,19 +460,29 @@ export const TranslatePage: React.FC = () => {
       setTimeout(() => {
         const vid = gestureVideoRef.current || videoRef.current;
         if (vid) {
+          if (mediaStreamRef.current && vid.srcObject !== mediaStreamRef.current) {
+            vid.srcObject = mediaStreamRef.current;
+            vid.play().catch(() => {});
+          }
           startISLRecognition(vid);
         }
       }, 200);
     }
   };
 
-  // Auto-trigger ISL Recognition when session is active in ISL_TO_TEXT mode
+  // Auto-trigger ISL Recognition and attach video stream when session is active in ISL_TO_TEXT mode
   useEffect(() => {
     if (inSession && activeMode === 'ISL_TO_TEXT') {
       const timer = setTimeout(() => {
         const vid = gestureVideoRef.current || videoRef.current;
-        if (vid && !isISLRecognizing) {
-          startISLRecognition(vid);
+        if (vid) {
+          if (mediaStreamRef.current && vid.srcObject !== mediaStreamRef.current) {
+            vid.srcObject = mediaStreamRef.current;
+            vid.play().catch(() => {});
+          }
+          if (!isISLRecognizing) {
+            startISLRecognition(vid);
+          }
         }
       }, 300);
       return () => clearTimeout(timer);
@@ -861,7 +874,13 @@ export const TranslatePage: React.FC = () => {
                   {/* Full Camera Viewport with Hand Skeleton Tracking Canvas */}
                   <div className="flex-1 relative rounded-xl overflow-hidden bg-black flex items-center justify-center min-h-0">
                     <video
-                      ref={gestureVideoRef}
+                      ref={(el) => {
+                        gestureVideoRef.current = el;
+                        if (el && mediaStreamRef.current && el.srcObject !== mediaStreamRef.current) {
+                          el.srcObject = mediaStreamRef.current;
+                          el.play().catch(() => {});
+                        }
+                      }}
                       autoPlay
                       playsInline
                       muted
