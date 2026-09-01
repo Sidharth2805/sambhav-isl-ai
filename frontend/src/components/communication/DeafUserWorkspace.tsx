@@ -170,7 +170,7 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
   // Automatically broadcast recognized sign / letter / word into live call chat/transcript
   useEffect(() => {
     const textToTransmit = recognizedSignPhrase || recognizedSign;
-    if (textToTransmit && textToTransmit !== lastTransmittedSignRef.current && signConfidence >= 0.65) {
+    if (textToTransmit && textToTransmit !== lastTransmittedSignRef.current && signConfidence >= 0.25) {
       lastTransmittedSignRef.current = textToTransmit;
       if (onSendMessage) {
         onSendMessage(textToTransmit);

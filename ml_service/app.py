@@ -153,27 +153,30 @@ def run_bilstm_inference(sequence_126: np.ndarray) -> dict:
 
     preds = model(batch_input, training=False).numpy()[0]
 
-    top_idx = int(np.argmax(preds))
-    confidence = float(preds[top_idx])
-    raw_label = LABEL_MAPPING.get(str(top_idx), f'CLASS_{top_idx}')
+    # Compute spatial landmark motion variance across the 60 frames
+    motion_var = float(np.var(padded_seq, axis=0).mean())
 
-    top_3_indices = np.argsort(preds)[::-1][:3]
+    top_3_indices = np.argsort(preds)[::-1][:5]
     top_3 = [
         {'class_id': int(i), 'label': LABEL_MAPPING.get(str(i), f'CLASS_{i}'), 'confidence': float(preds[i])}
         for i in top_3_indices
     ]
 
-    phrase = FRIENDLY_PHRASES.get(raw_label.lower(), FRIENDLY_PHRASES.get(raw_label, raw_label))
+    top_idx = int(top_3_indices[0])
+    raw_label = LABEL_MAPPING.get(str(top_idx), f'CLASS_{top_idx}')
+    confidence = float(preds[top_idx])
 
-    if confidence < MIN_CONFIDENCE_THRESHOLD:
-        return {
-            'gesture': raw_label,
-            'label': raw_label,
-            'raw_label': raw_label,
-            'confidence': confidence,
-            'phrase': phrase,
-            'top_3': top_3,
-        }
+    # If active motion is detected (moving hand gesture) and top prediction is a static letter,
+    # check top predictions for a dynamic word gesture matching the trajectory
+    if motion_var > 0.0015 and len(raw_label) == 1:
+        for candidate in top_3:
+            cand_label = candidate['label']
+            if len(cand_label) > 1 and candidate['confidence'] >= 0.08:
+                raw_label = cand_label
+                confidence = candidate['confidence']
+                break
+
+    phrase = FRIENDLY_PHRASES.get(raw_label.lower(), FRIENDLY_PHRASES.get(raw_label, raw_label))
 
     return {
         'gesture': raw_label,

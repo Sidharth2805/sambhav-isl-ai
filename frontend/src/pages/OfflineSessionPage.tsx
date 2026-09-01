@@ -260,6 +260,7 @@ export const OfflineSessionPage: React.FC = () => {
                 />
                 <canvas
                   ref={canvasRef}
+                  data-gesture-canvas="true"
                   className="absolute inset-0 w-full h-full pointer-events-none"
                   width={640}
                   height={480}
