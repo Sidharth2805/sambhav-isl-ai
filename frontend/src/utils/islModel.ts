@@ -35,6 +35,8 @@ export interface ISLInferenceResult {
 export interface ISLClassifier {
   name: string;
   isDemo: boolean;
+  isOnline: boolean;
+  getIsOnline(): boolean;
   initialize(): Promise<void>;
   classify(landmarks: ISLLandmarks): Promise<ISLInferenceResult>;
 }
@@ -97,7 +99,7 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
   public isDemo = false;
   private serviceUrl: string;
   private landmarkBuffer: number[][] = [];
-  private isOnline = false;
+  public isOnline = false;
   private lastCheckTime = 0;
 
   constructor(serviceUrl: string = (import.meta.env.VITE_ML_SERVICE_URL || 'http://127.0.0.1:8000')) {
@@ -118,6 +120,10 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
     } catch {
       this.isOnline = false;
     }
+  }
+
+  public getIsOnline(): boolean {
+    return this.isOnline;
   }
 
   public async classify(landmarks: ISLLandmarks): Promise<ISLInferenceResult> {

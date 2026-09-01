@@ -165,6 +165,12 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
     setIsPaused(false);
   }, []);
 
+  useEffect(() => {
+    classifier.initialize().then(() => {
+      setIsModelOnline(classifier.getIsOnline());
+    });
+  }, []);
+
   const startRecognition = useCallback(async (videoElement: HTMLVideoElement | null) => {
     if (!videoElement) {
       setError('Video element reference is null.');
@@ -177,6 +183,7 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
     try {
       // 1. Initialize classifier
       await classifier.initialize();
+      setIsModelOnline(classifier.getIsOnline());
 
       // 2. Attach or request camera stream
       if (videoElement.srcObject) {
