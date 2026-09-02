@@ -71,7 +71,6 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
   const [unrecognizedNotice, setUnrecognizedNotice] = useState<string | null>(null);
 
   const [frameCount, setFrameCount] = useState<number>(0);
-  const [onResultsCount, setOnResultsCount] = useState<number>(0);
   const [handsDetectedCount, setHandsDetectedCount] = useState<number>(0);
   const [gestureState, setGestureState] = useState<GestureCaptureState>('WAITING');
   const [isCapturingManual, setIsCapturingManual] = useState<boolean>(false);
@@ -198,7 +197,12 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
         }
       } else {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
+          video: {
+            width: { ideal: 640, max: 640 },
+            height: { ideal: 480, max: 480 },
+            frameRate: { ideal: 30, max: 30 },
+            facingMode: 'user'
+          },
           audio: false,
         });
 
@@ -219,10 +223,6 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
           if (isPaused) return;
 
           const detectedCount = results.multiHandLandmarks?.length || 0;
-          
-          if (performance.now() - lastProcessedTimeRef.current > 500) {
-            setOnResultsCount((prev) => prev + 1);
-          }
 
           if (handsDetectedCountRef.current !== detectedCount) {
             handsDetectedCountRef.current = detectedCount;
@@ -282,9 +282,9 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
             }
           }
 
-          // Fast non-blocking asynchronous inference: process ~20 FPS (50ms) for instant word display
+          // Fast non-blocking asynchronous inference at 30 FPS (33ms) matching the 30 FPS model
           const now = performance.now();
-          if (now - lastProcessedTimeRef.current >= 50 && !isInferenceBusyRef.current) {
+          if (now - lastProcessedTimeRef.current >= 33 && !isInferenceBusyRef.current) {
             lastProcessedTimeRef.current = now;
             isInferenceBusyRef.current = true;
 
@@ -342,7 +342,7 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
         handsInstanceRef.current = hands;
       }
 
-      // 5. Continuous frame processing loop with frame-in-flight guard to prevent browser freezing
+      // 5. Continuous frame processing loop at native 30 FPS (33ms) matching the 30 FPS model
       let isProcessingFrame = false;
 
       const processLoop = async () => {
@@ -351,8 +351,8 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
         const vid = videoElementRef.current;
         const now = performance.now();
 
-        // Throttle MediaPipe inputs to max 25 FPS (every 40ms) to ensure smooth 60fps UI performance
-        if (!isPaused && handsInstanceRef.current && vid.videoWidth > 0 && vid.videoHeight > 0 && !isProcessingFrame && now - lastSendTimeRef.current >= 40) {
+        // Throttle MediaPipe inputs to exact 30 FPS (every 33ms) matching the 30 FPS model
+        if (!isPaused && handsInstanceRef.current && vid.videoWidth > 0 && vid.videoHeight > 0 && !isProcessingFrame && now - lastSendTimeRef.current >= 33) {
           lastSendTimeRef.current = now;
           isProcessingFrame = true;
           try {
@@ -441,7 +441,7 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
     error,
     unrecognizedNotice,
     frameCount,
-    onResultsCount,
+    onResultsCount: frameCount,
     handsDetectedCount,
     gestureState,
     isModelOnline,
