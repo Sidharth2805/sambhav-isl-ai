@@ -111,7 +111,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return;
           }
         } catch (err: any) {
-          // If 401/403 explicit unauthorized, token is dead
+          // If 401 explicit unauthorized, no refresh session exists — stop immediately without retrying
+          if (err?.status === 401 || err?.message?.includes('not logged in') || err?.message?.includes('session has expired')) {
+            clearSession();
+            setInitializing(false);
+            return;
+          }
+          // For transient network errors, retry once
           if (attempt < maxAttempts) {
             await new Promise((r) => setTimeout(r, 2000));
           }

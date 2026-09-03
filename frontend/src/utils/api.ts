@@ -31,7 +31,7 @@ export async function apiRequest(
   };
 
   // Cookie-authenticated routes require credentials inclusion
-  if (path.startsWith('/api/auth/refresh') || path.startsWith('/api/auth/logout')) {
+  if (path.startsWith('/api/auth/')) {
     options.credentials = 'include';
   }
 
@@ -51,13 +51,19 @@ export async function apiRequest(
 
     if (!response.ok) {
       if (response.status === 401) {
-        throw new Error('Your session has expired or you are not logged in. Please sign in to continue.');
+        const authErr: any = new Error('Your session has expired or you are not logged in. Please sign in to continue.');
+        authErr.status = 401;
+        throw authErr;
       }
       if (response.status === 403) {
-        throw new Error('Access denied. You do not have permission for this action.');
+        const authErr: any = new Error('Access denied. You do not have permission for this action.');
+        authErr.status = 403;
+        throw authErr;
       }
       const errorMsg = data?.message || data?.error || (typeof data === 'string' ? data : `Request failed with status ${response.status}. Please check your connection.`);
-      throw new Error(errorMsg);
+      const apiErr: any = new Error(errorMsg);
+      apiErr.status = response.status;
+      throw apiErr;
     }
 
     return data;
