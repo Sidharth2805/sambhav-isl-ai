@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTextToSpeech } from '../hooks/useTextToSpeech';
@@ -31,7 +31,7 @@ export const OfflineSessionPage: React.FC = () => {
 
   // Pluggable Recognition Hook
   const {
-    isRecognizing,
+    isRecognizing: _isRecognizing,
     isPaused,
     currentGesture: _currentGesture,
     confidence,
@@ -63,21 +63,13 @@ export const OfflineSessionPage: React.FC = () => {
     }
   }, [translatedText]);
 
-  // Synchronize Camera checkbox status
-  useEffect(() => {
-    let active = true;
-    const syncCamera = async () => {
-      if (cameraActive && videoRef.current && !isRecognizing && active) {
-        await startRecognition(videoRef.current);
-      } else if (!cameraActive && isRecognizing && active) {
-        stopRecognition();
-      }
-    };
-    syncCamera();
-    return () => {
-      active = false;
-    };
-  }, [cameraActive, isRecognizing, startRecognition, stopRecognition]);
+  // Callback Ref to reliably auto-start webcam & MediaPipe recognition upon video DOM mount
+  const setVideoRef = useCallback((node: HTMLVideoElement | null) => {
+    videoRef.current = node;
+    if (node && cameraActive) {
+      startRecognition(node);
+    }
+  }, [cameraActive, startRecognition]);
 
   // Synchronize Sign Recognition toggle
   useEffect(() => {
@@ -253,7 +245,7 @@ export const OfflineSessionPage: React.FC = () => {
             {cameraActive ? (
               <>
                 <video
-                  ref={videoRef}
+                  ref={setVideoRef}
                   className="w-full h-full object-cover"
                   playsInline
                   muted

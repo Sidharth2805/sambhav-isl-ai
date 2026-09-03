@@ -35,16 +35,13 @@ export const ISLModelTestPage: React.FC = () => {
   const [testResults, setTestResults] = useState<TestResult[]>([]);
   const [topPredictions, setTopPredictions] = useState<Array<{ label: string; confidence: number }>>([]);
 
-  // Auto-start camera & recognition when mounted
-  useEffect(() => {
-    let isMounted = true;
-    if (videoRef.current && !isRecognizing && isMounted) {
-      startRecognition(videoRef.current);
+  // Callback Ref to reliably auto-start webcam & MediaPipe recognition upon video DOM mount
+  const setVideoRef = useCallback((node: HTMLVideoElement | null) => {
+    videoRef.current = node;
+    if (node) {
+      startRecognition(node);
     }
-    return () => {
-      isMounted = false;
-    };
-  }, [videoRef, isRecognizing, startRecognition]);
+  }, [startRecognition]);
 
   // Update top predictions from prediction context
   useEffect(() => {
@@ -138,7 +135,7 @@ export const ISLModelTestPage: React.FC = () => {
         {/* Left Column: Live Camera & Hand Tracker (7 cols) */}
         <div className="lg:col-span-7 space-y-4">
           <div className="relative aspect-video rounded-xl bg-black border border-border overflow-hidden shadow-md">
-            <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+            <video ref={setVideoRef} className="w-full h-full object-cover" playsInline muted />
             <canvas
               ref={canvasRef}
               data-gesture-canvas="true"

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { useISLRecognition } from '../hooks/useISLRecognition';
 import { ISL_VOCABULARY, formatISLLabel } from '../utils/islModel';
 
@@ -128,16 +128,13 @@ export const ISLModelDiagnosticPage: React.FC = () => {
     });
   });
 
-  // Auto-start Webcam Stream
-  useEffect(() => {
-    let isMounted = true;
-    if (videoRef.current && !isRecognizing && isMounted) {
-      startRecognition(videoRef.current);
+  // Callback Ref to reliably auto-start webcam & MediaPipe recognition upon video DOM mount
+  const setVideoRef = useCallback((node: HTMLVideoElement | null) => {
+    videoRef.current = node;
+    if (node) {
+      startRecognition(node);
     }
-    return () => {
-      isMounted = false;
-    };
-  }, [videoRef, isRecognizing, startRecognition]);
+  }, [startRecognition]);
 
   const currentClassObj = diagnostics[activeClassIndex] || diagnostics[0];
 
@@ -529,7 +526,7 @@ export const ISLModelDiagnosticPage: React.FC = () => {
             </div>
 
             <div className="relative aspect-video rounded-xl bg-black border border-border overflow-hidden shadow-md">
-              <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
+              <video ref={setVideoRef} className="w-full h-full object-cover" playsInline muted />
               <canvas
                 ref={canvasRef}
                 data-gesture-canvas="true"
@@ -537,6 +534,30 @@ export const ISLModelDiagnosticPage: React.FC = () => {
                 width={640}
                 height={480}
               />
+
+              {/* Live Recognized Sign Floating Overlay */}
+              {(translatedText || currentGesture) && (
+                <div className="absolute bottom-3 left-3 right-3 bg-black/90 backdrop-blur-md p-3.5 rounded-xl border border-emerald-500/50 text-white flex items-center justify-between z-20 shadow-2xl animate-scaleUp">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-emerald-500 text-black flex items-center justify-center font-black text-base shadow-md">
+                      ISL
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-base font-black text-white uppercase tracking-wider">
+                          Recognized Sign: {translatedText || currentGesture}
+                        </span>
+                      </div>
+                      <p className="text-xs text-emerald-400 font-semibold">
+                        Sambhav Model 2 Real-Time Neural Prediction
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-sm font-mono text-emerald-400 font-extrabold px-3 py-1 rounded bg-emerald-950/80 border border-emerald-500/40">
+                    {(confidence * 100).toFixed(1)}% Confidence
+                  </span>
+                </div>
+              )}
 
               {/* Detailed Pipeline Diagnostic Badges Overlay */}
               <div className="absolute top-3 left-3 bg-black/85 px-3 py-1.5 rounded-lg text-[11px] font-bold text-white flex flex-wrap items-center gap-2 border border-white/10 backdrop-blur-xs z-10">

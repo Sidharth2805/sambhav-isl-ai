@@ -323,6 +323,11 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
                 setGestureState('DISPLAY RESULT');
                 setTimeout(() => setGestureState('READY FOR NEXT GESTURE'), 600);
               } else {
+                if (!hasHandsInFrame) {
+                  // Clear temporal voting buffer when no hands are in frame to prevent cross-gesture contamination
+                  recentPredictionsRef.current = [];
+                }
+
                 if (hasHandsInFrame && now - lastValidTimeRef.current > 1500) {
                   setUnrecognizedNotice('Sign not recognized — please try signing again smoothly');
                 } else {

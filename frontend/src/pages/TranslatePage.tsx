@@ -913,9 +913,12 @@ export const TranslatePage: React.FC = () => {
                     <video
                       ref={(el) => {
                         gestureVideoRef.current = el;
-                        if (el && mediaStreamRef.current && el.srcObject !== mediaStreamRef.current) {
-                          el.srcObject = mediaStreamRef.current;
-                          el.play().catch(() => {});
+                        if (el) {
+                          if (mediaStreamRef.current && el.srcObject !== mediaStreamRef.current) {
+                            el.srcObject = mediaStreamRef.current;
+                            el.play().catch(() => {});
+                          }
+                          startISLRecognition(el);
                         }
                       }}
                       autoPlay
