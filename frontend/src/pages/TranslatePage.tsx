@@ -468,24 +468,42 @@ export const TranslatePage: React.FC = () => {
 
     try {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: 640, max: 640 },
-            height: { ideal: 480, max: 480 },
-            frameRate: { ideal: 30, max: 30 },
-            facingMode: 'user'
-          },
-          audio: true,
-        });
-        mediaStreamRef.current = stream;
-        setCameraActive(true);
-        setMicActive(true);
-
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
+        let stream: MediaStream | null = null;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              width: { ideal: 640, max: 640 },
+              height: { ideal: 480, max: 480 },
+              frameRate: { ideal: 30, max: 30 },
+              facingMode: 'user'
+            },
+            audio: true,
+          });
+          setMicActive(true);
+        } catch {
+          // If audio request fails, acquire camera-only stream so gesture recognition works smoothly
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              width: { ideal: 640, max: 640 },
+              height: { ideal: 480, max: 480 },
+              frameRate: { ideal: 30, max: 30 },
+              facingMode: 'user'
+            },
+            audio: false,
+          });
+          setMicActive(false);
         }
-        if (gestureVideoRef.current) {
-          gestureVideoRef.current.srcObject = stream;
+
+        if (stream) {
+          mediaStreamRef.current = stream;
+          setCameraActive(true);
+
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
+          if (gestureVideoRef.current) {
+            gestureVideoRef.current.srcObject = stream;
+          }
         }
       }
     } catch (err) {
@@ -731,13 +749,22 @@ export const TranslatePage: React.FC = () => {
               </div>
             </div>
 
-            {/* Mode 2 */}
-            <div className="bg-white/90 dark:bg-[#1a202c]/90 backdrop-blur-sm p-4 rounded-2xl border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 flex items-center justify-center shrink-0">
+            {/* Mode 2: Click to directly start ISL Sign Recognition */}
+            <div
+              onClick={() => {
+                setActiveMode('ISL_TO_TEXT');
+                handleStartCommunication();
+              }}
+              className="bg-white/90 dark:bg-[#1a202c]/90 backdrop-blur-sm p-4 rounded-2xl border border-[#e0e3e5] hover:border-[#fe9832] dark:border-[#2d3133] shadow-sm flex items-start gap-3 cursor-pointer hover:scale-[1.02] transition-all group"
+            >
+              <div className="w-10 h-10 rounded-xl bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 flex items-center justify-center shrink-0 group-hover:bg-[#fe9832]/20 group-hover:text-[#fe9832] transition-colors">
                 <span className="material-symbols-outlined text-[22px]">sign_language</span>
               </div>
               <div>
-                <h3 className="text-sm font-bold text-[#181c1e] dark:text-white">ISL &rarr; Speech/Text</h3>
+                <h3 className="text-sm font-bold text-[#181c1e] dark:text-white flex items-center gap-1.5">
+                  <span>ISL &rarr; Speech/Text</span>
+                  <span className="text-[10px] bg-emerald-500/15 text-emerald-600 px-1.5 py-0.5 rounded font-black">START</span>
+                </h3>
                 <p className="text-xs text-[#45474c] dark:text-[#c1c6d7] mt-0.5 leading-relaxed">
                   Camera-based gesture tracking synthesizes natural spoken audio and text in real time.
                 </p>
