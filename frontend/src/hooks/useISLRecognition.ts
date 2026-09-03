@@ -299,7 +299,7 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
               const isMarginValid = (inference.margin ?? 1.0) >= 0.08;
               const isGestureValid = inference.gesture && inference.gesture !== 'G_UNKNOWN' && inference.gesture !== 'NO_HANDS' && inference.gesture !== 'UNKNOWN';
 
-              if (hasHandsInFrame && isGestureValid && isConfidenceValid && isMarginValid) {
+              if (hasHandsInFrame && isGestureValid && isConfidenceValid && isMarginValid && inference.isRealModel) {
                 lastValidTimeRef.current = now;
                 setUnrecognizedNotice(null);
 

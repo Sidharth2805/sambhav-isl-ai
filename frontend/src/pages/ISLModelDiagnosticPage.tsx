@@ -154,12 +154,14 @@ export const ISLModelDiagnosticPage: React.FC = () => {
 
     const currentAttemptNum = currentClassObj.attempts.length + 1;
     const confVal = confidence || 0.0;
-    const sequenceValid = frameCount >= 15 || (confVal > 0.05 && predicted !== 'NO PREDICTION');
+    const sequenceValid = isModelOnline && (frameCount >= 15 || (confVal > 0.05 && predicted !== 'NO PREDICTION'));
     const isMatched = predicted.trim().toLowerCase() === cleanExpected.trim().toLowerCase();
-    const isCorrect = sequenceValid && isMatched && confVal >= 0.40;
+    const isCorrect = isModelOnline && sequenceValid && isMatched && confVal >= 0.40;
 
     let rejectionReason = 'NONE';
-    if (handsDetectedCount === 0) {
+    if (!isModelOnline) {
+      rejectionReason = 'ML_SERVICE_DISCONNECTED';
+    } else if (handsDetectedCount === 0) {
       rejectionReason = 'NO_HAND';
     } else if (frameCount < 15) {
       rejectionReason = 'INSUFFICIENT_FRAMES';
