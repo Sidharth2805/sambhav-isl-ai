@@ -167,6 +167,19 @@ def extract_landmarks_from_cv2_frame(frame: np.ndarray):
 
 import hashlib
 
+# Pre-compiled static computational graph for optimal CPU inference throughput
+@tf.function(input_signature=[tf.TensorSpec(shape=[1, SEQUENCE_LENGTH, NUM_FEATURES], dtype=tf.float32)])
+def _predict_compiled(batch_tensor: tf.Tensor) -> tf.Tensor:
+    return model(batch_tensor, training=False)
+
+# Warm up compiled graph at startup to eliminate first-request compilation latency
+try:
+    _warmup_input = np.zeros((1, SEQUENCE_LENGTH, NUM_FEATURES), dtype=np.float32)
+    _predict_compiled(_warmup_input)
+    print('[Sambhav ML] Compiled inference graph initialized and warmed up.')
+except Exception as e:
+    print('[Sambhav ML] Graph compilation warning:', e)
+
 def run_bilstm_inference(sequence_126: np.ndarray) -> dict:
     curr_len = len(sequence_126)
     if curr_len == 0:
@@ -195,7 +208,7 @@ def run_bilstm_inference(sequence_126: np.ndarray) -> dict:
     else:
         batch_input = norm_seq.reshape(1, SEQUENCE_LENGTH, NUM_FEATURES)
 
-    preds = model(batch_input, training=False).numpy()[0]
+    preds = _predict_compiled(batch_input).numpy()[0]
 
     top_indices = np.argsort(preds)[::-1][:5]
     top_3 = [

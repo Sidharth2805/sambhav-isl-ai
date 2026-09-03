@@ -16,6 +16,17 @@ export interface ISLLandmarks {
   pose?: ISLLandmark[];
 }
 
+export interface ISLActivityTelemetry {
+  activeFrameRatio: number;
+  motionFrameRatio: number;
+  averageMotion: number;
+  maxMotion: number;
+  handCount: number;
+  gatePassed: boolean;
+  rejectionReason?: string;
+  inferenceDurationMs?: number;
+}
+
 /**
  * Result returned by the classification engine.
  */
@@ -30,6 +41,7 @@ export interface ISLInferenceResult {
   isRealModel?: boolean;
   frameCount?: number;
   rejectionReason?: string;
+  activityTelemetry?: ISLActivityTelemetry;
   top_3?: Array<{ class_id: number; label: string; confidence: number }>;
 }
 
@@ -204,42 +216,143 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
       this.initialize();
     }
 
-    // 2. Invoke BiLSTM neural inference if landmark buffer has motion frames (>= 10)
-    if (this.landmarkBuffer.length >= 10) {
-      try {
-        const response = await fetch(`${this.serviceUrl}/predict-landmarks`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sequence: this.landmarkBuffer })
-        });
+    // 2. Active-Sign Temporal Gating: compute hand presence and motion dynamics
+    const bufLen = this.landmarkBuffer.length;
+    let activeFrameCount = 0;
+    let motionFrameCount = 0;
+    let totalDisplacement = 0.0;
+    let maxDisplacement = 0.0;
 
-        if (response.ok) {
-          const result = await response.json();
-          this.isOnline = true;
-          if (result.gesture && result.gesture !== 'UNKNOWN' && result.gesture !== 'NO_HANDS') {
-            const rawLabel = result.gesture;
-            const formattedText = formatISLLabel(rawLabel);
-            return {
-              gesture: formattedText,
-              confidence: result.confidence,
-              top2Confidence: result.top2_confidence || 0.0,
-              top2Label: result.top2_label ? formatISLLabel(result.top2_label) : '',
-              margin: result.margin || 0.0,
-              label: formattedText,
-              phrase: formattedText,
-              isRealModel: true,
-              frameCount: this.landmarkBuffer.length,
-              top_3: result.top_3
-            };
+    for (let t = 0; t < bufLen; t++) {
+      const curr = this.landmarkBuffer[t];
+      const h0_active = curr[0] !== 0 || curr[1] !== 0 || curr[2] !== 0;
+      const h1_active = curr[63] !== 0 || curr[64] !== 0 || curr[65] !== 0;
+      const hasHand = h0_active || h1_active;
+
+      if (hasHand) {
+        activeFrameCount++;
+      }
+
+      if (t > 0) {
+        const prev = this.landmarkBuffer[t - 1];
+        const prev_h0 = prev[0] !== 0 || prev[1] !== 0 || prev[2] !== 0;
+        const prev_h1 = prev[63] !== 0 || prev[64] !== 0 || prev[65] !== 0;
+
+        let frameDisp = 0.0;
+        let pointsCount = 0;
+
+        if (h0_active && prev_h0) {
+          for (let i = 0; i < 21; i++) {
+            const dx = curr[i * 3] - prev[i * 3];
+            const dy = curr[i * 3 + 1] - prev[i * 3 + 1];
+            const dz = curr[i * 3 + 2] - prev[i * 3 + 2];
+            frameDisp += Math.sqrt(dx * dx + dy * dy + dz * dz);
+            pointsCount++;
           }
         }
-      } catch {
-        this.isOnline = false;
+
+        if (h1_active && prev_h1) {
+          for (let i = 0; i < 21; i++) {
+            const dx = curr[63 + i * 3] - prev[63 + i * 3];
+            const dy = curr[63 + i * 3 + 1] - prev[63 + i * 3 + 1];
+            const dz = curr[63 + i * 3 + 2] - prev[63 + i * 3 + 2];
+            frameDisp += Math.sqrt(dx * dx + dy * dy + dz * dz);
+            pointsCount++;
+          }
+        }
+
+        const avgFrameDisp = pointsCount > 0 ? frameDisp / pointsCount : 0.0;
+        totalDisplacement += avgFrameDisp;
+        if (avgFrameDisp > maxDisplacement) {
+          maxDisplacement = avgFrameDisp;
+        }
+        if (avgFrameDisp >= 0.005) {
+          motionFrameCount++;
+        }
       }
     }
 
-    // 3. Strict Production Policy: Return empty non-prediction if ML backend is offline or sequence is pending
-    return { gesture: '', confidence: 0.0, label: '', phrase: '', isRealModel: false, frameCount: this.landmarkBuffer.length };
+    const activeFrameRatio = bufLen > 0 ? activeFrameCount / bufLen : 0.0;
+    const motionFrameRatio = bufLen > 0 ? motionFrameCount / bufLen : 0.0;
+    const averageMotion = bufLen > 1 ? totalDisplacement / (bufLen - 1) : 0.0;
+    const currentHandCount = (hasLeftHand ? 1 : 0) + (hasRightHand ? 1 : 0);
+
+    // Gate Criteria: must have at least 25% hand presence AND (motion >= 8% OR deliberate stroke maxDisplacement >= 0.025)
+    const gatePassed = activeFrameRatio >= 0.25 && (
+      motionFrameRatio >= 0.08 ||
+      maxDisplacement >= 0.025
+    );
+
+    const telemetry: ISLActivityTelemetry = {
+      activeFrameRatio,
+      motionFrameRatio,
+      averageMotion,
+      maxMotion: maxDisplacement,
+      handCount: currentHandCount,
+      gatePassed,
+      rejectionReason: !gatePassed ? 'INSUFFICIENT_ACTIVITY' : undefined
+    };
+
+    // If activity gate fails: do NOT call ML inference service. Return explicit NO_ACTIVE_SIGN.
+    if (!gatePassed || bufLen < 10) {
+      return {
+        gesture: '',
+        confidence: 0.0,
+        label: 'NO_ACTIVE_SIGN',
+        phrase: '',
+        isRealModel: this.isOnline,
+        frameCount: this.landmarkBuffer.length,
+        rejectionReason: !gatePassed ? 'INSUFFICIENT_ACTIVITY' : 'BUFFER_PENDING',
+        activityTelemetry: telemetry
+      };
+    }
+
+    // 3. Invoke BiLSTM neural inference only when deliberate active motion or held sign is verified
+    const inferenceStartTime = performance.now();
+    try {
+      const response = await fetch(`${this.serviceUrl}/predict-landmarks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sequence: this.landmarkBuffer })
+      });
+
+      const inferenceDuration = performance.now() - inferenceStartTime;
+      telemetry.inferenceDurationMs = inferenceDuration;
+
+      if (response.ok) {
+        const result = await response.json();
+        this.isOnline = true;
+        if (result.gesture && result.gesture !== 'UNKNOWN' && result.gesture !== 'NO_HANDS') {
+          const rawLabel = result.gesture;
+          const formattedText = formatISLLabel(rawLabel);
+          return {
+            gesture: formattedText,
+            confidence: result.confidence,
+            top2Confidence: result.top2_confidence || 0.0,
+            top2Label: result.top2_label ? formatISLLabel(result.top2_label) : '',
+            margin: result.margin || 0.0,
+            label: formattedText,
+            phrase: formattedText,
+            isRealModel: true,
+            frameCount: this.landmarkBuffer.length,
+            activityTelemetry: telemetry,
+            top_3: result.top_3
+          };
+        }
+      }
+    } catch {
+      this.isOnline = false;
+    }
+
+    return {
+      gesture: '',
+      confidence: 0.0,
+      label: '',
+      phrase: '',
+      isRealModel: false,
+      frameCount: this.landmarkBuffer.length,
+      activityTelemetry: telemetry
+    };
   }
 
   public getLatestBuffer(): number[][] {

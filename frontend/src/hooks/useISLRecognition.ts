@@ -311,7 +311,12 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
               const hasHandsInFrame = !!(landmarksPayload.leftHand?.length || landmarksPayload.rightHand?.length);
               const isConfidenceValid = inference.confidence >= 0.40;
               const isMarginValid = (inference.margin ?? 1.0) >= 0.08;
-              const isGestureValid = inference.gesture && inference.gesture !== 'G_UNKNOWN' && inference.gesture !== 'NO_HANDS' && inference.gesture !== 'UNKNOWN';
+              const isGestureValid = !!inference.gesture &&
+                inference.gesture !== 'G_UNKNOWN' &&
+                inference.gesture !== 'NO_HANDS' &&
+                inference.gesture !== 'UNKNOWN' &&
+                inference.gesture !== 'NO_ACTIVE_SIGN' &&
+                inference.label !== 'NO_ACTIVE_SIGN';
 
               if (hasHandsInFrame && isGestureValid && isConfidenceValid && isMarginValid && inference.isRealModel) {
                 lastValidTimeRef.current = now;
