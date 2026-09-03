@@ -143,6 +143,26 @@ export const TranslatePage: React.FC = () => {
     signedMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [signedMessages]);
 
+  // Automatically render recognized ISL signs into live chat feed
+  const lastAutoPushedSignRef = useRef<string>('');
+  useEffect(() => {
+    const textToAppend = recognizedSignPhrase || recognizedSign;
+    if (textToAppend && textToAppend !== lastAutoPushedSignRef.current && signConfidence >= 0.35) {
+      lastAutoPushedSignRef.current = textToAppend;
+      const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setSignedMessages((prev) => [
+        ...prev,
+        {
+          id: `signed-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          sign: 'ISL RECOGNIZED',
+          phrase: textToAppend,
+          confidence: signConfidence,
+          timestamp,
+        },
+      ]);
+    }
+  }, [recognizedSign, recognizedSignPhrase, signConfidence]);
+
   // Handle user manual scroll in chat window
   const handleChatScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const target = e.currentTarget;

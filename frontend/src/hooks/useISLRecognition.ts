@@ -178,7 +178,12 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
 
   const isRecognizingRef = useRef<boolean>(false);
 
-  const startRecognition = useCallback(async (videoElement: HTMLVideoElement | null) => {
+  const startRecognition = useCallback(async (targetVideo?: HTMLVideoElement | null) => {
+    let videoElement = targetVideo || videoElementRef.current;
+    if (!videoElement && typeof document !== 'undefined') {
+      videoElement = document.querySelector('video');
+    }
+
     if (!videoElement) {
       setError('Video element reference is null.');
       return;
