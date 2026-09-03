@@ -145,23 +145,37 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
     const hasLeftHand = landmarks.leftHand && landmarks.leftHand.length > 0;
 
     // 1. Flatten into exact 126-dimensional coordinate vector matching saanket_bilstm.keras model schema:
-    //    Index 0 (Features 0..62)   = Left Hand (21 landmarks * 3 coords)
-    //    Index 1 (Features 63..125) = Right Hand (21 landmarks * 3 coords)
+    //    Training extract_landmarks.py sorts detected hands:
+    //      - Both hands: Slot 0 = Left (features 0..62), Slot 1 = Right (features 63..125)
+    //      - Single hand (Left or Right): Slot 0 = Active Hand (features 0..62), Slot 1 = 63 zeros
     const frame126: number[] = new Array(126).fill(0.0);
 
-    if (hasLeftHand && landmarks.leftHand) {
+    if (hasLeftHand && hasRightHand) {
+      if (landmarks.leftHand) {
+        landmarks.leftHand.slice(0, 21).forEach((lm, i) => {
+          frame126[i * 3] = lm.x ?? 0.0;
+          frame126[i * 3 + 1] = lm.y ?? 0.0;
+          frame126[i * 3 + 2] = lm.z ?? 0.0;
+        });
+      }
+      if (landmarks.rightHand) {
+        landmarks.rightHand.slice(0, 21).forEach((lm, i) => {
+          frame126[63 + i * 3] = lm.x ?? 0.0;
+          frame126[63 + i * 3 + 1] = lm.y ?? 0.0;
+          frame126[63 + i * 3 + 2] = lm.z ?? 0.0;
+        });
+      }
+    } else if (hasLeftHand && landmarks.leftHand) {
       landmarks.leftHand.slice(0, 21).forEach((lm, i) => {
         frame126[i * 3] = lm.x ?? 0.0;
         frame126[i * 3 + 1] = lm.y ?? 0.0;
         frame126[i * 3 + 2] = lm.z ?? 0.0;
       });
-    }
-
-    if (hasRightHand && landmarks.rightHand) {
+    } else if (hasRightHand && landmarks.rightHand) {
       landmarks.rightHand.slice(0, 21).forEach((lm, i) => {
-        frame126[63 + i * 3] = lm.x ?? 0.0;
-        frame126[63 + i * 3 + 1] = lm.y ?? 0.0;
-        frame126[63 + i * 3 + 2] = lm.z ?? 0.0;
+        frame126[i * 3] = lm.x ?? 0.0;
+        frame126[i * 3 + 1] = lm.y ?? 0.0;
+        frame126[i * 3 + 2] = lm.z ?? 0.0;
       });
     }
 
