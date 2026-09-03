@@ -35,10 +35,10 @@ export const ISLModelTestPage: React.FC = () => {
   const [testResults, setTestResults] = useState<TestResult[]>([]);
   const [topPredictions, setTopPredictions] = useState<Array<{ label: string; confidence: number }>>([]);
 
-  // Callback Ref to reliably auto-start webcam & MediaPipe recognition upon video DOM mount
+  // Callback Ref to reliably auto-start webcam & MediaPipe recognition ONCE upon video DOM mount
   const setVideoRef = useCallback((node: HTMLVideoElement | null) => {
-    videoRef.current = node;
-    if (node) {
+    if (node && videoRef.current !== node) {
+      videoRef.current = node;
       startRecognition(node);
     }
   }, [startRecognition]);

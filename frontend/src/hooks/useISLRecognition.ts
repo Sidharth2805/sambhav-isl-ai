@@ -154,6 +154,7 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
       if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
 
+    isRecognizingRef.current = false;
     setIsRecognizing(false);
     setIsPaused(false);
     setCurrentGesture(null);
@@ -175,14 +176,22 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
     });
   }, []);
 
+  const isRecognizingRef = useRef<boolean>(false);
+
   const startRecognition = useCallback(async (videoElement: HTMLVideoElement | null) => {
     if (!videoElement) {
       setError('Video element reference is null.');
       return;
     }
 
+    if (isRecognizingRef.current && videoElementRef.current === videoElement) {
+      return;
+    }
+
+    isRecognizingRef.current = true;
     setError(null);
     videoElementRef.current = videoElement;
+    lastValidTimeRef.current = performance.now();
 
     try {
       // 1. Initialize classifier

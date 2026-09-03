@@ -63,10 +63,10 @@ export const OfflineSessionPage: React.FC = () => {
     }
   }, [translatedText]);
 
-  // Callback Ref to reliably auto-start webcam & MediaPipe recognition upon video DOM mount
+  // Callback Ref to reliably auto-start webcam & MediaPipe recognition ONCE upon video DOM mount
   const setVideoRef = useCallback((node: HTMLVideoElement | null) => {
-    videoRef.current = node;
-    if (node && cameraActive) {
+    if (node && videoRef.current !== node && cameraActive) {
+      videoRef.current = node;
       startRecognition(node);
     }
   }, [cameraActive, startRecognition]);
