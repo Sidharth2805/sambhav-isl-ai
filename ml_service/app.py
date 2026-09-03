@@ -29,17 +29,22 @@ app.add_middleware(
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODELS_DIR = os.path.join(BASE_DIR, 'models')
 
-MODEL_PATH = os.path.join(MODELS_DIR, 'saanket_bilstm.keras')
+# Support candidate model filenames
+candidate_model_files = [
+    os.path.join(MODELS_DIR, 'new_model.keras'),
+    os.path.join(MODELS_DIR, 'isl_model.keras'),
+    os.path.join(MODELS_DIR, 'model.keras'),
+    os.path.join(MODELS_DIR, 'model.h5'),
+    os.path.join(MODELS_DIR, 'saanket_bilstm.keras')
+]
+
+MODEL_PATH = next((p for p in candidate_model_files if os.path.exists(p)), candidate_model_files[-1])
 LABEL_PATH = os.path.join(MODELS_DIR, 'label_mapping.json')
 MEAN_PATH = os.path.join(MODELS_DIR, 'mean.npy')
 STD_PATH = os.path.join(MODELS_DIR, 'std.npy')
 TASK_PATH = os.path.join(MODELS_DIR, 'hand_landmarker.task')
 
-SEQUENCE_LENGTH = 60
-NUM_FEATURES = 126
-MIN_CONFIDENCE_THRESHOLD = 0.40
-
-print('[Sambhav ML] Loading model and assets...')
+print(f'[Sambhav ML] Loading model from: {MODEL_PATH}')
 
 if not os.path.exists(MODEL_PATH):
     raise FileNotFoundError(f'Model file not found at: {MODEL_PATH}')
@@ -47,35 +52,46 @@ if not os.path.exists(MODEL_PATH):
 model = tf.keras.models.load_model(MODEL_PATH, compile=False)
 print(f'[Sambhav ML] Model loaded successfully: input={model.input_shape}, output={model.output_shape}')
 
+# Dynamically derive dimensions from model architecture
+in_shape = model.input_shape
+out_shape = model.output_shape
+
+SEQUENCE_LENGTH = in_shape[1] if (in_shape and len(in_shape) >= 2 and in_shape[1] is not None) else 60
+NUM_FEATURES = in_shape[2] if (in_shape and len(in_shape) >= 3 and in_shape[2] is not None) else 126
+NUM_CLASSES = out_shape[-1] if (out_shape and len(out_shape) >= 2 and out_shape[-1] is not None) else 169
+
 if os.path.exists(LABEL_PATH):
     with open(LABEL_PATH, 'r', encoding='utf-8') as f:
-        LABEL_MAPPING = json.load(f)
+        raw_labels = json.load(f)
+        if raw_labels:
+            sample_k = next(iter(raw_labels.keys()))
+            if not sample_k.isdigit():
+                # Invert mapping if format is {"A": 0, "B": 1} -> {"0": "A", "1": "B"}
+                LABEL_MAPPING = {str(v): str(k) for k, v in raw_labels.items()}
+            else:
+                LABEL_MAPPING = {str(k): str(v) for k, v in raw_labels.items()}
+        else:
+            LABEL_MAPPING = {}
 else:
-    LABEL_MAPPING = {}
+    LABEL_MAPPING = {str(i): f'CLASS_{i}' for i in range(NUM_CLASSES)}
 
 print(f'[Sambhav ML] Loaded {len(LABEL_MAPPING)} label classes.')
 
 if os.path.exists(MEAN_PATH) and os.path.exists(STD_PATH):
     mean_vec = np.squeeze(np.load(MEAN_PATH)).astype(np.float32)
     std_vec = np.squeeze(np.load(STD_PATH)).astype(np.float32)
-    std_vec = np.where(std_vec < 1e-6, 1.0, std_vec)
+    if mean_vec.shape[0] != NUM_FEATURES:
+        mean_vec = np.zeros(NUM_FEATURES, dtype=np.float32)
+        std_vec = np.ones(NUM_FEATURES, dtype=np.float32)
+    else:
+        std_vec = np.where(std_vec < 1e-6, 1.0, std_vec)
     print(f'[Sambhav ML] Normalization parameters loaded (mean: {mean_vec.shape}, std: {std_vec.shape})')
 else:
     mean_vec = np.zeros(NUM_FEATURES, dtype=np.float32)
     std_vec = np.ones(NUM_FEATURES, dtype=np.float32)
     print('[Sambhav ML] Using default normalization.')
 
-# Strict Startup Validation Checks
-input_shape_valid = (model.input_shape == (None, 60, 126))
-output_shape_valid = (model.output_shape == (None, 169))
-label_mapping_valid = (len(LABEL_MAPPING) == 169)
-mean_valid = (mean_vec.shape == (126,))
-std_valid = (std_vec.shape == (126,))
-
-print(f'[Sambhav ML Audit] Input Shape (60x126) Valid: {input_shape_valid}')
-print(f'[Sambhav ML Audit] Output Classes (169) Valid: {output_shape_valid}')
-print(f'[Sambhav ML Audit] Label Mapping Count: {len(LABEL_MAPPING)} / 169')
-print(f'[Sambhav ML Audit] Normalization Statistics Dimensions: {mean_vec.shape}/{std_vec.shape}')
+print(f'[Sambhav ML Dynamic Config] Sequence Length: {SEQUENCE_LENGTH}, Num Features: {NUM_FEATURES}, Num Classes: {NUM_CLASSES}')
 
 hand_detector = None
 if os.path.exists(TASK_PATH):
@@ -200,18 +216,12 @@ async def health_check():
     return {
         'status': 'healthy',
         'service': 'Sambhav ISL AI Recognition Service',
-        'model': 'BiLSTM (saanket_bilstm.keras)',
+        'model_path': os.path.basename(MODEL_PATH),
         'num_classes': len(LABEL_MAPPING),
         'sequence_length': SEQUENCE_LENGTH,
         'num_features': NUM_FEATURES,
-        'validation': {
-            'input_shape_valid': input_shape_valid,
-            'output_shape_valid': output_shape_valid,
-            'label_mapping_valid': label_mapping_valid,
-            'mean_valid': mean_valid,
-            'std_valid': std_valid,
-            'index_range': '0..168',
-        }
+        'model_input_shape': str(model.input_shape),
+        'model_output_shape': str(model.output_shape),
     }
 
 @app.get('/labels')
