@@ -43,6 +43,11 @@ export const ISLMessageComposer: React.FC<ISLMessageComposerProps> = ({
 
   // Smart ML Token Appender
   useEffect(() => {
+    if (incomingConfidence === 0) {
+      lastAppendedTokenRef.current = null;
+      return;
+    }
+
     if (!incomingMLWord || !incomingMLWord.trim()) return;
 
     const rawWord = incomingMLWord.trim();
@@ -59,17 +64,15 @@ export const ISLMessageComposer: React.FC<ISLMessageComposerProps> = ({
     const cleanWord = rawWord;
     const now = Date.now();
 
-    // Prevent duplicated consecutive tokens within 1.4 seconds
+    // Prevent duplicated consecutive tokens
     if (
       lastAppendedTokenRef.current &&
-      lastAppendedTokenRef.current.toLowerCase() === cleanWord.toLowerCase() &&
-      now - lastAppendedTimeRef.current < 1400
+      lastAppendedTokenRef.current.toLowerCase() === cleanWord.toLowerCase()
     ) {
       return;
     }
 
     lastAppendedTokenRef.current = cleanWord;
-    lastAppendedTimeRef.current = now;
 
     // Update active badge
     setLastDetectedToken({ word: cleanWord, confidence: incomingConfidence });

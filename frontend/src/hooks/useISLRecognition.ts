@@ -340,6 +340,7 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
                 if (!hasHandsInFrame) {
                   // Clear temporal voting buffer when no hands are in frame to prevent cross-gesture contamination
                   recentPredictionsRef.current = [];
+                  setConfidence(0);
                 }
 
                 if (hasHandsInFrame && now - lastValidTimeRef.current > 1500) {
