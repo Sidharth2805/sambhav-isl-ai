@@ -159,14 +159,24 @@ def extract_landmarks_from_cv2_frame(frame: np.ndarray):
 
     return landmarks.flatten(), has_hand
 
+import hashlib
+
 def run_bilstm_inference(sequence_126: np.ndarray) -> dict:
     curr_len = len(sequence_126)
     if curr_len == 0:
-        return {'gesture': 'UNKNOWN', 'label': 'No gesture', 'confidence': 0.0, 'phrase': '', 'top_3': []}
+        return {
+            'gesture': 'UNKNOWN',
+            'label': 'No gesture',
+            'confidence': 0.0,
+            'top2_confidence': 0.0,
+            'margin': 0.0,
+            'phrase': '',
+            'top_3': []
+        }
 
     if curr_len < SEQUENCE_LENGTH:
-        last_frame = sequence_126[-1]
-        padding = np.tile(last_frame, (SEQUENCE_LENGTH - curr_len, 1))
+        # Replicate training-time zero-padding strategy
+        padding = np.zeros((SEQUENCE_LENGTH - curr_len, NUM_FEATURES), dtype=np.float32)
         padded_seq = np.vstack([sequence_126, padding])
     elif curr_len > SEQUENCE_LENGTH:
         padded_seq = sequence_126[-SEQUENCE_LENGTH:]
@@ -181,18 +191,21 @@ def run_bilstm_inference(sequence_126: np.ndarray) -> dict:
 
     preds = model(batch_input, training=False).numpy()[0]
 
-    # Compute spatial landmark motion variance across the 60 frames
-    motion_var = float(np.var(padded_seq, axis=0).mean())
-
-    top_3_indices = np.argsort(preds)[::-1][:5]
+    top_indices = np.argsort(preds)[::-1][:5]
     top_3 = [
         {'class_id': int(i), 'label': LABEL_MAPPING.get(str(i), f'CLASS_{i}'), 'confidence': float(preds[i])}
-        for i in top_3_indices
+        for i in top_indices
     ]
 
-    top_idx = int(top_3_indices[0])
-    raw_label = LABEL_MAPPING.get(str(top_idx), f'CLASS_{top_idx}')
-    confidence = float(preds[top_idx])
+    top1_idx = int(top_indices[0])
+    top2_idx = int(top_indices[1]) if len(top_indices) > 1 else top1_idx
+
+    top1_confidence = float(preds[top1_idx])
+    top2_confidence = float(preds[top2_idx])
+    margin = top1_confidence - top2_confidence
+
+    raw_label = LABEL_MAPPING.get(str(top1_idx), f'CLASS_{top1_idx}')
+    top2_label = LABEL_MAPPING.get(str(top2_idx), f'CLASS_{top2_idx}')
 
     phrase = FRIENDLY_PHRASES.get(raw_label.lower(), FRIENDLY_PHRASES.get(raw_label, raw_label))
 
@@ -200,7 +213,10 @@ def run_bilstm_inference(sequence_126: np.ndarray) -> dict:
         'gesture': raw_label,
         'label': raw_label,
         'raw_label': raw_label,
-        'confidence': confidence,
+        'confidence': top1_confidence,
+        'top2_confidence': top2_confidence,
+        'top2_label': top2_label,
+        'margin': margin,
         'phrase': phrase,
         'top_3': top_3,
     }
@@ -213,10 +229,17 @@ class ImageFrameRequest(BaseModel):
 
 @app.get('/health')
 async def health_check():
+    md5_hash = ''
+    if os.path.exists(MODEL_PATH):
+        with open(MODEL_PATH, 'rb') as f:
+            md5_hash = hashlib.md5(f.read()).hexdigest()
     return {
         'status': 'healthy',
         'service': 'Sambhav ISL AI Recognition Service',
-        'model_path': os.path.basename(MODEL_PATH),
+        'model': 'Sambhav Model 2 (10-layer BiLSTM + GaussianNoise)',
+        'model_file': os.path.basename(MODEL_PATH),
+        'model_md5': md5_hash,
+        'frozen_md5_valid': md5_hash == 'bc0bcda972796ec08526627e8c0c498a',
         'num_classes': len(LABEL_MAPPING),
         'sequence_length': SEQUENCE_LENGTH,
         'num_features': NUM_FEATURES,

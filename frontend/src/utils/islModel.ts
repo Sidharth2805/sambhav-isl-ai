@@ -22,10 +22,14 @@ export interface ISLLandmarks {
 export interface ISLInferenceResult {
   gesture: string;
   confidence: number;
+  top2Confidence?: number;
+  top2Label?: string;
+  margin?: number;
   label?: string;
   phrase?: string;
   isRealModel?: boolean;
   frameCount?: number;
+  rejectionReason?: string;
   top_3?: Array<{ class_id: number; label: string; confidence: number }>;
 }
 
@@ -204,6 +208,9 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
             return {
               gesture: formattedText,
               confidence: result.confidence,
+              top2Confidence: result.top2_confidence || 0.0,
+              top2Label: result.top2_label ? formatISLLabel(result.top2_label) : '',
+              margin: result.margin || 0.0,
               label: formattedText,
               phrase: formattedText,
               isRealModel: true,
@@ -289,5 +296,12 @@ function classifyGeometricGesture(landmarks: ISLLandmarks): { gesture: string; c
  */
 export class DemoISLClassifier extends SaanketBiLSTMClassifier {
   public override name = 'Sambhav ISL Classifier (BiLSTM / Heuristic)';
+}
+
+/**
+ * Dedicated Sambhav Model 2 Classifier Adapter.
+ */
+export class SambhavModel2Classifier extends SaanketBiLSTMClassifier {
+  public override name = 'Sambhav Model 2 Classifier (10-layer BiLSTM)';
 }
 

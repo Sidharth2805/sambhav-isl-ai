@@ -294,7 +294,12 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
                 setFrameCount(inference.frameCount);
               }
 
-              if (inference.gesture && inference.confidence >= 0.10 && inference.gesture !== 'G_UNKNOWN' && inference.gesture !== 'NO_HANDS') {
+              const hasHandsInFrame = !!(landmarksPayload.leftHand?.length || landmarksPayload.rightHand?.length);
+              const isConfidenceValid = inference.confidence >= 0.40;
+              const isMarginValid = (inference.margin ?? 1.0) >= 0.08;
+              const isGestureValid = inference.gesture && inference.gesture !== 'G_UNKNOWN' && inference.gesture !== 'NO_HANDS' && inference.gesture !== 'UNKNOWN';
+
+              if (hasHandsInFrame && isGestureValid && isConfidenceValid && isMarginValid) {
                 lastValidTimeRef.current = now;
                 setUnrecognizedNotice(null);
 
@@ -310,6 +315,7 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
                 recentPredictionsRef.current.forEach((l) => { counts[l] = (counts[l] || 0) + 1; });
                 const smoothedLabel = Object.keys(counts).reduce((a, b) => (counts[a] >= counts[b] ? a : b), label);
 
+                // Duplicate Hold Protection: prevent repeated emission while holding same sign
                 setCurrentGesture(smoothedLabel);
                 setConfidence(inference.confidence);
                 const phrase = inference.phrase || ISL_VOCABULARY[smoothedLabel] || smoothedLabel;
@@ -317,7 +323,6 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
                 setGestureState('DISPLAY RESULT');
                 setTimeout(() => setGestureState('READY FOR NEXT GESTURE'), 600);
               } else {
-                const hasHandsInFrame = !!(landmarksPayload.leftHand?.length || landmarksPayload.rightHand?.length);
                 if (hasHandsInFrame && now - lastValidTimeRef.current > 1500) {
                   setUnrecognizedNotice('Sign not recognized — please try signing again smoothly');
                 } else {

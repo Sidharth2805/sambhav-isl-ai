@@ -31,6 +31,9 @@ export interface DetailedAttempt {
   rawPredictedIndex: number;
   expectedClassIndex: number;
   confidence: number;
+  top2Confidence?: number;
+  margin?: number;
+  rejectionReason?: string;
   top5: Top5Prediction[];
   handsDetected: 'None' | 'Left' | 'Right' | 'Both';
   leftHandPresencePct: number;
