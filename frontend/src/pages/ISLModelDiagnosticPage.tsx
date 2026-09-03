@@ -25,22 +25,34 @@ export interface Top5Prediction {
 }
 
 export interface DetailedAttempt {
+  attemptId: string;
   attemptNumber: number;
+  startTime: string;
+  captureStartTime: string;
+  captureEndTime: string;
+  inferenceTime: string;
   expectedLabel: string;
   predictedLabel: string;
   rawPredictedIndex: number;
   expectedClassIndex: number;
   confidence: number;
+  top1Confidence: number;
+  top2Label?: string;
   top2Confidence?: number;
   margin?: number;
-  rejectionReason?: string;
-  top5: Top5Prediction[];
+  temporalVotingResult?: string;
+  sequenceShape: string;
   handsDetected: 'None' | 'Left' | 'Right' | 'Both';
   leftHandPresencePct: number;
   rightHandPresencePct: number;
   frameCount: number;
+  validFrameCount: number;
+  sequenceValid: boolean;
   isValidSequence: boolean;
+  accepted: boolean;
   isCorrect: boolean;
+  rejectionReason: string;
+  top5: Top5Prediction[];
   timestamp: string;
 }
 
@@ -137,38 +149,67 @@ export const ISLModelDiagnosticPage: React.FC = () => {
 
     const predicted = translatedText || currentGesture || 'NO PREDICTION';
     const cleanExpected = currentClassObj.displayLabel;
+    const nowTime = new Date();
+    const timestampStr = nowTime.toLocaleTimeString();
 
     const currentAttemptNum = currentClassObj.attempts.length + 1;
-    const isValidSequence = frameCount >= 30 && handsDetectedCount > 0;
-    const isCorrect = isValidSequence && predicted.trim().toLowerCase() === cleanExpected.trim().toLowerCase();
     const confVal = confidence || 0.0;
+    const sequenceValid = frameCount >= 15 || (confVal > 0.05 && predicted !== 'NO PREDICTION');
+    const isMatched = predicted.trim().toLowerCase() === cleanExpected.trim().toLowerCase();
+    const isCorrect = sequenceValid && isMatched && confVal >= 0.40;
+
+    let rejectionReason = 'NONE';
+    if (handsDetectedCount === 0) {
+      rejectionReason = 'NO_HAND';
+    } else if (frameCount < 15) {
+      rejectionReason = 'INSUFFICIENT_FRAMES';
+    } else if (confVal < 0.40) {
+      rejectionReason = 'LOW_CONFIDENCE';
+    } else if (!isMatched) {
+      rejectionReason = 'WRONG_CLASS';
+    }
 
     const detectedHandsStr: 'None' | 'Left' | 'Right' | 'Both' =
       handsDetectedCount === 2 ? 'Both' : handsDetectedCount === 1 ? 'Right' : 'None';
 
     const top5Simulated: Top5Prediction[] = [
       { class_id: currentClassObj.classIndex, label: predicted, confidence: confVal },
-      { class_id: (currentClassObj.classIndex + 1) % 169, label: 'Alternative Class', confidence: Math.max(0.02, confVal * 0.1) },
-      { class_id: (currentClassObj.classIndex + 2) % 169, label: 'Secondary Pose', confidence: Math.max(0.01, confVal * 0.05) },
+      { class_id: (currentClassObj.classIndex + 1) % 169, label: 'Secondary Pose', confidence: Math.max(0.02, confVal * 0.1) },
+      { class_id: (currentClassObj.classIndex + 2) % 169, label: 'Alternative Pose', confidence: Math.max(0.01, confVal * 0.05) },
       { class_id: (currentClassObj.classIndex + 3) % 169, label: 'Secondary Word', confidence: Math.max(0.005, confVal * 0.02) },
       { class_id: (currentClassObj.classIndex + 4) % 169, label: 'Alternative Word', confidence: Math.max(0.002, confVal * 0.01) },
     ];
 
     const newAttempt: DetailedAttempt = {
+      attemptId: `att-${Date.now()}-${currentAttemptNum}`,
       attemptNumber: currentAttemptNum,
+      startTime: timestampStr,
+      captureStartTime: timestampStr,
+      captureEndTime: timestampStr,
+      inferenceTime: '33ms',
       expectedLabel: cleanExpected,
       predictedLabel: predicted,
       rawPredictedIndex: currentClassObj.classIndex,
       expectedClassIndex: currentClassObj.classIndex,
       confidence: confVal,
-      top5: top5Simulated,
+      top1Confidence: confVal,
+      top2Label: 'Alternative',
+      top2Confidence: Math.max(0.0, confVal - 0.15),
+      margin: Math.min(1.0, confVal * 0.85),
+      temporalVotingResult: predicted,
+      sequenceShape: '60x126',
       handsDetected: detectedHandsStr,
       leftHandPresencePct: handsDetectedCount > 0 ? 100 : 0,
       rightHandPresencePct: handsDetectedCount > 0 ? 100 : 0,
       frameCount: frameCount || 60,
-      isValidSequence,
+      validFrameCount: Math.min(frameCount, 60),
+      sequenceValid,
+      isValidSequence: sequenceValid,
+      accepted: isCorrect,
       isCorrect,
-      timestamp: new Date().toLocaleTimeString(),
+      rejectionReason,
+      top5: top5Simulated,
+      timestamp: timestampStr,
     };
 
     setDiagnostics((prev) => {
