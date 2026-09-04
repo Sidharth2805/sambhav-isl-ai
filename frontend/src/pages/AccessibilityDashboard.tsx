@@ -33,14 +33,6 @@ export const AccessibilityDashboard: React.FC = () => {
       setError('Cannot select both Deaf and Hard of Hearing simultaneously.');
       return;
     }
-    if (need === 'BLIND' && needs.includes('LOW_VISION')) {
-      setError('Cannot select both Blind and Low Vision simultaneously.');
-      return;
-    }
-    if (need === 'LOW_VISION' && needs.includes('BLIND')) {
-      setError('Cannot select both Blind and Low Vision simultaneously.');
-      return;
-    }
 
     setError(null);
     setSuccess(null);
@@ -199,26 +191,6 @@ export const AccessibilityDashboard: React.FC = () => {
                         className="w-6 h-6 rounded accent-primary"
                       />
                       <span className="text-base font-semibold">Non-speaking</span>
-                    </label>
-
-                    <label className="flex items-center gap-3.5 p-3.5 rounded-lg border border-border bg-bg hover:border-primary cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={needs.includes('BLIND')}
-                        onChange={() => handleNeedToggle('BLIND')}
-                        className="w-6 h-6 rounded accent-primary"
-                      />
-                      <span className="text-base font-semibold">Blind</span>
-                    </label>
-
-                    <label className="flex items-center gap-3.5 p-3.5 rounded-lg border border-border bg-bg hover:border-primary cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={needs.includes('LOW_VISION')}
-                        onChange={() => handleNeedToggle('LOW_VISION')}
-                        className="w-6 h-6 rounded accent-primary"
-                      />
-                      <span className="text-base font-semibold">Low Vision</span>
                     </label>
 
                     <label className="flex items-center gap-3.5 p-3.5 rounded-lg border border-border bg-bg hover:border-primary cursor-pointer">

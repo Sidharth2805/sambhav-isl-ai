@@ -1,80 +1,74 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { DemoISLClassifier, ISL_VOCABULARY } from './islModel';
+import { SaanketBiLSTMClassifier, ISL_VOCABULARY, formatISLLabel, resampleSequence } from './islModel';
 import type { ISLLandmarks } from './islModel';
 
 describe('ISL AI Recognition Pipeline Unit Tests', () => {
-  let classifier: DemoISLClassifier;
+  let classifier: SaanketBiLSTMClassifier;
 
   beforeEach(() => {
-    classifier = new DemoISLClassifier();
+    classifier = new SaanketBiLSTMClassifier('http://127.0.0.1:8000');
   });
 
   describe('Gesture-to-Text Vocabulary Mapping', () => {
-    it('should match vocabulary mappings to valid sign descriptions', () => {
-      expect(ISL_VOCABULARY['G_HELLO']).toBe('Hello, my name is Sidharth.');
-      expect(ISL_VOCABULARY['G_HELP']).toBe('How can I help you today?');
-      expect(ISL_VOCABULARY['G_COMMUNICATE']).toBe('I use Indian Sign Language to communicate.');
-      expect(ISL_VOCABULARY['G_THANKYOU']).toBe('Thank you for using SignBridge!');
-      expect(ISL_VOCABULARY['G_UNKNOWN']).toBe('Unknown sign.');
+    it('should map ISL alphabet and words accurately in vocabulary', () => {
+      expect(ISL_VOCABULARY['A']).toBe('A');
+      expect(ISL_VOCABULARY['Z']).toBe('Z');
+      expect(ISL_VOCABULARY['hello']).toBe('Hello');
+      expect(ISL_VOCABULARY['thank_you']).toBe('Thank You');
+      expect(ISL_VOCABULARY['help']).toBe('Help');
+      expect(ISL_VOCABULARY['water']).toBe('Water');
+    });
+
+    it('should format raw labels into clean title-cased English', () => {
+      expect(formatISLLabel('hello')).toBe('Hello');
+      expect(formatISLLabel('good_morning')).toBe('Good Morning');
+      expect(formatISLLabel('A')).toBe('A');
+      expect(formatISLLabel('')).toBe('');
+      expect(formatISLLabel('NO_HANDS')).toBe('');
     });
   });
 
-  describe('DemoISLClassifier Inference & Boundaries', () => {
-    it('should classify as G_UNKNOWN when landmarks are empty', async () => {
+  describe('Temporal Resampling (60 Frames Contract)', () => {
+    it('should resample empty frames into 60 zero-padded frames', () => {
+      const resampled = resampleSequence([], 60);
+      expect(resampled.length).toBe(60);
+      expect(resampled[0].length).toBe(126);
+      expect(resampled[0].every((v) => v === 0)).toBe(true);
+    });
+
+    it('should resample a single frame across all 60 frames', () => {
+      const singleFrame = [new Array(126).fill(0.5)];
+      const resampled = resampleSequence(singleFrame, 60);
+      expect(resampled.length).toBe(60);
+      expect(resampled[0][0]).toBe(0.5);
+      expect(resampled[59][0]).toBe(0.5);
+    });
+
+    it('should stretch a 30-frame sequence smoothly to exactly 60 frames', () => {
+      const raw30 = Array.from({ length: 30 }, (_, i) => new Array(126).fill(i / 29));
+      const resampled = resampleSequence(raw30, 60);
+      expect(resampled.length).toBe(60);
+      expect(resampled[0][0]).toBe(0);
+      expect(resampled[59][0]).toBe(1);
+    });
+  });
+
+  describe('SaanketBiLSTMClassifier Buffer & Idle Safety', () => {
+    it('should return NO_ACTIVE_SIGN and 0 confidence when landmarks are empty or idle', async () => {
       const emptyLandmarks: ISLLandmarks = {};
       const result = await classifier.classify(emptyLandmarks);
-      expect(result.gesture).toBe('G_UNKNOWN');
+      expect(result.label).toBe('NO_ACTIVE_SIGN');
       expect(result.confidence).toBe(0.0);
+      expect(result.rejectionReason).toBe('INSUFFICIENT_ACTIVITY');
     });
 
-    it('should classify as G_THANKYOU when both hands are raised high (y < 0.3)', async () => {
-      const raisedHands: ISLLandmarks = {
-        rightHand: [{ x: 0.7, y: 0.25 }],
-        leftHand: [{ x: 0.3, y: 0.25 }]
-      };
-      const result = await classifier.classify(raisedHands);
-      expect(result.gesture).toBe('G_THANKYOU');
-      expect(result.confidence).toBeGreaterThanOrEqual(0.9);
-    });
-
-    it('should classify as G_HELLO when right hand is raised (y < 0.4)', async () => {
-      const rightHandRaised: ISLLandmarks = {
-        rightHand: [{ x: 0.7, y: 0.35 }],
-        leftHand: [{ x: 0.3, y: 0.8 }]
-      };
-      const result = await classifier.classify(rightHandRaised);
-      expect(result.gesture).toBe('G_HELLO');
-      expect(result.confidence).toBe(0.89);
-    });
-
-    it('should classify as G_HELP when left hand is raised (y < 0.4)', async () => {
-      const leftHandRaised: ISLLandmarks = {
-        rightHand: [{ x: 0.7, y: 0.8 }],
-        leftHand: [{ x: 0.3, y: 0.35 }]
-      };
-      const result = await classifier.classify(leftHandRaised);
-      expect(result.gesture).toBe('G_HELP');
-      expect(result.confidence).toBe(0.85);
-    });
-
-    it('should classify as G_COMMUNICATE under default hand coordinates', async () => {
-      const defaultHands: ISLLandmarks = {
-        rightHand: [{ x: 0.7, y: 0.6 }],
-        leftHand: [{ x: 0.3, y: 0.6 }]
-      };
-      const result = await classifier.classify(defaultHands);
-      expect(result.gesture).toBe('G_COMMUNICATE');
-      expect(result.confidence).toBe(0.78);
-    });
-
-    it('should classify as G_UNKNOWN when coordinates are outside normal boundaries (y < 0.1 or y > 0.9)', async () => {
-      const outOfBounds: ISLLandmarks = {
-        rightHand: [{ x: 0.7, y: 0.05 }],
-        leftHand: [{ x: 0.3, y: 0.95 }]
-      };
-      const result = await classifier.classify(outOfBounds);
-      expect(result.gesture).toBe('G_UNKNOWN');
-      expect(result.confidence).toBe(0.1);
+    it('should clear buffer when clearBuffer is invoked', () => {
+      classifier.addFrame({
+        leftHand: Array.from({ length: 21 }, () => ({ x: 0.5, y: 0.5, z: 0 }))
+      });
+      expect(classifier.getLatestBuffer().length).toBeGreaterThan(0);
+      classifier.clearBuffer();
+      expect(classifier.getLatestBuffer().length).toBe(0);
     });
   });
 });

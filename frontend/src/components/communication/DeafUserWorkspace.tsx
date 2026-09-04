@@ -6,6 +6,7 @@ import type { TranscriptEvent } from '../../types/transcript';
 import { ISLAvatarCanvas, type ISLAvatarCanvasRef } from '../cultural/ISLAvatarCanvas';
 import { useISLRecognition } from '../../hooks/useISLRecognition';
 import { naturalSpeech } from '../../utils/naturalSpeech';
+import { ISLMessageComposer } from './ISLMessageComposer';
 
 interface DeafUserWorkspaceProps {
   sessionId: string;
@@ -107,7 +108,6 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
   recoveryState: _recoveryState = 'READY',
   onSendMessage,
 }) => {
-  const [typedResponse, setTypedResponse] = useState('');
   const videoParentRef = useRef<HTMLDivElement | null>(null);
   const [copied, setCopied] = useState(false);
   const [avatarSpeed, setAvatarSpeed] = useState(1.0);
@@ -163,41 +163,67 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
     currentGesture: recognizedSign,
     confidence: signConfidence,
     translatedText: recognizedSignPhrase,
+    committedSign,
     isModelOnline,
+    startRecognition,
+    stopRecognition,
   } = useISLRecognition();
 
-  const lastTransmittedSignRef = useRef<string>('');
-
-  // Automatically broadcast recognized sign / letter / word into live call chat/transcript
+  // Auto-start ISL gesture recognition strictly on the local camera
   useEffect(() => {
-    const textToTransmit = recognizedSignPhrase || recognizedSign;
-    if (textToTransmit && textToTransmit !== lastTransmittedSignRef.current && signConfidence >= 0.25) {
-      lastTransmittedSignRef.current = textToTransmit;
-      if (onSendMessage) {
-        onSendMessage(textToTransmit);
-      }
+    if (cameraState && localTrack) {
+      const timer = setTimeout(() => {
+        const localVid = (document.querySelector('video[data-self-view="true"]') ||
+                         document.querySelector('div[data-self-view="true"] video')) as HTMLVideoElement;
+        startRecognition(localVid);
+      }, 150);
+      return () => clearTimeout(timer);
+    } else {
+      stopRecognition();
     }
-  }, [recognizedSign, recognizedSignPhrase, signConfidence, onSendMessage]);
+  }, [cameraState, localTrack, startRecognition, stopRecognition]);
 
-  // Helper to convert any text into 3D ISL Avatar signing on demand
+  // Helper to check if a sender is the local user
+  const isSenderMe = useCallback((senderId: string, senderName?: string) => {
+    if (!senderId) return false;
+    if (senderId === 'me') return true;
+    if (user?.id && senderId === user.id) return true;
+    if (user?.email && (senderId === user.email || senderId.toLowerCase() === user.email.toLowerCase())) return true;
+    if (user?.name && senderName && senderName === user.name && senderId !== 'remote') return true;
+    return false;
+  }, [user]);
+
+  // Helper to convert any text into 3D ISL Avatar signing on demand (Manual signing)
   const handleReadMessageInSign = (text: string, msgId?: string) => {
     if (!text || !text.trim()) return;
     if (msgId) setActiveReadingMessageId(msgId);
     avatarCanvasRef.current?.signText(text);
   };
 
-  // Auto-trigger 3D Avatar letter-by-letter signing when live incoming captions update
+  const lastAutoSignedMsgIdRef = useRef<string | null>(null);
+
+  // Auto-trigger 3D Avatar letter-by-letter signing ONLY for the OTHER person's incoming speech/text
   useEffect(() => {
-    const activeInterim = Object.values(interimTranscripts).join(' ');
-    if (activeInterim.trim()) {
-      avatarCanvasRef.current?.signText(activeInterim);
-    } else if (finalTranscripts.length > 0) {
+    // 1. Check for active interim speech strictly from the OTHER person (remote participant)
+    const remoteInterimEntries = Object.entries(interimTranscripts).filter(([senderId]) => !isSenderMe(senderId));
+    if (remoteInterimEntries.length > 0) {
+      const activeRemoteInterim = remoteInterimEntries.map(([, text]) => text).filter(Boolean).join(' ');
+      if (activeRemoteInterim.trim()) {
+        avatarCanvasRef.current?.signText(activeRemoteInterim);
+        return;
+      }
+    }
+
+    // 2. Check for final transcripts strictly from the OTHER person (remote participant)
+    if (finalTranscripts.length > 0) {
       const lastMsg = finalTranscripts[finalTranscripts.length - 1];
-      if (lastMsg && lastMsg.text) {
+      const isRemote = lastMsg && !isSenderMe(lastMsg.senderId, lastMsg.senderName);
+      if (isRemote && lastMsg.text && lastMsg.id !== lastAutoSignedMsgIdRef.current) {
+        lastAutoSignedMsgIdRef.current = lastMsg.id;
         avatarCanvasRef.current?.signText(lastMsg.text);
       }
     }
-  }, [interimTranscripts, finalTranscripts]);
+  }, [interimTranscripts, finalTranscripts, isSenderMe]);
 
   const handleSpeakMessageAloud = (text: string) => {
     if (!text || !text.trim()) return;
@@ -207,7 +233,7 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
   // Caption Font Size Selector
   const [captionFontSize, setCaptionFontSize] = useState<'sm' | 'base' | 'lg'>('base');
 
-  const isRemoteSpeaking = Object.keys(interimTranscripts).length > 0;
+  const isRemoteSpeaking = Object.entries(interimTranscripts).some(([senderId]) => !isSenderMe(senderId));
 
   return (
     <div className="w-full h-[calc(100vh-90px)] md:h-[calc(100vh-75px)] flex flex-col justify-between gap-2 select-none font-['Inter',sans-serif] overflow-hidden">
@@ -306,7 +332,7 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
         >
 
           {primaryRemoteTrack ? (
-            <VideoTrack trackRef={primaryRemoteTrack as any} className="w-full h-full object-cover" />
+            <VideoTrack trackRef={primaryRemoteTrack as any} className="w-full h-full object-cover" data-remote="true" />
           ) : (
             <div className="w-full h-full text-center flex flex-col items-center justify-center gap-2 p-4 text-[#828796]">
               <span className="material-symbols-outlined text-[36px] sm:text-[44px] text-[#fe9832] animate-pulse">videocam</span>
@@ -593,12 +619,13 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
       </div>
 
       {/* ========================================================= */}
-      {/* MIDDLE SECTION: Extended Live Subtitles & Captions Deck   */}
       {/* ========================================================= */}
-      <section className="bg-white dark:bg-[#151c28] text-[#030813] dark:text-white rounded-2xl border border-[#e0e3e5] dark:border-[#243044] p-3 shadow-sm flex flex-col gap-2 h-40 sm:h-44 md:h-48 max-h-[195px] flex-shrink-0 relative overflow-hidden">
+      {/* MIDDLE SECTION: Live Subtitles & Captions Deck            */}
+      {/* ========================================================= */}
+      <section className="bg-white dark:bg-[#151c28] text-[#030813] dark:text-white rounded-2xl border border-[#e0e3e5] dark:border-[#243044] p-2.5 sm:p-3 shadow-sm flex flex-col gap-1.5 h-28 sm:h-32 md:h-36 max-h-[145px] flex-shrink-0 relative overflow-hidden">
         
         {/* Top Header Deck: Broadcast Live Pill + Font Size Controls */}
-        <div className="flex items-center justify-between border-b border-[#e0e3e5] dark:border-white/10 pb-1.5 flex-shrink-0">
+        <div className="flex items-center justify-between border-b border-[#e0e3e5] dark:border-white/10 pb-1 flex-shrink-0">
           <div className="flex items-center gap-2">
             <span className="px-2 py-0.5 bg-[#fe9832]/15 border border-[#fe9832]/30 text-[#8f4e00] dark:text-[#fe9832] rounded-full text-[9px] font-black tracking-wider uppercase flex items-center gap-1">
               <span className={`w-1.5 h-1.5 rounded-full ${isRemoteSpeaking ? 'bg-green-500 animate-ping' : 'bg-[#fe9832]'}`} />
@@ -612,7 +639,7 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
             </div>
 
             <span className="text-[10px] font-semibold text-[#45474c] dark:text-[#828796] hidden sm:inline">
-              Real-Time Conversational Subtitles
+              Conversational Subtitles (Click 🤟 on any message to sign in 3D Avatar)
             </span>
           </div>
 
@@ -637,17 +664,17 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
         </div>
 
         {/* Subtitle Messages Container */}
-        <div className={`flex-1 overflow-y-auto flex flex-col gap-2 leading-relaxed pr-1.5 font-medium custom-scrollbar ${
+        <div className={`flex-1 overflow-y-auto flex flex-col gap-1.5 leading-relaxed pr-1.5 font-medium custom-scrollbar ${
           captionFontSize === 'sm' ? 'text-xs' : captionFontSize === 'lg' ? 'text-base font-semibold' : 'text-sm'
         }`}>
           {finalTranscripts.map((t) => {
-            const isMe = t.senderId === user?.id || t.senderId === user?.email || (user?.email && t.senderId === user.email.toLowerCase()) || (user?.name && t.senderName === user.name && t.senderId !== 'remote');
+            const isMe = isSenderMe(t.senderId, t.senderName);
             const isCurrentlyReading = activeReadingMessageId === t.id;
 
             return (
               <div
                 key={t.id}
-                className={`group flex items-start justify-between gap-2 p-2 rounded-xl transition-all ${
+                className={`group flex items-start justify-between gap-2 p-1.5 sm:p-2 rounded-xl transition-all ${
                   isCurrentlyReading
                     ? 'bg-[#fe9832]/25 dark:bg-[#fe9832]/30 border border-[#fe9832] ring-2 ring-[#fe9832]/40 shadow-sm'
                     : isMe
@@ -655,7 +682,7 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
                     : 'bg-[#f7fafc] dark:bg-white/5 border border-[#e0e3e5] dark:border-white/15 self-start max-w-[92%]'
                 }`}
               >
-                <div className="flex items-start gap-2 flex-1 min-w-0">
+                <div className="flex items-start gap-1.5 flex-1 min-w-0">
                   <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded shrink-0 mt-0.5 ${
                     isMe
                       ? 'bg-[#fe9832]/25 text-[#8f4e00] dark:text-[#fe9832]'
@@ -671,21 +698,21 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
                   <button
                     type="button"
                     onClick={() => handleReadMessageInSign(t.text, t.id)}
-                    className="p-1 hover:bg-[#fe9832]/20 rounded-md text-[#fe9832] transition-all active:scale-95"
+                    className="p-1 hover:bg-[#fe9832]/20 rounded-md text-[#fe9832] transition-all active:scale-95 cursor-pointer"
                     title="Read this message in 3D ISL Sign Avatar"
                     aria-label="Read in Sign Avatar"
                   >
-                    <span className="material-symbols-outlined text-[15px]">sign_language</span>
+                    <span className="material-symbols-outlined text-[14px]">sign_language</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handleSpeakMessageAloud(t.text)}
-                    className="p-1 hover:bg-green-500/20 rounded-md text-green-600 dark:text-green-400 transition-all active:scale-95"
+                    className="p-1 hover:bg-green-500/20 rounded-md text-green-600 dark:text-green-400 transition-all active:scale-95 cursor-pointer"
                     title="Read this message aloud (Voice Audio)"
                     aria-label="Read Aloud in Voice"
                   >
-                    <span className="material-symbols-outlined text-[15px]">volume_up</span>
+                    <span className="material-symbols-outlined text-[14px]">volume_up</span>
                   </button>
                 </div>
               </div>
@@ -694,7 +721,7 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
 
           {/* Live In-Progress Interim Speech Stream */}
           {Object.entries(interimTranscripts).map(([senderId, text]) => {
-            const isMe = senderId === user?.id || senderId === user?.email || senderId === 'me';
+            const isMe = isSenderMe(senderId);
             const senderName = finalTranscripts.find((t) => t.senderId === senderId)?.senderName || 'Participant';
             return (
               <div
@@ -714,65 +741,32 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
           {finalTranscripts.length === 0 && Object.keys(interimTranscripts).length === 0 && (
             <div className="flex items-center justify-center my-auto text-center text-[#828796] gap-1.5 text-xs py-1">
               <span className="material-symbols-outlined text-[16px] text-[#fe9832]/60 animate-pulse">hearing</span>
-              <span>Subtitles will appear here in real-time. Click 🤟 on any message to read it in 3D Sign.</span>
+              <span>Subtitles will appear here in real-time. Click 🤟 on any message to sign in 3D.</span>
             </div>
           )}
 
           <div ref={captionsEndRef} />
         </div>
+      </section>
 
-        {/* Quick Reply Form with Read Options */}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (typedResponse.trim() && onSendMessage) {
-              onSendMessage(typedResponse.trim());
-              setTypedResponse('');
+      {/* ========================================================= */}
+      {/* DEAF USER ISL RECOGNITION MESSAGE COMPOSER                */}
+      {/* ========================================================= */}
+      <section className="flex-shrink-0">
+        <ISLMessageComposer
+          incomingCommittedSign={committedSign}
+          incomingMLWord={recognizedSignPhrase || recognizedSign}
+          incomingConfidence={signConfidence}
+          isModelActive={cameraState && isModelOnline}
+          onSendMessage={(finalText) => {
+            if (onSendMessage) {
+              onSendMessage(finalText);
             }
           }}
-          className="pt-1.5 border-t border-[#e0e3e5] dark:border-white/10 flex items-center gap-1.5 flex-shrink-0"
-        >
-          <input
-            type="text"
-            value={typedResponse}
-            onChange={(e) => setTypedResponse(e.target.value)}
-            placeholder="Type a message to read or reply..."
-            className="flex-1 px-3 py-1 bg-[#f1f4f6] dark:bg-white/10 border border-[#e0e3e5] dark:border-white/10 rounded-lg text-xs text-[#030813] dark:text-white placeholder-[#828796] focus:outline-none focus:border-[#fe9832]"
-          />
-          
-          {/* Read in Sign Button */}
-          <button
-            type="button"
-            disabled={!typedResponse.trim()}
-            onClick={() => handleReadMessageInSign(typedResponse)}
-            className="px-2.5 py-1 bg-[#f1f4f6] dark:bg-white/10 hover:bg-[#fe9832]/20 text-[#fe9832] rounded-lg text-xs font-bold transition-all disabled:opacity-40 flex items-center gap-1 shrink-0 active:scale-95 border border-[#e0e3e5] dark:border-white/10"
-            title="Read in 3D Sign Avatar"
-          >
-            <span className="material-symbols-outlined text-[14px]">sign_language</span>
-            <span>Read in Sign</span>
-          </button>
-
-          {/* Read in Voice Button */}
-          <button
-            type="button"
-            disabled={!typedResponse.trim()}
-            onClick={() => handleSpeakMessageAloud(typedResponse)}
-            className="px-2 py-1 bg-[#f1f4f6] dark:bg-white/10 hover:bg-green-500/20 text-green-600 dark:text-green-400 rounded-lg text-xs font-bold transition-all disabled:opacity-40 flex items-center gap-1 shrink-0 active:scale-95 border border-[#e0e3e5] dark:border-white/10"
-            title="Read Aloud in Voice"
-          >
-            <span className="material-symbols-outlined text-[14px]">volume_up</span>
-          </button>
-
-          {/* Send Button */}
-          <button
-            type="submit"
-            disabled={!typedResponse.trim()}
-            className="px-3 py-1 bg-[#fe9832] hover:bg-[#e8872b] text-[#542900] rounded-lg text-xs font-black transition-all disabled:opacity-40 flex items-center gap-1 shrink-0 active:scale-95 shadow-xs"
-          >
-            <span className="material-symbols-outlined text-[14px]">send</span>
-            <span>Send</span>
-          </button>
-        </form>
+          onSpeakDraft={(text) => handleSpeakMessageAloud(text)}
+          onReadInSign={(text) => handleReadMessageInSign(text)}
+          placeholder="🤟 Show signs to camera to compose your message. Captured letters and words write here until you send..."
+        />
       </section>
 
       {/* ========================================================= */}

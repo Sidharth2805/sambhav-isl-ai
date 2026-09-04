@@ -92,14 +92,6 @@ export const ProfilePage: React.FC = () => {
       setPrefError('Cannot select both Deaf and Hard of Hearing simultaneously.');
       return;
     }
-    if (need === 'BLIND' && needs.includes('LOW_VISION')) {
-      setPrefError('Cannot select both Blind and Low Vision simultaneously.');
-      return;
-    }
-    if (need === 'LOW_VISION' && needs.includes('BLIND')) {
-      setPrefError('Cannot select both Blind and Low Vision simultaneously.');
-      return;
-    }
 
     setPrefError(null);
     setPrefSuccess(null);
@@ -402,8 +394,6 @@ export const ProfilePage: React.FC = () => {
                   { key: 'DEAF', label: 'Deaf' },
                   { key: 'HARD_OF_HEARING', label: 'Hard of Hearing' },
                   { key: 'NON_SPEAKING', label: 'Non-speaking' },
-                  { key: 'BLIND', label: 'Blind' },
-                  { key: 'LOW_VISION', label: 'Low Vision' },
                   { key: 'OTHER', label: 'Other Needs' }
                 ].map((item) => (
                   <label 

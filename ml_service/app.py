@@ -18,16 +18,10 @@ app = FastAPI(
     version='1.0.0'
 )
 
-ALLOWED_ORIGINS = [
-    "https://sambhav-isl.onrender.com",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -35,16 +29,36 @@ app.add_middleware(
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODELS_DIR = os.path.join(BASE_DIR, 'models')
 
-# Support candidate model filenames
+# 7. Attention Layer Implementation
+@tf.keras.utils.register_keras_serializable()
+class AttentionLayer(tf.keras.layers.Layer):
+    def __init__(self, units=96, **kwargs):
+        super().__init__(**kwargs)
+        self.units = units
+        self.W = tf.keras.layers.Dense(units, activation="tanh", kernel_regularizer=tf.keras.regularizers.l2(1e-4))
+        self.V = tf.keras.layers.Dense(1, kernel_regularizer=tf.keras.regularizers.l2(1e-4))
+
+    def call(self, inputs):
+        score = self.V(self.W(inputs))
+        weights = tf.nn.softmax(score, axis=1)
+        context = tf.reduce_sum(inputs * weights, axis=1)
+        return context
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({"units": self.units})
+        return config
+
+# Support candidate model filenames (prioritizing tuned Attention-BiLSTM)
 candidate_model_files = [
+    os.path.join(MODELS_DIR, 'saanket_bilstm.keras'),
     os.path.join(MODELS_DIR, 'new_model.keras'),
     os.path.join(MODELS_DIR, 'isl_model.keras'),
     os.path.join(MODELS_DIR, 'model.keras'),
-    os.path.join(MODELS_DIR, 'model.h5'),
-    os.path.join(MODELS_DIR, 'saanket_bilstm.keras')
+    os.path.join(MODELS_DIR, 'model.h5')
 ]
 
-MODEL_PATH = next((p for p in candidate_model_files if os.path.exists(p)), candidate_model_files[-1])
+MODEL_PATH = next((p for p in candidate_model_files if os.path.exists(p)), candidate_model_files[0])
 LABEL_PATH = os.path.join(MODELS_DIR, 'label_mapping.json')
 MEAN_PATH = os.path.join(MODELS_DIR, 'mean.npy')
 STD_PATH = os.path.join(MODELS_DIR, 'std.npy')
@@ -55,7 +69,7 @@ print(f'[Sambhav ML] Loading model from: {MODEL_PATH}')
 if not os.path.exists(MODEL_PATH):
     raise FileNotFoundError(f'Model file not found at: {MODEL_PATH}')
 
-model = tf.keras.models.load_model(MODEL_PATH, compile=False)
+model = tf.keras.models.load_model(MODEL_PATH, custom_objects={'AttentionLayer': AttentionLayer}, compile=False)
 print(f'[Sambhav ML] Model loaded successfully: input={model.input_shape}, output={model.output_shape}')
 
 # Dynamically derive dimensions from model architecture

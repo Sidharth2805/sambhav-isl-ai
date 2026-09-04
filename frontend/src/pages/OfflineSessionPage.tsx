@@ -5,7 +5,6 @@ import { useTextToSpeech } from '../hooks/useTextToSpeech';
 import { getSession, endSession } from '../utils/communicationApi';
 import type { CommunicationSessionDto } from '../utils/communicationApi';
 import { useISLRecognition } from '../hooks/useISLRecognition';
-import { DemoISLClassifier } from '../utils/islModel';
 import { ISLMessageComposer } from '../components/communication/ISLMessageComposer';
 
 interface TranscriptMessage {
@@ -49,19 +48,7 @@ export const OfflineSessionPage: React.FC = () => {
   const [recognitionActive, setRecognitionActive] = useState(true);
   const [inputText, setInputText] = useState('');
   const [recognizedText, setRecognizedText] = useState('');
-
-  // Conversation Transcript list
   const [transcript, setTranscript] = useState<TranscriptMessage[]>([]);
-
-  // Simulation parameters for testing UI behavior
-  const [mockSignIndex, setMockSignIndex] = useState(0);
-
-  // Update local translation output state from model stream
-  useEffect(() => {
-    if (translatedText) {
-      setRecognizedText(translatedText);
-    }
-  }, [translatedText]);
 
   // Callback Ref to reliably auto-start webcam & MediaPipe recognition ONCE upon video DOM mount
   const setVideoRef = useCallback((node: HTMLVideoElement | null) => {
@@ -104,7 +91,6 @@ export const OfflineSessionPage: React.FC = () => {
     try {
       setLoading(true);
       await endSession(session.id, accessToken);
-      stop();
       stopRecognition();
       navigate('/dashboard');
     } catch (err: any) {
@@ -133,36 +119,6 @@ export const OfflineSessionPage: React.FC = () => {
     }
     
     setInputText('');
-  };
-
-  // Mock sign gesture trigger to showcase UI functionality
-  const triggerMockSignGesture = () => {
-    // Manually feeds coordinate landmarks directly into the model to test classification state changes
-    const mockCoordinates = [
-      { rHandY: 0.2, lHandY: 0.2 }, // Thank you
-      { rHandY: 0.35, lHandY: 0.8 }, // Hello
-      { rHandY: 0.8, lHandY: 0.35 }, // Help
-      { rHandY: 0.6, lHandY: 0.6 } // Communicate
-    ];
-    
-    const coord = mockCoordinates[mockSignIndex];
-    setMockSignIndex((prev) => (prev + 1) % mockCoordinates.length);
-
-    const demoClassifier = new DemoISLClassifier();
-    demoClassifier.classify({
-      rightHand: [{ x: 0.7, y: coord.rHandY }],
-      leftHand: [{ x: 0.3, y: coord.lHandY }]
-    }).then((result: any) => {
-      const vocab: Record<string, string> = {
-        'G_HELLO': 'Hello, my name is Sidharth.',
-        'G_HELP': 'How can I help you today?',
-        'G_COMMUNICATE': 'I use Indian Sign Language to communicate.',
-        'G_THANKYOU': 'Thank you for using SAMBHAV!'
-      };
-      if (result.gesture !== 'G_UNKNOWN') {
-        setRecognizedText(vocab[result.gesture]);
-      }
-    });
   };
 
   const handleAcceptTranslation = (textToSend?: string) => {
@@ -299,14 +255,6 @@ export const OfflineSessionPage: React.FC = () => {
                 <span>Sign Recognition</span>
               </label>
             </div>
-
-            {/* Test Simulation trigger */}
-            <button
-              onClick={triggerMockSignGesture}
-              className="text-xs px-3 py-1.5 bg-[#fe9832]/10 border border-[#fe9832]/30 rounded-lg text-[#8f4e00] dark:text-[#fe9832] font-bold hover:bg-[#fe9832] hover:text-[#683700] transition-all cursor-pointer"
-            >
-              Test Gesture Input
-            </button>
           </div>
         </section>
 

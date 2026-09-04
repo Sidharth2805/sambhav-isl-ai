@@ -87,12 +87,23 @@ export const DraggableSelfView: React.FC<DraggableSelfViewProps> = ({
         top: `${position.y}px`,
         touchAction: 'none',
       }}
+      data-self-view="true"
       className={`group w-36 h-24 md:w-44 md:h-28 rounded-xl bg-[#F5F5F5] border border-[#00BCD4] shadow-2xl overflow-hidden cursor-move select-none z-30 transition-transform ${
         isDragging ? 'scale-[1.02] border-[#00BCD4]/80' : 'hover:scale-[1.01]'
       }`}
     >
       {cameraState && localTrack ? (
-        <VideoTrack trackRef={localTrack as any} className="w-full h-full object-cover pointer-events-none" />
+        <>
+          <VideoTrack
+            trackRef={localTrack as any}
+            className="w-full h-full object-cover pointer-events-none"
+            data-self-view="true"
+          />
+          <canvas
+            data-gesture-canvas="true"
+            className="absolute inset-0 w-full h-full pointer-events-none z-20"
+          />
+        </>
       ) : (
         <div className="w-full h-full text-center text-[10px] text-[#FFD700] flex flex-col items-center justify-center gap-1.5 p-2 bg-[#212121] pointer-events-none">
           <span className="text-xl">📷</span>

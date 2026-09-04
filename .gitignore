@@ -38,3 +38,12 @@ build/
 .env.development
 .env.test
 .env.production
+
+# Python / ML artifacts
+__pycache__/
+*.pyc
+dataset/
+*.task
+ml_service/processed_data*/
+tuner_results/
+

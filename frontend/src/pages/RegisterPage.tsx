@@ -105,14 +105,6 @@ export const RegisterPage: React.FC = () => {
       setError('Cannot select both Deaf and Hard of Hearing simultaneously.');
       return;
     }
-    if (need === 'BLIND' && selectedNeeds.includes('LOW_VISION')) {
-      setError('Cannot select both Blind and Low Vision simultaneously.');
-      return;
-    }
-    if (need === 'LOW_VISION' && selectedNeeds.includes('BLIND')) {
-      setError('Cannot select both Blind and Low Vision simultaneously.');
-      return;
-    }
     setError(null);
     if (selectedNeeds.includes(need)) {
       setSelectedNeeds(selectedNeeds.filter((n) => n !== need));
@@ -545,8 +537,6 @@ export const RegisterPage: React.FC = () => {
                     { key: 'DEAF', label: 'Deaf' },
                     { key: 'HARD_OF_HEARING', label: 'Hard of Hearing' },
                     { key: 'NON_SPEAKING', label: 'Non-speaking' },
-                    { key: 'BLIND', label: 'Blind' },
-                    { key: 'LOW_VISION', label: 'Low Vision' },
                     { key: 'OTHER', label: 'Other Needs' }
                   ].map((item) => (
                     <label 

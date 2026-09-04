@@ -42,6 +42,8 @@ export interface ISLInferenceResult {
   frameCount?: number;
   rejectionReason?: string;
   activityTelemetry?: ISLActivityTelemetry;
+  requestId?: number;
+  gestureCycleId?: number;
   top_3?: Array<{ class_id: number; label: string; confidence: number }>;
 }
 
@@ -56,11 +58,9 @@ export interface ISLClassifier {
   clearBuffer?(): void;
   initialize(): Promise<void>;
   classify(landmarks: ISLLandmarks): Promise<ISLInferenceResult>;
+  evaluateBuffer?(options?: { requestId?: number; gestureCycleId?: number }): Promise<ISLInferenceResult>;
 }
 
-/**
- * Vocabulary dictionary representing 169 ISL classes and exact English translations.
- */
 /**
  * Vocabulary dictionary representing all 171 ISL classes (Letters A-Z, lowercase a, and 144 ISL words).
  */
@@ -108,40 +108,101 @@ export const formatISLLabel = (label: string): string => {
 };
 
 /**
+ * Elastic Temporal Interpolation: Resamples any N-frame sequence into exactly targetLength (60) frames.
+ * Exactly matches the np.linspace(0, len-1, 60) downsampling/stretching used in model training.
+ */
+export function resampleSequence(rawFrames: number[][], targetLength: number = 60): number[][] {
+  const n = rawFrames.length;
+  if (n === targetLength) return rawFrames;
+  if (n === 0) return Array.from({ length: targetLength }, () => new Array(126).fill(0));
+  if (n === 1) return Array.from({ length: targetLength }, () => [...rawFrames[0]]);
+
+  const resampled: number[][] = [];
+  for (let i = 0; i < targetLength; i++) {
+    const t = (i / (targetLength - 1)) * (n - 1);
+    const idx0 = Math.floor(t);
+    const idx1 = Math.min(n - 1, idx0 + 1);
+    const frac = t - idx0;
+
+    const frame = new Array(126);
+    const f0 = rawFrames[idx0];
+    const f1 = rawFrames[idx1];
+
+    for (let d = 0; d < 126; d++) {
+      frame[d] = f0[d] * (1 - frac) + f1[d] * frac;
+    }
+    resampled.push(frame);
+  }
+  return resampled;
+}
+
+/**
  * Real BiLSTM Model Classifier that connects to the Sambhav Python ML Inference Service.
  * Evaluates 60-frame landmark sequences (126 features) using your trained saanket_bilstm.keras model.
  */
 export class SaanketBiLSTMClassifier implements ISLClassifier {
   public name = 'Saanket BiLSTM Neural Network (171 ISL Classes)';
   public isDemo = false;
-  private serviceUrl: string;
+  private candidateUrls: string[] = [];
+  private activeUrl: string = 'http://127.0.0.1:8000';
   private landmarkBuffer: number[][] = [];
   public isOnline = false;
   private lastCheckTime = 0;
+  private lastPingMs = 0;
 
   constructor(serviceUrl?: string) {
-    const defaultUrl = import.meta.env.VITE_ML_SERVICE_URL || 'http://127.0.0.1:8000';
-    let url = serviceUrl || defaultUrl;
-    if (typeof window !== 'undefined' && window.location.protocol === 'https:' && url.startsWith('http://127.0.0.1')) {
-      console.warn('[Sambhav ML] Deployed on HTTPS but VITE_ML_SERVICE_URL is set to insecure HTTP (127.0.0.1). Set VITE_ML_SERVICE_URL to your HTTPS ML service on Render.');
+    const envUrl = (import.meta.env.VITE_ML_SERVICE_URL || '').replace(/\/+$/, '');
+    const localUrls = ['http://127.0.0.1:8000', 'http://localhost:8000'];
+    const cloudUrl = 'https://sambhav-ml.onrender.com';
+
+    if (serviceUrl) {
+      this.candidateUrls = [serviceUrl.replace(/\/+$/, '')];
+    } else {
+      // Prioritize local ultra-fast inference (15ms), fallback to env and cloud
+      const unique = new Set<string>();
+      localUrls.forEach(u => unique.add(u));
+      if (envUrl) unique.add(envUrl);
+      unique.add(cloudUrl);
+      this.candidateUrls = Array.from(unique);
     }
-    this.serviceUrl = url.replace(/\/+$/, '');
+    this.activeUrl = this.candidateUrls[0];
+  }
+
+  public getActiveEndpoint(): string {
+    return this.activeUrl;
+  }
+
+  public getLastPingMs(): number {
+    return this.lastPingMs;
   }
 
   public async initialize(): Promise<void> {
-    try {
-      const res = await fetch(`${this.serviceUrl}/health`, { method: 'GET' });
-      if (res.ok) {
-        const data = await res.json();
-        this.isOnline = true;
-        console.log('[Sambhav ML] Connected to ML service successfully:', data);
-      } else {
-        this.isOnline = false;
-        console.warn('[Sambhav ML] Service responded with non-OK status. Standalone geometry mode active.');
+    for (const url of this.candidateUrls) {
+      try {
+        const start = performance.now();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2500);
+        
+        const res = await fetch(`${url}/health`, { 
+          method: 'GET',
+          signal: controller.signal 
+        });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          const data = await res.json();
+          this.activeUrl = url;
+          this.isOnline = true;
+          this.lastPingMs = Math.round(performance.now() - start);
+          console.log(`[Sambhav ML] Connected to ML service at ${url} (${this.lastPingMs}ms):`, data);
+          return;
+        }
+      } catch {
+        // Try next candidate
       }
-    } catch {
-      this.isOnline = false;
     }
+    this.isOnline = false;
+    console.warn('[Sambhav ML] No ML inference service reachable. ML service offline.');
   }
 
   public getIsOnline(): boolean {
@@ -152,14 +213,11 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
     this.landmarkBuffer = [];
   }
 
-  public async classify(landmarks: ISLLandmarks): Promise<ISLInferenceResult> {
+  public addFrame(landmarks: ISLLandmarks): void {
     const hasRightHand = landmarks.rightHand && landmarks.rightHand.length > 0;
     const hasLeftHand = landmarks.leftHand && landmarks.leftHand.length > 0;
 
     // 1. Flatten into exact 126-dimensional coordinate vector matching saanket_bilstm.keras model schema:
-    //    Training extract_landmarks.py sorts detected hands:
-    //      - Both hands: Slot 0 = Left (features 0..62), Slot 1 = Right (features 63..125)
-    //      - Single hand (Left or Right): Slot 0 = Active Hand (features 0..62), Slot 1 = 63 zeros
     const frame126: number[] = new Array(126).fill(0.0);
 
     if (hasLeftHand && hasRightHand) {
@@ -191,25 +249,33 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
       });
     }
 
-    // Append to rolling 60-frame buffer (prevent zero-frame contamination when valid hands enter frame)
-    const isHandPresent = hasLeftHand || hasRightHand;
-    const isBufferAllZeros = this.landmarkBuffer.length > 0 && this.landmarkBuffer.every(f => f[0] === 0 && f[63] === 0);
+    // Append to rolling buffer (up to 160 frames capacity for complete 5s captures)
+    this.landmarkBuffer.push(frame126);
+    if (this.landmarkBuffer.length > 160) {
+      this.landmarkBuffer.shift();
+    }
+  }
 
-    if (isHandPresent && isBufferAllZeros) {
-      // Replace raw zero padding with the first valid hand landmark frame to match training padding schema
-      this.landmarkBuffer = Array.from({ length: 15 }, () => [...frame126]);
-    } else {
-      this.landmarkBuffer.push(frame126);
-      if (this.landmarkBuffer.length > 60) {
-        this.landmarkBuffer.shift();
-      }
+  public async evaluateBuffer(options?: { requestId?: number; gestureCycleId?: number }): Promise<ISLInferenceResult> {
+    const bufLen = this.landmarkBuffer.length;
+    const reqId = options?.requestId;
+    const cycleId = options?.gestureCycleId;
+
+    if (bufLen === 0) {
+      return { 
+        gesture: '', 
+        confidence: 0.0, 
+        label: 'NO_ACTIVE_SIGN', 
+        phrase: '', 
+        isRealModel: this.isOnline, 
+        frameCount: 0,
+        requestId: reqId,
+        gestureCycleId: cycleId,
+        rejectionReason: 'INSUFFICIENT_ACTIVITY'
+      };
     }
 
-    if (!hasRightHand && !hasLeftHand) {
-      return { gesture: '', confidence: 0.0, label: '', phrase: '', isRealModel: this.isOnline, frameCount: this.landmarkBuffer.length };
-    }
-
-    // Check service health periodically every 2 seconds if offline
+    // Check service health periodically if offline
     const now = Date.now();
     if (!this.isOnline && now - this.lastCheckTime > 2000) {
       this.lastCheckTime = now;
@@ -217,20 +283,27 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
     }
 
     // 2. Active-Sign Temporal Gating: compute hand presence and motion dynamics
-    const bufLen = this.landmarkBuffer.length;
     let activeFrameCount = 0;
     let motionFrameCount = 0;
     let totalDisplacement = 0.0;
     let maxDisplacement = 0.0;
+    let hasLeftHand = false;
+    let hasRightHand = false;
+    let firstActive = -1;
+    let lastActive = -1;
 
     for (let t = 0; t < bufLen; t++) {
       const curr = this.landmarkBuffer[t];
       const h0_active = curr[0] !== 0 || curr[1] !== 0 || curr[2] !== 0;
       const h1_active = curr[63] !== 0 || curr[64] !== 0 || curr[65] !== 0;
+      if (h0_active) hasLeftHand = true;
+      if (h1_active) hasRightHand = true;
       const hasHand = h0_active || h1_active;
 
       if (hasHand) {
         activeFrameCount++;
+        if (firstActive === -1) firstActive = t;
+        lastActive = t;
       }
 
       if (t > 0) {
@@ -276,12 +349,17 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
     const motionFrameRatio = bufLen > 0 ? motionFrameCount / bufLen : 0.0;
     const averageMotion = bufLen > 1 ? totalDisplacement / (bufLen - 1) : 0.0;
     const currentHandCount = (hasLeftHand ? 1 : 0) + (hasRightHand ? 1 : 0);
+    const activeSpan = firstActive !== -1 && lastActive !== -1 ? lastActive - firstActive + 1 : 0;
 
-    // Gate Criteria: must have at least 25% hand presence AND (motion >= 8% OR deliberate stroke maxDisplacement >= 0.025)
-    const gatePassed = activeFrameRatio >= 0.25 && (
+    // Preserved Validated Baseline Gate:
+    // Requires activeFrameRatio >= 0.25 AND (motionFrameRatio >= 0.08 OR maxDisplacement >= 0.025 OR static pose held with activeSpan >= 25 frames)
+    // AND requires a genuine gesture window (activeSpan >= 25 frames) to prevent classifying 6-15 frame micro-transitions.
+    const isStaticPoseHeld = activeFrameRatio >= 0.25 && currentHandCount >= 1 && activeSpan >= 25;
+    const isDynamicStroke = activeFrameRatio >= 0.25 && activeSpan >= 20 && (
       motionFrameRatio >= 0.08 ||
       maxDisplacement >= 0.025
     );
+    const gatePassed = isStaticPoseHeld || isDynamicStroke;
 
     const telemetry: ISLActivityTelemetry = {
       activeFrameRatio,
@@ -293,57 +371,74 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
       rejectionReason: !gatePassed ? 'INSUFFICIENT_ACTIVITY' : undefined
     };
 
-    // If activity gate fails: do NOT call ML inference service. Return explicit NO_ACTIVE_SIGN.
-    if (!gatePassed || bufLen < 10) {
+    if (!gatePassed || activeSpan < 20) {
+      if (reqId !== undefined) {
+        console.log(`[Recognition] cycle=${cycleId} req=${reqId} gate=FAIL reason=INSUFFICIENT_ACTIVITY activeRatio=${activeFrameRatio.toFixed(2)} activeSpan=${activeSpan} motionRatio=${motionFrameRatio.toFixed(2)} maxDisp=${maxDisplacement.toFixed(3)} request=NO committed=NO`);
+      }
       return {
         gesture: '',
         confidence: 0.0,
         label: 'NO_ACTIVE_SIGN',
         phrase: '',
         isRealModel: this.isOnline,
-        frameCount: this.landmarkBuffer.length,
-        rejectionReason: !gatePassed ? 'INSUFFICIENT_ACTIVITY' : 'BUFFER_PENDING',
-        activityTelemetry: telemetry
+        frameCount: bufLen,
+        rejectionReason: 'INSUFFICIENT_ACTIVITY',
+        activityTelemetry: telemetry,
+        requestId: reqId,
+        gestureCycleId: cycleId
       };
     }
 
-    // 3. Invoke BiLSTM neural inference only when deliberate active motion or held sign is verified
-    const inferenceStartTime = performance.now();
-    try {
-      const response = await fetch(`${this.serviceUrl}/predict-landmarks`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sequence: this.landmarkBuffer })
-      });
-
-      const inferenceDuration = performance.now() - inferenceStartTime;
-      telemetry.inferenceDurationMs = inferenceDuration;
-
-      if (response.ok) {
-        const result = await response.json();
-        this.isOnline = true;
-        if (result.gesture && result.gesture !== 'UNKNOWN' && result.gesture !== 'NO_HANDS') {
-          const rawLabel = result.gesture;
-          const formattedText = formatISLLabel(rawLabel);
-          return {
-            gesture: formattedText,
-            confidence: result.confidence,
-            top2Confidence: result.top2_confidence || 0.0,
-            top2Label: result.top2_label ? formatISLLabel(result.top2_label) : '',
-            margin: result.margin || 0.0,
-            label: formattedText,
-            phrase: formattedText,
-            isRealModel: true,
-            frameCount: this.landmarkBuffer.length,
-            activityTelemetry: telemetry,
-            top_3: result.top_3
-          };
-        }
-      }
-    } catch {
-      this.isOnline = false;
+    // 3. Resample the genuine active signing stroke into exactly 60 frames matching model training
+    let sequenceToSend: number[][];
+    if (activeSpan >= 20 && firstActive !== -1 && lastActive !== -1) {
+      const activeSlice = this.landmarkBuffer.slice(firstActive, lastActive + 1);
+      sequenceToSend = resampleSequence(activeSlice, 60);
+    } else {
+      sequenceToSend = resampleSequence(this.landmarkBuffer, 60);
     }
 
+    // 4. Invoke BiLSTM neural inference on the complete 60-frame sequence (ONE request)
+    const urlsToTry = [this.activeUrl, ...this.candidateUrls.filter(u => u !== this.activeUrl)];
+
+    for (const url of urlsToTry) {
+      try {
+        const response = await fetch(`${url}/predict-landmarks`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sequence: sequenceToSend })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          this.activeUrl = url;
+          this.isOnline = true;
+          if (result.gesture && result.gesture !== 'UNKNOWN' && result.gesture !== 'NO_HANDS') {
+            const rawLabel = result.gesture;
+            const formattedText = formatISLLabel(rawLabel);
+            return {
+              gesture: formattedText,
+              confidence: result.confidence || 0.95,
+              top2Confidence: result.top2_confidence || 0.0,
+              top2Label: result.top2_label ? formatISLLabel(result.top2_label) : '',
+              margin: result.margin || 0.0,
+              label: formattedText,
+              phrase: formattedText,
+              isRealModel: true,
+              frameCount: this.landmarkBuffer.length,
+              activityTelemetry: telemetry,
+              requestId: reqId,
+              gestureCycleId: cycleId,
+              top_3: result.top_3
+            };
+          }
+        }
+      } catch {
+        // Try next candidate URL
+      }
+    }
+
+    this.isOnline = false;
     return {
       gesture: '',
       confidence: 0.0,
@@ -351,8 +446,17 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
       phrase: '',
       isRealModel: false,
       frameCount: this.landmarkBuffer.length,
-      activityTelemetry: telemetry
+      activityTelemetry: telemetry,
+      requestId: reqId,
+      gestureCycleId: cycleId
     };
+  }
+
+  public async classify(landmarks: ISLLandmarks): Promise<ISLInferenceResult> {
+    if (landmarks && (landmarks.leftHand?.length || landmarks.rightHand?.length)) {
+      this.addFrame(landmarks);
+    }
+    return this.evaluateBuffer();
   }
 
   public getLatestBuffer(): number[][] {
