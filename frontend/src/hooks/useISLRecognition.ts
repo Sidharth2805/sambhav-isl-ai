@@ -343,10 +343,9 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
           if (!hasHandsInFrame) {
             absenceFramesCountRef.current += 1;
             if (absenceFramesCountRef.current >= 12) {
-              if (currentState !== 'IDLE') {
+              if (currentState !== 'IDLE' && currentState !== 'INFERENCE') {
                 machineStateRef.current = 'IDLE';
                 setGestureState('IDLE');
-                currentRequestIdRef.current += 1;
                 activeFramesAccumulatedRef.current = 0;
               }
               if (now - lastValidTimeRef.current > 4000) {
@@ -386,9 +385,9 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
                   .then((inf: any) => {
                     setIsModelOnline(!!inf?.isRealModel);
 
-                    // Dual ID Fencing: Ignore response if user returned to IDLE or new cycle started
-                    if (thisReqId !== currentRequestIdRef.current || thisCycleId !== gestureCycleIdRef.current) {
-                      console.log(`[Recognition] Discarded stale response for req=${thisReqId} cycle=${thisCycleId} (current: req=${currentRequestIdRef.current}, cycle=${gestureCycleIdRef.current})`);
+                    // Dual ID Fencing: Only discard if a new cycle was started or recognition stopped
+                    if (thisCycleId !== gestureCycleIdRef.current) {
+                      console.log(`[Recognition] Discarded stale response for cycle=${thisCycleId} (current cycle=${gestureCycleIdRef.current})`);
                       return;
                     }
 
@@ -431,21 +430,39 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
                       setConfidence(inf.confidence || 0.95);
                       setTranslatedText(phrase);
 
-                      machineStateRef.current = 'WAIT_FOR_SIGN_END';
-                      setGestureState('COMMITTED');
+                      if (absenceFramesCountRef.current < 6) {
+                        machineStateRef.current = 'WAIT_FOR_SIGN_END';
+                        setGestureState('COMMITTED');
+                      } else {
+                        machineStateRef.current = 'IDLE';
+                        setGestureState('IDLE');
+                        activeFramesAccumulatedRef.current = 0;
+                      }
                     } else {
                       console.log(`[Recognition] cycle=${thisCycleId} req=${thisReqId} rejected: conf=${(inf?.confidence || 0).toFixed(2)} margin=${(inf?.margin || 0).toFixed(2)} label=${inf?.label}`);
-                      machineStateRef.current = 'IDLE';
-                      setGestureState('IDLE');
+                      if (absenceFramesCountRef.current < 6) {
+                        machineStateRef.current = 'WAIT_FOR_SIGN_END';
+                        setGestureState('WAIT_FOR_SIGN_END');
+                      } else {
+                        machineStateRef.current = 'IDLE';
+                        setGestureState('IDLE');
+                        activeFramesAccumulatedRef.current = 0;
+                      }
                     }
                   })
                   .catch((err: any) => {
                     console.error('[Sambhav ML] Inference error:', err);
                     machineStateRef.current = 'IDLE';
                     setGestureState('IDLE');
+                    activeFramesAccumulatedRef.current = 0;
                   });
               }
             }
+            return;
+          }
+
+          if (currentState === 'INFERENCE') {
+            // While inference is in flight, continue buffering frames without re-triggering
             return;
           }
 

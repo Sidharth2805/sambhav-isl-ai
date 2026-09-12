@@ -16,7 +16,7 @@ export interface ISLAvatarCanvasRef {
   resetPose: () => void;
 }
 
-interface ISLAvatarCanvasProps {
+interface Props {
   modelPath?: string;
   speed?: number;
   pauseTimeMs?: number;

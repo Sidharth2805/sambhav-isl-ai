@@ -70,5 +70,36 @@ describe('ISL AI Recognition Pipeline Unit Tests', () => {
       classifier.clearBuffer();
       expect(classifier.getLatestBuffer().length).toBe(0);
     });
+
+    it('should reject short transient movements (< 20 frames) with INSUFFICIENT_ACTIVITY', async () => {
+      classifier.clearBuffer();
+      for (let i = 0; i < 10; i++) {
+        classifier.addFrame({
+          leftHand: Array.from({ length: 21 }, () => ({ x: 0.5 + i * 0.01, y: 0.5, z: 0 }))
+        });
+      }
+      const result = await classifier.evaluateBuffer({ requestId: 1, gestureCycleId: 1 });
+      expect(result.label).toBe('NO_ACTIVE_SIGN');
+      expect(result.confidence).toBe(0.0);
+      expect(result.rejectionReason).toBe('INSUFFICIENT_ACTIVITY');
+    });
+
+    it('should pass activity gate when genuine 45-frame active stroke is performed', async () => {
+      classifier.clearBuffer();
+      // Add 45 frames of active hand stroke
+      for (let i = 0; i < 45; i++) {
+        classifier.addFrame({
+          leftHand: Array.from({ length: 21 }, () => ({ x: 0.4 + (i % 10) * 0.01, y: 0.5 + (i % 5) * 0.01, z: 0 }))
+        });
+      }
+      expect(classifier.getLatestBuffer().length).toBe(45);
+      const result = await classifier.evaluateBuffer({ requestId: 2, gestureCycleId: 2 });
+      // When ML service is online, gatePassed is true and result is evaluated
+      if (result.activityTelemetry) {
+        expect(result.activityTelemetry.gatePassed).toBe(true);
+        expect(result.activityTelemetry.handCount).toBeGreaterThanOrEqual(1);
+        expect(result.activityTelemetry.activeFrameRatio).toBeGreaterThanOrEqual(0.25);
+      }
+    });
   });
 });

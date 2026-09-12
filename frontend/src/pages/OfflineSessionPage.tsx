@@ -35,6 +35,7 @@ export const OfflineSessionPage: React.FC = () => {
     currentGesture: _currentGesture,
     confidence,
     translatedText,
+    committedSign,
     error: recognitionError,
     isModelOnline,
     startRecognition,
@@ -286,6 +287,7 @@ export const OfflineSessionPage: React.FC = () => {
             {/* WhatsApp-Style Editable ISL Message Composition System */}
             <div className="flex flex-col gap-2">
               <ISLMessageComposer
+                incomingCommittedSign={committedSign}
                 incomingMLWord={translatedText || recognizedText}
                 incomingConfidence={confidence}
                 isModelActive={recognitionActive && isModelOnline}

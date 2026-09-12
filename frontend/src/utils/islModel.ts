@@ -345,15 +345,16 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
       }
     }
 
-    const activeFrameRatio = bufLen > 0 ? activeFrameCount / bufLen : 0.0;
-    const motionFrameRatio = bufLen > 0 ? motionFrameCount / bufLen : 0.0;
+    const activeSpan = firstActive !== -1 && lastActive !== -1 ? lastActive - firstActive + 1 : 0;
+    const evalWindow = Math.min(bufLen, 60);
+    const activeFrameRatio = evalWindow > 0 ? Math.min(1.0, activeFrameCount / evalWindow) : 0.0;
+    const motionFrameRatio = activeSpan > 1 ? motionFrameCount / (activeSpan - 1) : (evalWindow > 1 ? motionFrameCount / (evalWindow - 1) : 0.0);
     const averageMotion = bufLen > 1 ? totalDisplacement / (bufLen - 1) : 0.0;
     const currentHandCount = (hasLeftHand ? 1 : 0) + (hasRightHand ? 1 : 0);
-    const activeSpan = firstActive !== -1 && lastActive !== -1 ? lastActive - firstActive + 1 : 0;
 
     // Preserved Validated Baseline Gate:
     // Requires activeFrameRatio >= 0.25 AND (motionFrameRatio >= 0.08 OR maxDisplacement >= 0.025 OR static pose held with activeSpan >= 25 frames)
-    // AND requires a genuine gesture window (activeSpan >= 25 frames) to prevent classifying 6-15 frame micro-transitions.
+    // AND requires a genuine gesture window (activeSpan >= 20 frames) to prevent classifying 6-15 frame micro-transitions.
     const isStaticPoseHeld = activeFrameRatio >= 0.25 && currentHandCount >= 1 && activeSpan >= 25;
     const isDynamicStroke = activeFrameRatio >= 0.25 && activeSpan >= 20 && (
       motionFrameRatio >= 0.08 ||
