@@ -484,7 +484,7 @@ export const LandingPage: React.FC = () => {
         {/* 1. HERO SECTION WITH DYNAMIC FULL-BLEED BACKGROUND SLIDESHOW              */}
         {/* ------------------------------------------------------------------------- */}
         <section
-          className="relative pt-16 pb-16 sm:pt-20 sm:pb-24 lg:pt-24 lg:pb-28 overflow-hidden flex flex-col justify-center items-center min-h-[600px] sm:min-h-[660px] lg:min-h-[720px]"
+          className="relative pt-8 pb-16 sm:pt-12 sm:pb-20 lg:pt-14 lg:pb-24 overflow-hidden flex flex-col justify-center items-center min-h-[620px] sm:min-h-[680px] lg:min-h-[740px]"
         >
           {/* Dynamic Background Slideshow with Smooth Seamless Crossfade */}
           <div className="absolute inset-0 z-0">
@@ -516,14 +516,14 @@ export const LandingPage: React.FC = () => {
 
           <div className="max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center flex flex-col items-center">
             
-            {/* Top Status Badge */}
-            <div className="inline-flex items-center justify-center gap-2.5 max-w-[94vw] w-fit px-5 sm:px-6 py-2 sm:py-2.5 rounded-full bg-white/95 dark:bg-[#030813]/90 border border-slate-300/80 dark:border-[#fe9832]/40 text-slate-950 dark:text-[#fe9832] text-xs sm:text-sm md:text-base font-extrabold mb-5 sm:mb-6 shadow-md backdrop-blur-md text-center transition-all">
+            {/* Top Status Badge (Moved Upwards) */}
+            <div className="inline-flex items-center justify-center gap-2.5 max-w-[94vw] w-fit px-5 sm:px-6 py-2 sm:py-2.5 rounded-full bg-white/95 dark:bg-[#030813]/90 border border-slate-300/80 dark:border-[#fe9832]/40 text-slate-950 dark:text-[#fe9832] text-xs sm:text-sm md:text-base font-extrabold mb-10 sm:mb-14 lg:mb-16 shadow-md backdrop-blur-md text-center transition-all -translate-y-2 sm:-translate-y-3">
               <span className="shrink-0 w-2.5 h-2.5 rounded-full bg-indigo-600 dark:bg-[#fe9832] animate-ping" />
               <span className="font-extrabold tracking-tight truncate sm:whitespace-nowrap">{t('hero.badge', 'SAMBHAV — Indian Sign Language AI')}</span>
             </div>
 
-            {/* Main Headline Container with Subtle Translucent Glassmorphism hugging the words */}
-            <div className="relative inline-block w-fit max-w-[94vw] sm:max-w-2xl md:max-w-3xl lg:max-w-3xl mb-7 sm:mb-9 px-5 sm:px-8 py-5 sm:py-7 rounded-2xl sm:rounded-[28px] bg-white/[0.08] dark:bg-black/25 backdrop-blur-[3px] border border-white/30 dark:border-white/10 shadow-lg shadow-black/5 dark:shadow-black/40">
+            {/* Main Headline Container (Shifted Downwards with Clear Breathing Room) */}
+            <div className="relative inline-block w-fit max-w-[94vw] sm:max-w-2xl md:max-w-3xl lg:max-w-3xl mb-7 sm:mb-9 px-5 sm:px-8 py-5 sm:py-7 rounded-2xl sm:rounded-[28px] bg-white/[0.08] dark:bg-black/25 backdrop-blur-[3px] border border-white/30 dark:border-white/10 shadow-lg shadow-black/5 dark:shadow-black/40 translate-y-1 sm:translate-y-2">
               <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-[2.65rem] font-black tracking-tight text-slate-950 dark:text-white leading-[1.24] sm:leading-[1.2] font-headline drop-shadow-sm mx-auto">
                 {t('hero.title.prefix', 'Transforming')}{' '}
                 <span className="text-indigo-600 dark:text-[#fe9832] font-black">
