@@ -1,4 +1,4 @@
-// Ultra-Smooth Natural Human Voice Synthesizer with Multi-Language & Odia Speech Support
+// Ultra-Smooth Natural Human Voice Synthesizer with Multi-Language (English, Odia, Hindi) Speech Support
 
 export interface NaturalVoiceOption {
   voice: SpeechSynthesisVoice;
@@ -201,6 +201,211 @@ function transliterateOdiaForSpeech(text: string): string {
   return result;
 }
 
+// Comprehensive Hindi (Devanagari) script to natural phonetic speech transliteration
+function transliterateHindiForSpeech(text: string): string {
+  if (!text || !/[\u0900-\u097F]/.test(text)) {
+    return text;
+  }
+
+  // Common Hindi UI terms & phrases for instant phonetic accuracy
+  const phraseMap: Record<string, string> = {
+    'हिन्दी': 'Hindi',
+    'सम्भव': 'Sambhav',
+    'डैशबोर्ड': 'Dashboard',
+    'अनुवाद': 'Anuvaad',
+    'संवाद': 'Samvaad',
+    'सांस्कृतिक': 'Saanskritik',
+    'सांकेतिक भाषा': 'Saanketik Bhaashaa',
+    'भारतीय सांकेतिक भाषा': 'Bhaarateeya Saanketik Bhaashaa',
+    'भारत': 'Bhaarat',
+    'समाचार': 'Samaachaar',
+    'खबरें': 'Khabrein',
+    'सीखें': 'Seekhein',
+    'सहायता': 'Sahaayataa',
+    'मदद': 'Madad',
+    'प्रोफ़ाइल': 'Profile',
+    'इतिहास': 'Itihaas',
+    'सेटिंग्स': 'Settings',
+    'सेटिंग': 'Setting',
+    'लॉग इन': 'Login',
+    'साइन अप': 'Sign Up',
+    'पंजीकरण': 'Panjeekaran',
+    'हार्दिक स्वागत': 'Haardik Swaagat',
+    'स्वागत': 'Swaagat',
+    'राष्ट्रगान': 'Raashtragaan',
+    'नमस्ते': 'Namaste',
+    'धन्यवाद': 'Dhanyavaad',
+    'स्वास्थ्य सेवा': 'Swaasthya Sevaa',
+    'अस्पताल': 'Aspataal',
+    'दैनिक बातचीत': 'Dainik Baatcheet',
+    'कार्यालय': 'Kaaryaalay',
+    'संस्थान': 'Sansthaan',
+    'प्रसारण': 'Prasaaran',
+    'सुगमता': 'Sugamataa',
+    'अधिकार': 'Adhikaar',
+    'हाँ': 'Haan',
+    'नहीं': 'Nahin',
+    'कृपया': 'Kripayaa',
+  };
+
+  let processed = text;
+  for (const [hindi, phonetic] of Object.entries(phraseMap)) {
+    processed = processed.replaceAll(hindi, phonetic);
+  }
+
+  if (!/[\u0900-\u097F]/.test(processed)) {
+    return processed;
+  }
+
+  // Hindi Devanagari character mappings
+  const vowels: Record<string, string> = {
+    '\u0905': 'a',
+    '\u0906': 'aa',
+    '\u0907': 'i',
+    '\u0908': 'ee',
+    '\u0909': 'u',
+    '\u090A': 'oo',
+    '\u090B': 'ri',
+    '\u090F': 'e',
+    '\u0910': 'ai',
+    '\u0913': 'o',
+    '\u0914': 'au',
+    '\u090D': 'e',
+    '\u0911': 'o',
+  };
+
+  const matras: Record<string, string> = {
+    '\u093E': 'aa',
+    '\u093F': 'i',
+    '\u0940': 'ee',
+    '\u0941': 'u',
+    '\u0942': 'oo',
+    '\u0943': 'ri',
+    '\u0947': 'e',
+    '\u0948': 'ai',
+    '\u094B': 'o',
+    '\u094C': 'au',
+    '\u0945': 'e',
+    '\u0949': 'o',
+  };
+
+  const consonants: Record<string, string> = {
+    '\u0915': 'k',
+    '\u0916': 'kh',
+    '\u0917': 'g',
+    '\u0918': 'gh',
+    '\u0919': 'ng',
+    '\u091A': 'ch',
+    '\u091B': 'chh',
+    '\u091C': 'j',
+    '\u091D': 'jh',
+    '\u091E': 'ny',
+    '\u091F': 't',
+    '\u0920': 'th',
+    '\u0921': 'd',
+    '\u0922': 'dh',
+    '\u0923': 'n',
+    '\u0924': 't',
+    '\u0925': 'th',
+    '\u0926': 'd',
+    '\u0927': 'dh',
+    '\u0928': 'n',
+    '\u0929': 'n',
+    '\u092A': 'p',
+    '\u092B': 'ph',
+    '\u092C': 'b',
+    '\u092D': 'bh',
+    '\u092E': 'm',
+    '\u092F': 'y',
+    '\u0930': 'r',
+    '\u0931': 'r',
+    '\u0932': 'l',
+    '\u0933': 'l',
+    '\u0935': 'v',
+    '\u0936': 'sh',
+    '\u0937': 'sh',
+    '\u0938': 's',
+    '\u0939': 'h',
+    '\u0958': 'q',
+    '\u0959': 'kh',
+    '\u095A': 'gh',
+    '\u095B': 'z',
+    '\u095C': 'r',
+    '\u095D': 'rh',
+    '\u095E': 'f',
+    '\u095F': 'y',
+  };
+
+  const specials: Record<string, string> = {
+    '\u0901': 'n',
+    '\u0902': 'n',
+    '\u0903': 'h',
+  };
+
+  const digits: Record<string, string> = {
+    '\u0966': '0',
+    '\u0967': '1',
+    '\u0968': '2',
+    '\u0969': '3',
+    '\u096A': '4',
+    '\u096B': '5',
+    '\u096C': '6',
+    '\u096D': '7',
+    '\u096E': '8',
+    '\u096F': '9',
+  };
+
+  let result = '';
+  const len = processed.length;
+
+  for (let i = 0; i < len; i++) {
+    const ch = processed[i];
+    const nextCh = i + 1 < len ? processed[i + 1] : '';
+
+    if (vowels[ch]) {
+      result += vowels[ch];
+    } else if (consonants[ch]) {
+      const base = consonants[ch];
+      if (nextCh === '\u094D') {
+        // Virama (halant) - suppress inherent vowel
+        result += base;
+        i++;
+      } else if (matras[nextCh]) {
+        result += base + matras[nextCh];
+        i++;
+      } else if (nextCh === '\u093C') {
+        // Nukta handling (e.g. ज़ or फ़ or ड़)
+        const nuktaBase = ch === '\u0921' ? 'r' : ch === '\u0922' ? 'rh' : ch === '\u091C' ? 'z' : ch === '\u092B' ? 'f' : base;
+        const afterNukta = i + 2 < len ? processed[i + 2] : '';
+        i++;
+        if (afterNukta === '\u094D') {
+          result += nuktaBase;
+          i++;
+        } else if (matras[afterNukta]) {
+          result += nuktaBase + matras[afterNukta];
+          i++;
+        } else {
+          result += nuktaBase + 'a';
+        }
+      } else {
+        result += base + 'a';
+      }
+    } else if (matras[ch]) {
+      result += matras[ch];
+    } else if (specials[ch]) {
+      result += specials[ch];
+    } else if (digits[ch]) {
+      result += digits[ch];
+    } else if (ch === '\u094D' || ch === '\u093C') {
+      // Standalone virama or nukta
+    } else {
+      result += ch;
+    }
+  }
+
+  return result;
+}
+
 class NaturalSpeechEngine {
   private static instance: NaturalSpeechEngine;
   private voices: SpeechSynthesisVoice[] = [];
@@ -245,12 +450,12 @@ class NaturalSpeechEngine {
       if (lowerName.includes('google')) score += 35;
       if (lowerName.includes('premium') || lowerName.includes('enhanced')) score += 30;
       if (lowerName.includes('siri') || lowerName.includes('aria') || lowerName.includes('jenny') || lowerName.includes('guy')) score += 25;
-      if (lowerName.includes('neerja') || lowerName.includes('prabhat') || lowerName.includes('heera') || lowerName.includes('ravi')) score += 25;
+      if (lowerName.includes('neerja') || lowerName.includes('prabhat') || lowerName.includes('heera') || lowerName.includes('ravi') || lowerName.includes('madhur') || lowerName.includes('swara')) score += 30;
 
       // Locale matching
       if (lowerLang.includes('or') || lowerLang.includes('odia')) score += 30;
+      if (lowerLang.includes('hi-in') || lowerLang.includes('hi_in') || lowerLang.startsWith('hi')) score += 25;
       if (lowerLang.includes('en-in') || lowerLang.includes('en_in')) score += 20;
-      else if (lowerLang.includes('hi-in') || lowerLang.includes('hi_in')) score += 18;
       else if (lowerLang.includes('en-us') || lowerLang.includes('en-gb')) score += 15;
       else if (lowerLang.startsWith('en')) score += 10;
 
@@ -290,8 +495,9 @@ class NaturalSpeechEngine {
   private cleanTextForSpeech(text: string): string {
     if (!text) return '';
 
-    // 1. Convert Odia script text into natural phonetic speech for the neural voice
-    const cleaned = transliterateOdiaForSpeech(text.trim());
+    // 1. Convert Odia and Hindi script text into natural phonetic speech for the neural voice
+    let cleaned = transliterateOdiaForSpeech(text.trim());
+    cleaned = transliterateHindiForSpeech(cleaned);
 
     return cleaned
       // Expand abbreviations into clear speech
