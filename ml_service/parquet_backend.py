@@ -499,237 +499,47 @@ def convert_gloss_to_english(gloss):
     # ========================================================
 
     phrase_map = {
-
-        "hello":
-            "Hello.",
-
-        "hi":
-            "Hello.",
-
-        "bye":
-            "Goodbye.",
-
-        "thank you":
-            "Thank you.",
-
-        "thanks":
-            "Thank you.",
-
-        "good morning":
-            "Good morning.",
-
-        "good night":
-            "Good night.",
-
-        "how are you":
-            "How are you?",
-
-        "what your name":
-            "What is your name?",
-
-        "what is your name":
-            "What is your name?",
-
-        "my name":
-            "My name is ...",
-
-        "i love you":
-            "I love you.",
-
-        "i am happy":
-            "I am happy.",
-
-        "i am sad":
-            "I am sad.",
-
-        "i am fine":
-            "I am fine.",
-
-        "i am good":
-            "I am good.",
-
-        "where you go":
-            "Where are you going?",
-
-        "where you live":
-            "Where do you live?",
-
-        "what you doing":
-            "What are you doing?",
-
-        "what doing":
-            "What are you doing?",
-
-        "you okay":
-            "Are you okay?",
-
-        "are you okay":
-            "Are you okay?",
-
-        "i want water":
-            "I want water.",
-
-        "i need water":
-            "I need water.",
-
-        "give me water":
-            "Please give me water.",
-
-        "i want food":
-            "I want food.",
-
-        "i need food":
-            "I need food.",
-
-        "i am hungry":
-            "I am hungry.",
-
-        "i am thirsty":
-            "I am thirsty.",
-
-        "go home":
-            "I am going home.",
-
-        "go school":
-            "I am going to school.",
-
-        "go college":
-            "I am going to college.",
-
-        "go market":
-            "I am going to the market.",
-
-        "market go":
-            "I am going to the market.",
-
-        "school go":
-            "I am going to school.",
-
-        "college go":
-            "I am going to college.",
-
-        "home go":
-            "I am going home.",
-
-        "today school":
-            "I am going to school today.",
-
-        "today college":
-            "I am going to college today.",
-
-        "tomorrow school":
-            "I am going to school tomorrow.",
-
-        "tomorrow college":
-            "I am going to college tomorrow.",
-
-        "yesterday school":
-            "I went to school yesterday.",
-
-        "yesterday college":
-            "I went to college yesterday.",
-
-        "i like":
-            "I like it.",
-
-        "i don't like":
-            "I do not like it.",
-
-        "help me":
-            "Please help me.",
-
-        "please help":
-            "Please help me.",
-
-        "sit down":
-            "Please sit down.",
-
-        "stand up":
-            "Please stand up.",
-
-        "open door":
-            "Please open the door.",
-
-        "close door":
-            "Please close the door.",
-
-        "turn on":
-            "Please turn it on.",
-
-        "turn off":
-            "Please turn it off.",
-
-        "yes":
-            "Yes.",
-
-        "no":
-            "No.",
-
-        "sorry":
-            "I am sorry.",
-
-        "welcome":
-            "You are welcome.",
-
-        "good":
-            "Good.",
-
-        "bad":
-            "Bad.",
-
-        "happy":
-            "I am happy.",
-
-        "sad":
-            "I am sad.",
-
-        "angry":
-            "I am angry.",
-
-        "tired":
-            "I am tired.",
-
-        "strong":
-            "I am strong.",
-
-        "weak":
-            "I am weak.",
-
-        "hungry":
-            "I am hungry.",
-
-        "thirsty":
-            "I am thirsty.",
-
-        "know":
-            "I know.",
-
-        "don't know":
-            "I do not know.",
-
-        "question":
-            "I have a question.",
-
-        "answer":
-            "This is the answer.",
-
-        "time":
-            "What is the time?",
-
-        "place":
-            "What is the place?",
-
-        "language":
-            "What is the language?"
-
+        "hello": "Hello",
+        "hi": "Hello",
+        "thank you": "Thank you",
+        "thanks": "Thank you",
+        "good morning": "Good morning",
+        "good afternoon": "Good afternoon",
+        "good evening": "Good evening",
+        "good night": "Good night",
+        "how are you": "How are you?",
+        "howareyou": "How are you?",
+        "what your name": "What is your name?",
+        "what is your name": "What is your name?",
+        "my name": "My name is",
+        "where you go": "Where are you going?",
+        "where you live": "Where do you live?",
+        "what you doing": "What are you doing?",
+        "what doing": "What are you doing?",
+        "you okay": "Are you okay?",
+        "are you okay": "Are you okay?",
+        "go home": "I am going home.",
+        "go school": "I am going to school.",
+        "go college": "I am going to college.",
+        "go market": "I am going to the market.",
+        "market go": "I am going to the market.",
+        "school go": "I am going to school.",
+        "college go": "I am going to college.",
+        "home go": "I am going home.",
+        "today school": "I am going to school today.",
+        "today college": "I am going to college today.",
+        "tomorrow school": "I am going to school tomorrow.",
+        "tomorrow college": "I am going to college tomorrow.",
+        "yesterday school": "I went to school yesterday.",
+        "yesterday college": "I went to college yesterday.",
+        "sit down": "Please sit down.",
+        "stand up": "Please stand up.",
+        "open door": "Please open the door.",
+        "close door": "Please close the door.",
     }
 
-
     if normalized in phrase_map:
-
-        return phrase_map[
-            normalized
-        ]
+        return phrase_map[normalized]
 
 
     # ========================================================

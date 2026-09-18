@@ -464,8 +464,8 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
           if (!hasHandsInFrame) {
             absenceFramesCountRef.current += 1;
 
-            // If the user just completed a sign gesture (accumulated >= 15 frames) and dropped their hands:
-            if (currentState === 'COLLECTING' && activeFramesAccumulatedRef.current >= 15) {
+            // If the user just completed a sign gesture (accumulated >= 20 frames) and dropped their hands:
+            if (currentState === 'COLLECTING' && activeFramesAccumulatedRef.current >= 20) {
               triggerInference();
               return;
             }
@@ -500,8 +500,8 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
             activeFramesAccumulatedRef.current += 1;
             setFrameCount(activeFramesAccumulatedRef.current);
 
-            // Collect complete gesture window: ~40 frames (~1.3 seconds at 30 FPS)
-            if (activeFramesAccumulatedRef.current >= 40) {
+            // Collect complete gesture window: 60 frames (~2.0 seconds at 30 FPS matching the BiLSTM model)
+            if (activeFramesAccumulatedRef.current >= 60) {
               triggerInference();
             }
             return;

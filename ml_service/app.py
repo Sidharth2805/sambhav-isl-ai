@@ -68,8 +68,9 @@ in_shape = model.input_shape
 out_shape = model.output_shape
 
 SEQUENCE_LENGTH = in_shape[1] if (in_shape and len(in_shape) >= 2 and in_shape[1] is not None) else 60
-NUM_FEATURES = in_shape[2] if (in_shape and len(in_shape) >= 3 and in_shape[2] is not None) else 126
-NUM_CLASSES = out_shape[-1] if (out_shape and len(out_shape) >= 2 and out_shape[-1] is not None) else 169
+RAW_FEATURES = 126
+NUM_FEATURES = in_shape[2] if (in_shape and len(in_shape) >= 3 and in_shape[2] is not None) else 252
+NUM_CLASSES = out_shape[-1] if (out_shape and len(out_shape) >= 2 and out_shape[-1] is not None) else 262
 
 if os.path.exists(LABEL_PATH):
     with open(LABEL_PATH, 'r', encoding='utf-8') as f:
@@ -114,40 +115,57 @@ if os.path.exists(TASK_PATH):
     except Exception as e:
         print('[Sambhav ML] MediaPipe detector warning:', e)
 
+def format_class_name(label: str) -> str:
+    if not label:
+        return ""
+    clean = label.replace('_', ' ').strip()
+    if clean.lower() == 'howareyou':
+        return 'How Are You'
+    if clean.lower() == 'thankyou':
+        return 'Thank You'
+    if clean.lower() == 'goodmorning':
+        return 'Good Morning'
+    if clean.lower() == 'goodafternoon':
+        return 'Good Afternoon'
+    if clean.lower() == 'goodevening':
+        return 'Good Evening'
+    if clean.lower() == 'goodnight':
+        return 'Good Night'
+    if clean.lower() == 'smalllittle':
+        return 'Small / Little'
+    if clean.lower() == 'biglarge':
+        return 'Big / Large'
+    if clean.lower() == 'storeorshop':
+        return 'Store / Shop'
+    if clean.lower() == 'streetorroad':
+        return 'Street / Road'
+    if clean.lower() == 'youplural':
+        return 'You (Plural)'
+    return ' '.join(w.capitalize() for w in clean.split())
+
 FRIENDLY_PHRASES = {
-    'A': 'A', 'B': 'B', 'C': 'C', 'D': 'D', 'E': 'E', 'F': 'F', 'G': 'G',
-    'H': 'H', 'I': 'I', 'J': 'J', 'K': 'K', 'L': 'L', 'M': 'M', 'N': 'N',
-    'O': 'O', 'P': 'P', 'Q': 'Q', 'R': 'R', 'S': 'S', 'T': 'T', 'U': 'U',
-    'V': 'V', 'W': 'W', 'X': 'X', 'Y': 'Y', 'Z': 'Z',
-    'hello': 'Hello',
-    'thank you': 'Thank You',
-    'thank_you': 'Thank You',
-    'help': 'Help',
-    'please': 'Please',
-    'good': 'Good',
-    'bad': 'Bad',
-    'yes': 'Yes',
-    'no': 'No',
-    'doctor': 'Doctor',
-    'hospital': 'Hospital',
-    'school': 'School',
-    'home': 'Home',
-    'water': 'Water',
-    'food': 'Food',
-    'happy': 'Happy',
-    'sad': 'Sad',
+    v: format_class_name(v)
+    for v in LABEL_MAPPING.values()
 }
 
-MIN_CONFIDENCE_THRESHOLD = 0.15
+MIN_CONFIDENCE_THRESHOLD = 0.35
 
-def normalize_sequence(sequence: np.ndarray) -> np.ndarray:
-    seq = np.asarray(sequence, dtype=np.float32)
-    if seq.ndim == 3 and seq.shape[0] == 1:
-        seq = seq[0]
+def add_velocity(seq_126: np.ndarray) -> np.ndarray:
+    """seq_126: (60, 126) raw landmarks -> (60, 252) with velocity appended."""
+    seq = np.asarray(seq_126, dtype=np.float32)
+    mask = (seq != 0).any(axis=1, keepdims=True).astype(np.float32)
+    delta = np.zeros_like(seq)
+    delta[1:] = (seq[1:] - seq[:-1]) * mask[1:] * mask[:-1]
+    return np.concatenate([seq, delta], axis=1).astype(np.float32)
+
+def normalize_sequence(sequence_252: np.ndarray) -> np.ndarray:
+    seq = np.asarray(sequence_252, dtype=np.float32)
+    if seq.shape != (SEQUENCE_LENGTH, NUM_FEATURES):
+        raise ValueError(f"Expected ({SEQUENCE_LENGTH}, {NUM_FEATURES}), got {seq.shape}")
+    mask = (seq != 0).any(axis=1, keepdims=True)
     m = mean_vec.reshape(NUM_FEATURES)
     s = std_vec.reshape(NUM_FEATURES)
-    norm = (seq - m) / s
-    return norm.astype(np.float32)
+    return np.where(mask, (seq - m) / s, 0.0).astype(np.float32)
 
 def extract_landmarks_from_cv2_frame(frame: np.ndarray):
     landmarks = np.zeros((2, 21, 3), dtype=np.float32)
@@ -204,8 +222,9 @@ try:
 except Exception as e:
     print('[Sambhav ML] Graph compilation warning:', e)
 
-def run_bilstm_inference(sequence_126: np.ndarray) -> dict:
-    curr_len = len(sequence_126)
+def run_bilstm_inference(sequence_input: np.ndarray) -> dict:
+    seq_arr = np.asarray(sequence_input, dtype=np.float32)
+    curr_len = len(seq_arr)
     if curr_len == 0:
         return {
             'gesture': 'UNKNOWN',
@@ -217,16 +236,21 @@ def run_bilstm_inference(sequence_126: np.ndarray) -> dict:
             'top_3': []
         }
 
-    if curr_len < SEQUENCE_LENGTH:
-        # Replicate training-time zero-padding strategy
-        padding = np.zeros((SEQUENCE_LENGTH - curr_len, NUM_FEATURES), dtype=np.float32)
-        padded_seq = np.vstack([sequence_126, padding])
-    elif curr_len > SEQUENCE_LENGTH:
-        padded_seq = sequence_126[-SEQUENCE_LENGTH:]
-    else:
-        padded_seq = sequence_126
+    # If sequence is not 60 frames, resample using linspace
+    if curr_len != SEQUENCE_LENGTH and curr_len > 1:
+        indices = np.linspace(0, curr_len - 1, SEQUENCE_LENGTH).astype(int)
+        seq_arr = seq_arr[indices]
+    elif curr_len == 1:
+        seq_arr = np.repeat(seq_arr, SEQUENCE_LENGTH, axis=0)
 
-    norm_seq = normalize_sequence(padded_seq)
+    # If shape is (60, 126), add velocity features to make (60, 252)
+    if seq_arr.shape == (SEQUENCE_LENGTH, RAW_FEATURES):
+        seq_arr = add_velocity(seq_arr)
+
+    if seq_arr.shape != (SEQUENCE_LENGTH, NUM_FEATURES):
+        raise ValueError(f'Expected ({SEQUENCE_LENGTH}, {NUM_FEATURES}), got {seq_arr.shape}')
+
+    norm_seq = normalize_sequence(seq_arr)
     if norm_seq.ndim == 2:
         batch_input = np.expand_dims(norm_seq, axis=0)
     else:
@@ -250,7 +274,7 @@ def run_bilstm_inference(sequence_126: np.ndarray) -> dict:
     raw_label = LABEL_MAPPING.get(str(top1_idx), f'CLASS_{top1_idx}')
     top2_label = LABEL_MAPPING.get(str(top2_idx), f'CLASS_{top2_idx}')
 
-    phrase = FRIENDLY_PHRASES.get(raw_label.lower(), FRIENDLY_PHRASES.get(raw_label, raw_label))
+    phrase = FRIENDLY_PHRASES.get(raw_label.lower(), FRIENDLY_PHRASES.get(raw_label, format_class_name(raw_label)))
 
     return {
         'gesture': raw_label,
@@ -279,10 +303,9 @@ async def health_check():
     return {
         'status': 'healthy',
         'service': 'Sambhav ISL AI Recognition Service',
-        'model': 'Sambhav Model 2 (10-layer BiLSTM + GaussianNoise)',
+        'model': 'SAANKET BiLSTM Parquet Recognition Model',
         'model_file': os.path.basename(MODEL_PATH),
         'model_md5': md5_hash,
-        'frozen_md5_valid': md5_hash == 'bc0bcda972796ec08526627e8c0c498a',
         'num_classes': len(LABEL_MAPPING),
         'sequence_length': SEQUENCE_LENGTH,
         'num_features': NUM_FEATURES,
@@ -302,8 +325,8 @@ async def get_labels():
 async def predict_landmarks(req: LandmarkSequenceRequest):
     try:
         seq_array = np.array(req.sequence, dtype=np.float32)
-        if seq_array.ndim != 2 or seq_array.shape[1] != NUM_FEATURES:
-            raise HTTPException(status_code=400, detail=f'Expected shape (N, {NUM_FEATURES}), got {seq_array.shape}')
+        if seq_array.ndim != 2 or (seq_array.shape[1] != RAW_FEATURES and seq_array.shape[1] != NUM_FEATURES):
+            raise HTTPException(status_code=400, detail=f'Expected shape (N, {RAW_FEATURES}) or (N, {NUM_FEATURES}), got {seq_array.shape}')
         
         result = run_bilstm_inference(seq_array)
         return result

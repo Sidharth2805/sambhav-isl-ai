@@ -1581,34 +1581,33 @@ export const TranslatePage: React.FC = () => {
             {/* Scrollable Content */}
             <div className="flex-1 overflow-y-auto space-y-4 pr-1 text-xs">
               
-              {/* Tip 1: 2-Handed ISL Alphabets */}
+              {/* Tip 1: Whole-Word ISL Recognition */}
               <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl p-3.5">
                 <div className="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-300 text-sm mb-1.5">
                   <span className="material-symbols-outlined text-[18px]">front_hand</span>
-                  <span>1. {t('translate.guideTip1Title', 'Alphabets A–Z are 2-Handed in ISL')}</span>
+                  <span>1. {t('translate.guideTip1Title', '262 Whole-Word ISL Signs')}</span>
                 </div>
                 <p className="text-amber-800 dark:text-amber-200 leading-relaxed">
-                  {t('translate.guideTip1Desc', 'Unlike American Sign Language (ASL) which uses one hand, Indian Sign Language (ISL) uses two hands for alphabets:')}
+                  {t('translate.guideTip1Desc', 'The AI recognizes full 262 whole-word Indian Sign Language (ISL) concepts rather than isolated letters. Both single-handed and two-handed gestures are supported:')}
                 </p>
                 <ul className="list-disc list-inside mt-2 space-y-1 text-amber-900 dark:text-amber-100 font-medium">
-                  <li><strong>Letter A:</strong> {t('translate.guideTip1A', 'Touch the tip of your left thumb with your right index finger.')}</li>
-                  <li><strong>Letter B:</strong> {t('translate.guideTip1B', 'Form circles with both hands touching each other at finger tips.')}</li>
-                  <li><strong>Letter C:</strong> {t('translate.guideTip1C', 'Curve both hands in facing arcs.')}</li>
-                  <li><strong>Letter D:</strong> {t('translate.guideTip1D', 'Place right index finger against left upright index finger.')}</li>
+                  <li><strong>Single-Hand Signs:</strong> {t('translate.guideTip1A', 'Perform clearly with dominant hand in full camera view (e.g., Hello, Good, Day).')}</li>
+                  <li><strong>Two-Hand Signs:</strong> {t('translate.guideTip1B', 'Frame both hands in view with green (Right) and orange (Left) skeleton tracking active.')}</li>
+                  <li><strong>Natural Transitions:</strong> {t('translate.guideTip1C', 'Lower hands to rest between signs to cleanly demarcate consecutive words.')}</li>
                 </ul>
               </div>
 
-              {/* Tip 2: Dynamic Signs & 2-3 Second Motion Window */}
+              {/* Tip 2: Dynamic Signs & 2.0 - 3.0 Second Motion Window */}
               <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-xl p-3.5">
                 <div className="flex items-center gap-2 font-bold text-blue-900 dark:text-blue-300 text-sm mb-1.5">
                   <span className="material-symbols-outlined text-[18px]">motion_photos_on</span>
-                  <span>2. {t('translate.guideTip2Title', 'Dynamic Moving Words (1.5s – 3.0s Motion)')}</span>
+                  <span>2. {t('translate.guideTip2Title', 'Dynamic Gesture Timing (2.0s – 3.0s Motion Window)')}</span>
                 </div>
                 <p className="text-blue-800 dark:text-blue-200 leading-relaxed">
-                  {t('translate.guideTip2Desc', 'Dynamic vocabulary signs (such as hello, thank you, father, school, money, happy) need a continuous movement stroke across 1.5 to 3 seconds.')}
+                  {t('translate.guideTip2Desc', 'The BiLSTM neural model processes 60-frame continuous windows (~2.0 to 3.0 seconds). Maintain fluent, uninterrupted sign motion while performing your gesture.')}
                 </p>
                 <p className="text-blue-800 dark:text-blue-200 mt-1">
-                  {t('translate.guideTip2Footer', 'Start your sign clearly in front of the camera, perform the motion, and then return hands to resting position.')}
+                  {t('translate.guideTip2Footer', 'Start your sign clearly in front of the camera, perform the motion, and then drop hands to resting position to trigger instant recognition.')}
                 </p>
               </div>
 
