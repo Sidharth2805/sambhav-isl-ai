@@ -522,9 +522,9 @@ export const LandingPage: React.FC = () => {
               <span className="font-extrabold tracking-tight truncate sm:whitespace-nowrap">{t('hero.badge', 'SAMBHAV — Indian Sign Language AI')}</span>
             </div>
 
-            {/* Main Headline Container with Sleek Translucent Glassmorphism so images show through */}
-            <div className="relative w-full max-w-4xl lg:max-w-5xl mb-8 sm:mb-10 px-5 sm:px-8 md:px-12 py-6 sm:py-9 md:py-11 rounded-3xl sm:rounded-[36px] bg-white/20 dark:bg-black/50 backdrop-blur-sm sm:backdrop-blur-md border border-white/40 dark:border-white/20 shadow-xl shadow-slate-900/10 dark:shadow-black/70">
-              <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-[3.25rem] xl:text-[3.65rem] font-black tracking-tight text-slate-950 dark:text-white leading-[1.22] sm:leading-[1.18] font-headline drop-shadow-sm text-balance mx-auto">
+            {/* Main Headline Container with Subtle Translucent Glassmorphism hugging the words */}
+            <div className="relative inline-block w-fit max-w-[94vw] sm:max-w-2xl md:max-w-3xl lg:max-w-3xl mb-7 sm:mb-9 px-5 sm:px-8 py-5 sm:py-7 rounded-2xl sm:rounded-[28px] bg-white/[0.08] dark:bg-black/25 backdrop-blur-[3px] border border-white/30 dark:border-white/10 shadow-lg shadow-black/5 dark:shadow-black/40">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-[2.65rem] font-black tracking-tight text-slate-950 dark:text-white leading-[1.24] sm:leading-[1.2] font-headline drop-shadow-sm mx-auto">
                 {t('hero.title.prefix', 'Transforming')}{' '}
                 <span className="text-indigo-600 dark:text-[#fe9832] font-black">
                   {t('hero.title.highlight', 'Indian Sign Language')}
