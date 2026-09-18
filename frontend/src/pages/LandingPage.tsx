@@ -484,7 +484,7 @@ export const LandingPage: React.FC = () => {
         {/* 1. HERO SECTION WITH DYNAMIC FULL-BLEED BACKGROUND SLIDESHOW              */}
         {/* ------------------------------------------------------------------------- */}
         <section
-          className="relative pt-16 pb-16 sm:pt-20 sm:pb-24 lg:pt-28 lg:pb-32 overflow-hidden flex flex-col justify-center min-h-[580px] sm:min-h-[640px]"
+          className="relative pt-16 pb-16 sm:pt-20 sm:pb-24 lg:pt-24 lg:pb-28 overflow-hidden flex flex-col justify-center items-center min-h-[600px] sm:min-h-[660px] lg:min-h-[720px]"
         >
           {/* Dynamic Background Slideshow with Smooth Seamless Crossfade */}
           <div className="absolute inset-0 z-0">
@@ -507,24 +507,24 @@ export const LandingPage: React.FC = () => {
             ))}
 
             {/* Minimal transparent overlay allowing full photographic clarity of the hero slides */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/35 pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-black/10 to-black/40 pointer-events-none" />
 
             {/* Radial Color Accents */}
             <div className="absolute top-[-80px] right-[-80px] w-[450px] h-[450px] bg-indigo-500/10 dark:bg-[#fe9832]/10 rounded-full blur-[120px] pointer-events-none" />
             <div className="absolute bottom-[-60px] left-[10%] w-[400px] h-[400px] bg-purple-500/10 dark:bg-[#fe9832]/8 rounded-full blur-[110px] pointer-events-none" />
           </div>
 
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center flex flex-col items-center">
+          <div className="max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center flex flex-col items-center">
             
             {/* Top Status Badge */}
-            <div className="inline-flex items-center space-x-2 bg-white/95 dark:bg-[#fe9832]/20 border border-slate-300 dark:border-[#fe9832]/40 text-slate-900 dark:text-[#fe9832] px-4.5 py-2 rounded-full text-sm sm:text-base font-extrabold mb-5 shadow-sm backdrop-blur-md">
-              <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 dark:bg-[#fe9832] animate-ping" />
-              <span className="font-extrabold">{t('hero.badge', 'SAMBHAV — Indian Sign Language AI')}</span>
+            <div className="inline-flex items-center justify-center gap-2.5 max-w-[94vw] w-fit px-5 sm:px-6 py-2 sm:py-2.5 rounded-full bg-white/95 dark:bg-[#030813]/90 border border-slate-300/80 dark:border-[#fe9832]/40 text-slate-950 dark:text-[#fe9832] text-xs sm:text-sm md:text-base font-extrabold mb-5 sm:mb-6 shadow-md backdrop-blur-md text-center transition-all">
+              <span className="shrink-0 w-2.5 h-2.5 rounded-full bg-indigo-600 dark:bg-[#fe9832] animate-ping" />
+              <span className="font-extrabold tracking-tight truncate sm:whitespace-nowrap">{t('hero.badge', 'SAMBHAV — Indian Sign Language AI')}</span>
             </div>
 
             {/* Main Headline Container with Sleek Translucent Glassmorphism so images show through */}
-            <div className="relative max-w-5xl mb-8 sm:mb-10 px-5 sm:px-10 md:px-12 py-6 sm:py-8 md:py-10 rounded-3xl sm:rounded-[32px] bg-white/10 dark:bg-black/45 backdrop-blur-xs sm:backdrop-blur-sm border border-white/30 dark:border-white/15 shadow-lg shadow-slate-900/5 dark:shadow-black/60">
-              <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight text-slate-950 dark:text-white leading-[1.18] sm:leading-[1.12] font-headline drop-shadow-md">
+            <div className="relative w-full max-w-4xl lg:max-w-5xl mb-8 sm:mb-10 px-5 sm:px-8 md:px-12 py-6 sm:py-9 md:py-11 rounded-3xl sm:rounded-[36px] bg-white/20 dark:bg-black/50 backdrop-blur-sm sm:backdrop-blur-md border border-white/40 dark:border-white/20 shadow-xl shadow-slate-900/10 dark:shadow-black/70">
+              <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-[3.25rem] xl:text-[3.65rem] font-black tracking-tight text-slate-950 dark:text-white leading-[1.22] sm:leading-[1.18] font-headline drop-shadow-sm text-balance mx-auto">
                 {t('hero.title.prefix', 'Transforming')}{' '}
                 <span className="text-indigo-600 dark:text-[#fe9832] font-black">
                   {t('hero.title.highlight', 'Indian Sign Language')}
@@ -554,7 +554,7 @@ export const LandingPage: React.FC = () => {
             </div>
 
             {/* Feature Pills */}
-            <div className="flex flex-wrap items-center justify-center gap-3.5 mt-8 pt-6 border-t border-slate-200/60 dark:border-[#2d3133]/80 text-sm sm:text-base font-bold text-[#1e293b] dark:text-[#cbd5e1]">
+            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-3.5 mt-8 pt-6 border-t border-slate-200/60 dark:border-[#2d3133]/80 text-xs sm:text-sm md:text-base font-bold text-[#1e293b] dark:text-[#cbd5e1] w-full max-w-4xl">
               <span className="flex items-center gap-2 px-4 py-2 bg-white/95 dark:bg-[#0d121d]/85 rounded-full border border-slate-200 dark:border-[#2d3133] shadow-xs backdrop-blur-sm text-slate-800 dark:text-white">
                 <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 dark:bg-[#fe9832]" />
                 {t('hero.pill.avatar', 'Real-time 3D ISL Avatar')}
