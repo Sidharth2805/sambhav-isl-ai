@@ -3,7 +3,6 @@ import { useTextToSpeech } from '../hooks/useTextToSpeech';
 import { ISLAvatarCanvas, type ISLAvatarCanvasRef } from '../components/cultural/ISLAvatarCanvas';
 import { useISLRecognition } from '../hooks/useISLRecognition';
 import { ISLMessageComposer } from '../components/communication/ISLMessageComposer';
-import { ScanModal } from '../components/translate/ScanModal';
 import { useAccessibility } from '../hooks/useAccessibility';
 
 interface SignAssetDto {
@@ -57,7 +56,6 @@ export const TranslatePage: React.FC = () => {
   // Communication Session Active State (Lobby vs Active)
   const [inSession, setInSession] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
-  const [showScanModal, setShowScanModal] = useState(false);
 
   // Active Mode (Unified Speech/Text <-> ISL and ISL <-> Text)
   const [activeMode, setActiveMode] = useState<'SPEECH_TEXT_TO_ISL' | 'ISL_TO_TEXT'>('SPEECH_TEXT_TO_ISL');
@@ -241,44 +239,6 @@ export const TranslatePage: React.FC = () => {
       setIsProcessing(false);
     }
   }, [avatarSpeed]);
-
-  // Handle Scanned Prescription / Note text submission directly into conversation & 3D avatar
-  const handleScannedTextSubmit = useCallback((scannedText: string) => {
-    if (!scannedText || !scannedText.trim()) return;
-
-    const trimmed = scannedText.trim();
-    const msgId = `scan-${Date.now()}`;
-    const words = trimmed.split(/\s+/);
-    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-    if (!inSession) {
-      setInSession(true);
-      setShowSummaryModal(false);
-      setActiveMode('SPEECH_TEXT_TO_ISL');
-    }
-
-    const newMessage: ChatMessage = {
-      id: msgId,
-      sender: 'user',
-      mode: 'TEXT',
-      text: trimmed,
-      words: words,
-      timestamp,
-    };
-
-    setTextMessages((prev) => [...prev, newMessage]);
-    setSessionHistoryLogs((prev) => [...prev, { mode: 'SCAN_OCR', text: trimmed, time: timestamp }]);
-
-    // Trigger instant 3D Avatar letter-by-letter signing
-    setTimeout(() => {
-      translateTextToSign(trimmed, msgId);
-    }, 150);
-
-    // Speak aloud if auto-read is enabled
-    if (autoReadOutChat) {
-      speak(trimmed);
-    }
-  }, [inSession, autoReadOutChat, speak, translateTextToSign]);
 
   // Safe Continuous Speech Recognition Engine with Auto-Recovery
   const startContinuousListening = useCallback(() => {
@@ -1391,16 +1351,6 @@ export const TranslatePage: React.FC = () => {
 
                     <button
                       type="button"
-                      onClick={() => setShowScanModal(true)}
-                      title={t('translate.scanRxTitle', 'Scan handwritten note or prescription')}
-                      className="px-3.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-[#fe9832]/10 dark:hover:bg-[#fe9832]/25 dark:text-[#fe9832] border border-emerald-300 dark:border-[#fe9832]/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">document_scanner</span>
-                      <span className="hidden sm:inline">{t('translate.scanRx', 'Scan Rx')}</span>
-                    </button>
-
-                    <button
-                      type="button"
                       onClick={() => setAutoReadOutChat(!autoReadOutChat)}
                       title={autoReadOutChat ? 'Auto-Read Out is ON' : 'Auto-Read Out is OFF'}
                       className={`p-2.5 rounded-xl border transition-all flex items-center justify-center cursor-pointer ${
@@ -1700,13 +1650,6 @@ export const TranslatePage: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Handwritten Note / Prescription Scanner Modal */}
-      <ScanModal
-        isOpen={showScanModal}
-        onClose={() => setShowScanModal(false)}
-        onSendToTranslate={handleScannedTextSubmit}
-      />
 
       </div>
     </div>

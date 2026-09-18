@@ -381,6 +381,13 @@ export const LandingPage: React.FC = () => {
               </button>
               <button
                 type="button"
+                onClick={() => scrollTo('products-section')}
+                className="text-[#475569] dark:text-[#cbd5e1] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors cursor-pointer font-semibold"
+              >
+                {t('nav.products', 'Products')}
+              </button>
+              <button
+                type="button"
                 onClick={() => scrollTo('features-section')}
                 className="text-[#475569] dark:text-[#cbd5e1] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors cursor-pointer font-semibold"
               >
@@ -654,6 +661,110 @@ export const LandingPage: React.FC = () => {
                 <span className="text-[10px] font-bold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 px-2.5 py-0.5 rounded-full">
                   {t('problem.stat2.source', 'Source: Census of India')}
                 </span>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------------------------------- */}
+        {/* OUR PRODUCTS THROUGH SIGN LANGUAGE AI                                     */}
+        {/* ------------------------------------------------------------------------- */}
+        <section id="products-section" className="py-12 sm:py-16 lg:py-20 relative">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6">
+            <div className="text-center mb-10 sm:mb-14">
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#0f172a] dark:text-white mb-3 font-headline tracking-tight">
+                {t('products.title', 'Our Products Through Sign Language AI')}
+              </h2>
+              <p className="text-sm sm:text-base text-[#475569] dark:text-[#94a3b8] font-medium max-w-xl mx-auto">
+                {t('products.subtitle', 'Connecting People Beyond Words')}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 items-stretch">
+              
+              {/* Card 1: SAMBHAV Translate */}
+              <div className="group rounded-[28px] sm:rounded-[36px] bg-[#2d0e14] dark:bg-[#1f090d] text-white p-6 sm:p-8 flex flex-col justify-between border border-[#5c1c28]/70 shadow-2xl relative overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.01]">
+                <div className="relative z-10">
+                  {/* Tags */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="px-3.5 py-1 bg-white/20 text-white backdrop-blur-md rounded-full text-xs font-black border border-white/25">
+                      On - Device
+                    </span>
+                    <span className="px-3 py-1 bg-white/10 text-white/80 rounded-full text-xs font-medium">
+                      Feature
+                    </span>
+                  </div>
+
+                  {/* Title & Description */}
+                  <h3 className="text-2xl sm:text-3xl font-black text-white mb-3 font-headline tracking-tight">
+                    SAMBHAV Translate
+                  </h3>
+                  <p className="text-white/85 text-xs sm:text-sm leading-relaxed mb-6 font-normal">
+                    Standalone translation for Indian Sign Language, speech, and text. Use the translator directly without entering a video call. Convert speech or text into Indian Sign Language, or convert Indian Sign Language into speech or text.
+                  </p>
+                </div>
+
+                {/* Image & Action Button */}
+                <div className="relative z-10 mt-auto">
+                  <div className="rounded-2xl overflow-hidden border border-white/20 shadow-lg mb-5 bg-black/50">
+                    <img
+                      src="/images/products-translate.jpg"
+                      alt="SAMBHAV Translate Interface"
+                      className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/translate')}
+                    className="w-full py-3 px-5 rounded-xl bg-white text-[#2d0e14] hover:bg-[#fe9832] hover:text-[#542900] font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-98"
+                  >
+                    <span>Try SAMBHAV Translate</span>
+                    <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Card 2: SAMBHAV Connect */}
+              <div className="group rounded-[28px] sm:rounded-[36px] bg-[#0c1424] dark:bg-[#070d18] text-white p-6 sm:p-8 flex flex-col justify-between border border-[#1e2e4a] shadow-2xl relative overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.01]">
+                <div className="relative z-10">
+                  {/* Tags */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="px-3.5 py-1 bg-cyan-500/25 text-cyan-300 backdrop-blur-md rounded-full text-xs font-black border border-cyan-400/30">
+                      Remote
+                    </span>
+                    <span className="px-3 py-1 bg-white/10 text-white/80 rounded-full text-xs font-medium">
+                      Feature
+                    </span>
+                  </div>
+
+                  {/* Title & Description */}
+                  <h3 className="text-2xl sm:text-3xl font-black text-white mb-3 font-headline tracking-tight">
+                    SAMBHAV Connect
+                  </h3>
+                  <p className="text-white/85 text-xs sm:text-sm leading-relaxed mb-6 font-normal">
+                    Real-time communication through an accessible video call. Join a WebRTC conversation where two participants can communicate bidirectionally using Indian Sign Language, speech, and text with translation assistance.
+                  </p>
+                </div>
+
+                {/* Image & Action Button */}
+                <div className="relative z-10 mt-auto">
+                  <div className="rounded-2xl overflow-hidden border border-white/20 shadow-lg mb-5 bg-black/50">
+                    <img
+                      src="/images/products-connect.jpg"
+                      alt="SAMBHAV Connect WebRTC Video Call Interface"
+                      className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/communicate')}
+                    className="w-full py-3 px-5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-98"
+                  >
+                    <span>Launch SAMBHAV Connect</span>
+                    <span className="material-symbols-outlined text-[18px]">videocam</span>
+                  </button>
+                </div>
               </div>
 
             </div>
