@@ -157,7 +157,7 @@ const FAQItem: React.FC<FAQItemProps> = ({ idx, question, answer }) => {
       >
         <div className="flex items-center gap-3">
           <span
-            className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black border ${
+            className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-black border ${
               open
                 ? 'bg-indigo-600 dark:bg-[#fe9832] text-white dark:text-[#3d1e00] border-transparent'
                 : 'bg-indigo-50 dark:bg-[#fe9832]/10 text-indigo-600 dark:text-[#fe9832] border-indigo-200 dark:border-[#fe9832]/30'
@@ -165,12 +165,12 @@ const FAQItem: React.FC<FAQItemProps> = ({ idx, question, answer }) => {
           >
             {String(idx + 1).padStart(2, '0')}
           </span>
-          <span className="text-sm sm:text-base font-semibold text-[#0f172a] dark:text-white leading-snug">
+          <span className="text-base sm:text-lg font-bold text-[#0f172a] dark:text-white leading-snug">
             {question}
           </span>
         </div>
         <span
-          className={`material-symbols-outlined shrink-0 text-[20px] transition-transform duration-300 ${
+          className={`material-symbols-outlined shrink-0 text-[22px] transition-transform duration-300 ${
             open
               ? 'rotate-45 text-indigo-600 dark:text-[#fe9832]'
               : 'text-[#94a3b8] group-hover:text-indigo-500 dark:group-hover:text-[#fe9832]'
@@ -182,11 +182,11 @@ const FAQItem: React.FC<FAQItemProps> = ({ idx, question, answer }) => {
 
       {/* Animated answer panel */}
       <div
-        className={`px-5 text-sm text-[#475569] dark:text-[#94a3b8] leading-relaxed transition-all duration-300 ease-in-out overflow-hidden ${
-          open ? 'max-h-40 pb-5 opacity-100' : 'max-h-0 pb-0 opacity-0'
+        className={`px-5 text-sm sm:text-base text-[#475569] dark:text-[#cbd5e1] leading-relaxed transition-all duration-300 ease-in-out overflow-hidden ${
+          open ? 'max-h-52 pb-5 opacity-100' : 'max-h-0 pb-0 opacity-0'
         }`}
       >
-        <div className="pl-10 border-l-2 border-indigo-200 dark:border-[#fe9832]/30">
+        <div className="pl-11 border-l-2 border-indigo-200 dark:border-[#fe9832]/30">
           {answer}
         </div>
       </div>
@@ -364,46 +364,46 @@ export const LandingPage: React.FC = () => {
             </div>
 
             {/* Navigation Links */}
-            <nav className="hidden md:flex space-x-8 text-sm font-medium">
+            <nav className="hidden md:flex space-x-7 text-base font-medium">
               <button
                 type="button"
                 onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                className="text-[#475569] dark:text-[#cbd5e1] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors cursor-pointer font-semibold"
+                className="text-[#334155] dark:text-[#cbd5e1] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors cursor-pointer font-bold"
               >
                 {t('nav.home', 'Home')}
               </button>
               <button
                 type="button"
                 onClick={() => scrollTo('problem-section')}
-                className="text-[#475569] dark:text-[#cbd5e1] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors cursor-pointer font-semibold"
+                className="text-[#334155] dark:text-[#cbd5e1] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors cursor-pointer font-bold"
               >
                 {t('nav.problem', 'Problem')}
               </button>
               <button
                 type="button"
                 onClick={() => scrollTo('products-section')}
-                className="text-[#475569] dark:text-[#cbd5e1] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors cursor-pointer font-semibold"
+                className="text-[#334155] dark:text-[#cbd5e1] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors cursor-pointer font-bold"
               >
                 {t('nav.products', 'Products')}
               </button>
               <button
                 type="button"
                 onClick={() => scrollTo('features-section')}
-                className="text-[#475569] dark:text-[#cbd5e1] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors cursor-pointer font-semibold"
+                className="text-[#334155] dark:text-[#cbd5e1] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors cursor-pointer font-bold"
               >
                 {t('nav.features', 'Features')}
               </button>
               <button
                 type="button"
                 onClick={() => scrollTo('faq-section')}
-                className="text-[#475569] dark:text-[#cbd5e1] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors cursor-pointer font-semibold"
+                className="text-[#334155] dark:text-[#cbd5e1] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors cursor-pointer font-bold"
               >
                 {t('nav.faq', 'FAQ')}
               </button>
               <button
                 type="button"
                 onClick={() => scrollTo('contact-section')}
-                className="text-[#475569] dark:text-[#cbd5e1] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors cursor-pointer font-semibold"
+                className="text-[#334155] dark:text-[#cbd5e1] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors cursor-pointer font-bold"
               >
                 {t('nav.contact', 'Contact Us')}
               </button>
@@ -416,15 +416,15 @@ export const LandingPage: React.FC = () => {
               <button
                 type="button"
                 onClick={openModal}
-                className="p-2 rounded-xl border border-[#e2e8f0] dark:border-[#2d3133] bg-[#f8fafc] dark:bg-[#1a202c] text-[#0f172a] dark:text-[#fe9832] hover:text-indigo-600 dark:hover:text-[#fe9832] hover:border-indigo-300 dark:hover:border-[#fe9832] transition-all shadow-xs flex items-center justify-center cursor-pointer active:scale-95 relative"
+                className="p-2.5 rounded-xl border border-[#e2e8f0] dark:border-[#2d3133] bg-[#f8fafc] dark:bg-[#1a202c] text-[#0f172a] dark:text-[#fe9832] hover:text-indigo-600 dark:hover:text-[#fe9832] hover:border-indigo-300 dark:hover:border-[#fe9832] transition-all shadow-xs flex items-center justify-center cursor-pointer active:scale-95 relative"
                 title={t('nav.accessibility', 'Accessibility & Assistive Options')}
                 aria-label={t('nav.accessibility', 'Accessibility & Assistive Options')}
               >
-                <span className="material-symbols-outlined text-[19px]">
+                <span className="material-symbols-outlined text-[20px]">
                   accessibility_new
                 </span>
                 {activeFeaturesCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 px-1.5 py-0.2 bg-[#fe9832] text-[#542900] text-[10px] font-black rounded-full shadow-xs">
+                  <span className="absolute -top-1.5 -right-1.5 px-1.5 py-0.2 bg-[#fe9832] text-[#542900] text-[11px] font-black rounded-full shadow-xs">
                     {activeFeaturesCount}
                   </span>
                 )}
@@ -434,11 +434,11 @@ export const LandingPage: React.FC = () => {
               <button
                 type="button"
                 onClick={toggleTheme}
-                className="p-2 rounded-xl border border-[#e2e8f0] dark:border-[#2d3133] bg-[#f8fafc] dark:bg-[#1a202c] text-[#0f172a] dark:text-[#fe9832] hover:text-indigo-600 dark:hover:text-[#fe9832] hover:border-indigo-300 dark:hover:border-[#fe9832] transition-all shadow-xs flex items-center justify-center cursor-pointer active:scale-95"
+                className="p-2.5 rounded-xl border border-[#e2e8f0] dark:border-[#2d3133] bg-[#f8fafc] dark:bg-[#1a202c] text-[#0f172a] dark:text-[#fe9832] hover:text-indigo-600 dark:hover:text-[#fe9832] hover:border-indigo-300 dark:hover:border-[#fe9832] transition-all shadow-xs flex items-center justify-center cursor-pointer active:scale-95"
                 title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
                 aria-label={t('nav.themeToggle', 'Toggle Dark / Light Mode')}
               >
-                <span className="material-symbols-outlined text-[19px]">
+                <span className="material-symbols-outlined text-[20px]">
                   {theme === 'dark' ? 'light_mode' : 'dark_mode'}
                 </span>
               </button>
@@ -447,7 +447,7 @@ export const LandingPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => navigate('/dashboard')}
-                  className="bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 text-white dark:bg-none dark:bg-[#fe9832] dark:text-[#3d1e00] px-5 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-indigo-500/25 dark:shadow-none hover:opacity-95 transition-all cursor-pointer"
+                  className="bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 text-white dark:bg-none dark:bg-[#fe9832] dark:text-[#3d1e00] px-5 py-2.5 rounded-xl text-sm sm:text-base font-bold shadow-md shadow-indigo-500/25 dark:shadow-none hover:opacity-95 transition-all cursor-pointer"
                 >
                   {t('nav.dashboard', 'Dashboard')}
                 </button>
@@ -456,14 +456,14 @@ export const LandingPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => navigate('/login')}
-                    className="text-xs sm:text-sm font-bold text-[#0f172a] dark:text-[#fe9832] hover:text-indigo-600 dark:hover:text-[#ffb77a] px-3 sm:px-4 py-2 rounded-xl transition-all cursor-pointer"
+                    className="text-sm sm:text-base font-bold text-[#0f172a] dark:text-[#fe9832] hover:text-indigo-600 dark:hover:text-[#ffb77a] px-3.5 sm:px-4 py-2 rounded-xl transition-all cursor-pointer"
                   >
                     {t('nav.login', 'Log In')}
                   </button>
                   <button
                     type="button"
                     onClick={() => navigate('/register')}
-                    className="bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 text-white dark:bg-none dark:bg-[#fe9832] dark:text-[#3d1e00] px-4 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-indigo-500/25 dark:shadow-none hover:opacity-95 transition-all cursor-pointer"
+                    className="bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 text-white dark:bg-none dark:bg-[#fe9832] dark:text-[#3d1e00] px-5 sm:px-6 py-2.5 rounded-xl text-sm sm:text-base font-bold shadow-md shadow-indigo-500/25 dark:shadow-none hover:opacity-95 transition-all cursor-pointer"
                   >
                     {t('nav.signup', 'Sign Up')}
                   </button>
@@ -517,7 +517,7 @@ export const LandingPage: React.FC = () => {
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center flex flex-col items-center">
             
             {/* Top Status Badge */}
-            <div className="inline-flex items-center space-x-2 bg-white/95 dark:bg-[#fe9832]/20 border border-slate-300 dark:border-[#fe9832]/40 text-slate-900 dark:text-[#fe9832] px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold mb-5 shadow-sm backdrop-blur-md">
+            <div className="inline-flex items-center space-x-2 bg-white/95 dark:bg-[#fe9832]/20 border border-slate-300 dark:border-[#fe9832]/40 text-slate-900 dark:text-[#fe9832] px-4.5 py-2 rounded-full text-sm sm:text-base font-extrabold mb-5 shadow-sm backdrop-blur-md">
               <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 dark:bg-[#fe9832] animate-ping" />
               <span className="font-extrabold">{t('hero.badge', 'SAMBHAV — Indian Sign Language AI')}</span>
             </div>
@@ -538,33 +538,33 @@ export const LandingPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => navigate('/communicate')}
-                className="w-full sm:w-auto bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 text-white dark:bg-none dark:bg-[#fe9832] dark:text-[#3d1e00] px-8 sm:px-10 py-3.5 rounded-xl text-base font-bold shadow-lg shadow-indigo-500/25 dark:shadow-[0_4px_20px_rgba(254,152,50,0.35)] hover:shadow-indigo-500/40 hover:-translate-y-0.5 transition-all duration-200 text-center cursor-pointer flex items-center justify-center gap-2"
+                className="w-full sm:w-auto bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 text-white dark:bg-none dark:bg-[#fe9832] dark:text-[#3d1e00] px-8 sm:px-10 py-4 rounded-xl text-base sm:text-lg font-extrabold shadow-lg shadow-indigo-500/25 dark:shadow-[0_4px_20px_rgba(254,152,50,0.35)] hover:shadow-indigo-500/40 hover:-translate-y-0.5 transition-all duration-200 text-center cursor-pointer flex items-center justify-center gap-2.5"
               >
-                <span className="material-symbols-outlined text-[20px]">videocam</span>
+                <span className="material-symbols-outlined text-[22px]">videocam</span>
                 <span>{t('hero.cta.try', 'Try Sambhav Now')}</span>
               </button>
               <button
                 type="button"
                 onClick={() => scrollTo('how-it-works-section')}
-                className="w-full sm:w-auto bg-white/95 dark:bg-[#1a202c]/95 text-[#0f172a] dark:text-[#f7fafc] border border-slate-300 dark:border-[#2d3133] hover:border-indigo-400 dark:hover:border-[#fe9832]/60 px-8 sm:px-10 py-3.5 rounded-xl text-base font-semibold hover:bg-slate-50 dark:hover:bg-[#2d3133] hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center space-x-2 shadow-xs hover:shadow-sm cursor-pointer backdrop-blur-sm"
+                className="w-full sm:w-auto bg-white/95 dark:bg-[#1a202c]/95 text-[#0f172a] dark:text-[#f7fafc] border border-slate-300 dark:border-[#2d3133] hover:border-indigo-400 dark:hover:border-[#fe9832]/60 px-8 sm:px-10 py-4 rounded-xl text-base sm:text-lg font-bold hover:bg-slate-50 dark:hover:bg-[#2d3133] hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center space-x-2.5 shadow-xs hover:shadow-sm cursor-pointer backdrop-blur-sm"
               >
-                <span className="material-symbols-outlined text-indigo-600 dark:text-[#fe9832] text-[20px]">info</span>
+                <span className="material-symbols-outlined text-indigo-600 dark:text-[#fe9832] text-[22px]">info</span>
                 <span>{t('hero.cta.how', 'How it Works')}</span>
               </button>
             </div>
 
             {/* Feature Pills */}
-            <div className="flex flex-wrap items-center justify-center gap-3 mt-8 pt-6 border-t border-slate-200/60 dark:border-[#2d3133]/80 text-xs sm:text-sm font-semibold text-[#1e293b] dark:text-[#cbd5e1]">
-              <span className="flex items-center gap-1.5 px-3.5 py-1.5 bg-white/95 dark:bg-[#0d121d]/85 rounded-full border border-slate-200 dark:border-[#2d3133] shadow-xs backdrop-blur-sm text-slate-800 dark:text-white">
-                <span className="w-2 h-2 rounded-full bg-indigo-500 dark:bg-[#fe9832]" />
+            <div className="flex flex-wrap items-center justify-center gap-3.5 mt-8 pt-6 border-t border-slate-200/60 dark:border-[#2d3133]/80 text-sm sm:text-base font-bold text-[#1e293b] dark:text-[#cbd5e1]">
+              <span className="flex items-center gap-2 px-4 py-2 bg-white/95 dark:bg-[#0d121d]/85 rounded-full border border-slate-200 dark:border-[#2d3133] shadow-xs backdrop-blur-sm text-slate-800 dark:text-white">
+                <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 dark:bg-[#fe9832]" />
                 {t('hero.pill.avatar', 'Real-time 3D ISL Avatar')}
               </span>
-              <span className="flex items-center gap-1.5 px-3.5 py-1.5 bg-white/95 dark:bg-[#0d121d]/85 rounded-full border border-slate-200 dark:border-[#2d3133] shadow-xs backdrop-blur-sm text-slate-800 dark:text-white">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-[#059669]" />
+              <span className="flex items-center gap-2 px-4 py-2 bg-white/95 dark:bg-[#0d121d]/85 rounded-full border border-slate-200 dark:border-[#2d3133] shadow-xs backdrop-blur-sm text-slate-800 dark:text-white">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 dark:bg-[#059669]" />
                 {t('hero.pill.speech', 'Live Speech & Subtitles')}
               </span>
-              <span className="flex items-center gap-1.5 px-3.5 py-1.5 bg-white/95 dark:bg-[#0d121d]/85 rounded-full border border-slate-200 dark:border-[#2d3133] shadow-xs backdrop-blur-sm text-slate-800 dark:text-white">
-                <span className="w-2 h-2 rounded-full bg-sky-500 dark:bg-[#2563eb]" />
+              <span className="flex items-center gap-2 px-4 py-2 bg-white/95 dark:bg-[#0d121d]/85 rounded-full border border-slate-200 dark:border-[#2d3133] shadow-xs backdrop-blur-sm text-slate-800 dark:text-white">
+                <span className="w-2.5 h-2.5 rounded-full bg-sky-500 dark:bg-[#2563eb]" />
                 {t('hero.pill.webrtc', 'End-to-End Encrypted WebRTC')}
               </span>
             </div>
@@ -578,13 +578,13 @@ export const LandingPage: React.FC = () => {
         <section id="problem-section" className="py-12 sm:py-16 lg:py-20 relative bg-white dark:bg-[#0d121d] rounded-[2rem] sm:rounded-[2.5rem] mx-3 sm:mx-6 lg:mx-8 border border-[#e2e8f0] dark:border-[#2d3133] shadow-sm my-8 sm:my-12 transition-colors">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10">
             <div className="text-center mb-8 sm:mb-10">
-              <span className="px-3.5 py-1 bg-indigo-50 dark:bg-[#fe9832]/10 border border-indigo-200 dark:border-[#fe9832]/30 text-indigo-700 dark:text-[#fe9832] text-xs font-bold rounded-full mb-3 inline-block">
+              <span className="px-4 py-1.5 bg-indigo-50 dark:bg-[#fe9832]/10 border border-indigo-200 dark:border-[#fe9832]/30 text-indigo-700 dark:text-[#fe9832] text-sm font-bold rounded-full mb-3 inline-block">
                 {t('problem.tag', 'The Accessibility Gap')}
               </span>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0f172a] dark:text-white mb-2 sm:mb-3 font-headline">
+              <h2 className="text-3xl sm:text-4xl font-black text-[#0f172a] dark:text-white mb-3 font-headline tracking-tight">
                 {t('problem.title', 'Communication Challenges in India')}
               </h2>
-              <p className="text-sm sm:text-base text-[#475569] dark:text-[#94a3b8] max-w-2xl mx-auto font-body-lg leading-relaxed">
+              <p className="text-base sm:text-lg text-[#475569] dark:text-[#94a3b8] max-w-2xl mx-auto font-body-lg leading-relaxed">
                 {t('problem.desc', 'The communication gap in India affects millions, with a critical shortage of resources leaving the Deaf and hard-of-hearing community with limited access to essential information and services.')}
               </p>
             </div>
@@ -592,7 +592,7 @@ export const LandingPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-8 items-center max-w-2xl mx-auto">
               
               {/* 63M+ Stat Gauge */}
-              <div className="flex flex-col items-center text-center space-y-3 bg-[#f8fafc] dark:bg-[#1a202c]/50 p-6 sm:p-7 rounded-2xl sm:rounded-3xl border border-[#e2e8f0] dark:border-[#2d3133] shadow-xs">
+              <div className="flex flex-col items-center text-center space-y-3.5 bg-[#f8fafc] dark:bg-[#1a202c]/50 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-[#e2e8f0] dark:border-[#2d3133] shadow-xs">
                 <div className="relative w-28 h-28 sm:w-32 sm:h-32">
                   <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                     <circle cx="50" cy="50" fill="none" r="40" stroke="currentColor" className="text-slate-200 dark:text-slate-800" strokeWidth="8" />
@@ -611,24 +611,24 @@ export const LandingPage: React.FC = () => {
                     />
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-[#0f172a] dark:text-white font-extrabold text-xl sm:text-2xl font-headline">
+                    <span className="text-[#0f172a] dark:text-white font-extrabold text-2xl sm:text-3xl font-headline">
                       {t('problem.stat1.number', '63M+')}
                     </span>
                   </div>
                 </div>
-                <h3 className="text-[#0f172a] dark:text-white font-bold text-sm sm:text-base font-headline">
+                <h3 className="text-[#0f172a] dark:text-white font-bold text-base sm:text-lg font-headline">
                   {t('problem.stat1.title', 'Significant Hearing Loss')}
                 </h3>
-                <p className="text-[#64748b] dark:text-[#94a3b8] text-xs leading-relaxed">
+                <p className="text-[#64748b] dark:text-[#94a3b8] text-sm sm:text-base leading-relaxed">
                   {t('problem.stat1.desc', 'Individuals facing daily communication barriers.')}
                 </p>
-                <span className="text-[10px] font-bold text-indigo-700 dark:text-[#fe9832] bg-indigo-50 dark:bg-[#fe9832]/10 border border-indigo-200 dark:border-[#fe9832]/20 px-2.5 py-0.5 rounded-full">
+                <span className="text-xs font-bold text-indigo-700 dark:text-[#fe9832] bg-indigo-50 dark:bg-[#fe9832]/10 border border-indigo-200 dark:border-[#fe9832]/20 px-3 py-1 rounded-full">
                   {t('problem.stat1.source', 'Source: WHO')}
                 </span>
               </div>
 
               {/* <1% Stat Gauge */}
-              <div className="flex flex-col items-center text-center space-y-3 bg-[#f7fafc] dark:bg-[#1a202c]/50 p-6 sm:p-7 rounded-2xl sm:rounded-3xl border border-[#e0e3e5] dark:border-[#2d3133] shadow-xs">
+              <div className="flex flex-col items-center text-center space-y-3.5 bg-[#f7fafc] dark:bg-[#1a202c]/50 p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-[#e0e3e5] dark:border-[#2d3133] shadow-xs">
                 <div className="relative w-28 h-28 sm:w-32 sm:h-32">
                   <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                     <circle cx="50" cy="50" fill="none" r="40" stroke="currentColor" className="text-slate-200 dark:text-slate-800" strokeWidth="8" />
@@ -647,18 +647,18 @@ export const LandingPage: React.FC = () => {
                     />
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-[#030813] dark:text-white font-extrabold text-xl sm:text-2xl font-headline">
+                    <span className="text-[#030813] dark:text-white font-extrabold text-2xl sm:text-3xl font-headline">
                       {t('problem.stat2.number', '<1%')}
                     </span>
                   </div>
                 </div>
-                <h3 className="text-[#030813] dark:text-white font-bold text-sm sm:text-base font-headline">
+                <h3 className="text-[#030813] dark:text-white font-bold text-base sm:text-lg font-headline">
                   {t('problem.stat2.title', 'Access to ISL Education')}
                 </h3>
-                <p className="text-[#64748b] dark:text-[#94a3b8] text-xs leading-relaxed">
+                <p className="text-[#64748b] dark:text-[#94a3b8] text-sm sm:text-base leading-relaxed">
                   {t('problem.stat2.desc', 'Deaf individuals with access to formal ISL education.')}
                 </p>
-                <span className="text-[10px] font-bold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 px-2.5 py-0.5 rounded-full">
+                <span className="text-xs font-bold text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 px-3 py-1 rounded-full">
                   {t('problem.stat2.source', 'Source: Census of India')}
                 </span>
               </div>
@@ -673,10 +673,10 @@ export const LandingPage: React.FC = () => {
         <section id="products-section" className="py-12 sm:py-16 lg:py-20 relative">
           <div className="max-w-6xl mx-auto px-4 sm:px-6">
             <div className="text-center mb-10 sm:mb-14">
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-[#0f172a] dark:text-white mb-3 font-headline tracking-tight">
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#0f172a] dark:text-white mb-3 font-headline tracking-tight">
                 {t('products.title', 'Our Products Through Sign Language AI')}
               </h2>
-              <p className="text-sm sm:text-base text-[#475569] dark:text-[#94a3b8] font-medium max-w-xl mx-auto">
+              <p className="text-base sm:text-lg text-[#475569] dark:text-[#94a3b8] font-medium max-w-xl mx-auto">
                 {t('products.subtitle', 'Connecting People Beyond Words')}
               </p>
             </div>
@@ -688,19 +688,19 @@ export const LandingPage: React.FC = () => {
                 <div className="relative z-10">
                   {/* Tags */}
                   <div className="flex items-center gap-2 mb-4">
-                    <span className="px-3.5 py-1 bg-white/20 text-white backdrop-blur-md rounded-full text-xs font-black border border-white/25">
+                    <span className="px-4 py-1 bg-white/20 text-white backdrop-blur-md rounded-full text-xs sm:text-sm font-black border border-white/25">
                       On - Device
                     </span>
-                    <span className="px-3 py-1 bg-white/10 text-white/80 rounded-full text-xs font-medium">
+                    <span className="px-3.5 py-1 bg-white/10 text-white/80 rounded-full text-xs sm:text-sm font-medium">
                       Feature
                     </span>
                   </div>
 
                   {/* Title & Description */}
-                  <h3 className="text-2xl sm:text-3xl font-black text-white mb-3 font-headline tracking-tight">
+                  <h3 className="text-3xl sm:text-4xl font-black text-white mb-3 font-headline tracking-tight">
                     SAMBHAV Translate
                   </h3>
-                  <p className="text-white/85 text-xs sm:text-sm leading-relaxed mb-6 font-normal">
+                  <p className="text-white/90 text-sm sm:text-base leading-relaxed mb-6 font-normal">
                     Standalone translation for Indian Sign Language, speech, and text. Use the translator directly without entering a video call. Convert speech or text into Indian Sign Language, or convert Indian Sign Language into speech or text.
                   </p>
                 </div>
@@ -717,10 +717,10 @@ export const LandingPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => navigate('/translate')}
-                    className="w-full py-3 px-5 rounded-xl bg-white text-[#2d0e14] hover:bg-[#fe9832] hover:text-[#542900] font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-98"
+                    className="w-full py-3.5 px-6 rounded-xl bg-white text-[#2d0e14] hover:bg-[#fe9832] hover:text-[#542900] font-black text-sm sm:text-base transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-98"
                   >
                     <span>Try SAMBHAV Translate</span>
-                    <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                    <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
                   </button>
                 </div>
               </div>
@@ -730,19 +730,19 @@ export const LandingPage: React.FC = () => {
                 <div className="relative z-10">
                   {/* Tags */}
                   <div className="flex items-center gap-2 mb-4">
-                    <span className="px-3.5 py-1 bg-cyan-500/25 text-cyan-300 backdrop-blur-md rounded-full text-xs font-black border border-cyan-400/30">
+                    <span className="px-4 py-1 bg-cyan-500/25 text-cyan-300 backdrop-blur-md rounded-full text-xs sm:text-sm font-black border border-cyan-400/30">
                       Remote
                     </span>
-                    <span className="px-3 py-1 bg-white/10 text-white/80 rounded-full text-xs font-medium">
+                    <span className="px-3.5 py-1 bg-white/10 text-white/80 rounded-full text-xs sm:text-sm font-medium">
                       Feature
                     </span>
                   </div>
 
                   {/* Title & Description */}
-                  <h3 className="text-2xl sm:text-3xl font-black text-white mb-3 font-headline tracking-tight">
+                  <h3 className="text-3xl sm:text-4xl font-black text-white mb-3 font-headline tracking-tight">
                     SAMBHAV Connect
                   </h3>
-                  <p className="text-white/85 text-xs sm:text-sm leading-relaxed mb-6 font-normal">
+                  <p className="text-white/90 text-sm sm:text-base leading-relaxed mb-6 font-normal">
                     Real-time communication through an accessible video call. Join a WebRTC conversation where two participants can communicate bidirectionally using Indian Sign Language, speech, and text with translation assistance.
                   </p>
                 </div>
@@ -759,10 +759,10 @@ export const LandingPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => navigate('/communicate')}
-                    className="w-full py-3 px-5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-98"
+                    className="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-black text-sm sm:text-base transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-98"
                   >
                     <span>Launch SAMBHAV Connect</span>
-                    <span className="material-symbols-outlined text-[18px]">videocam</span>
+                    <span className="material-symbols-outlined text-[20px]">videocam</span>
                   </button>
                 </div>
               </div>
@@ -780,24 +780,24 @@ export const LandingPage: React.FC = () => {
               
               {/* Text Content */}
               <div className="lg:w-1/2 flex flex-col items-start text-left">
-                <div className="inline-flex items-center space-x-2 bg-indigo-50 dark:bg-[#fe9832]/10 border border-indigo-200 dark:border-[#fe9832]/30 text-indigo-700 dark:text-[#fe9832] px-3.5 py-1.5 rounded-full text-xs font-bold mb-4 shadow-xs">
-                  <span className="material-symbols-outlined text-sm">visibility</span>
+                <div className="inline-flex items-center space-x-2 bg-indigo-50 dark:bg-[#fe9832]/10 border border-indigo-200 dark:border-[#fe9832]/30 text-indigo-700 dark:text-[#fe9832] px-4 py-1.5 rounded-full text-sm font-bold mb-4 shadow-xs">
+                  <span className="material-symbols-outlined text-base">visibility</span>
                   <span>{t('about.tag', 'Visual Linguistic Expression')}</span>
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0f172a] dark:text-white mb-4 leading-tight font-headline">
+                <h2 className="text-3xl sm:text-4xl font-black text-[#0f172a] dark:text-white mb-4 leading-tight font-headline">
                   {t('about.title', 'Understanding the Power of ISL')}
                 </h2>
-                <ul className="space-y-3.5 text-sm sm:text-base text-[#475569] dark:text-[#94a3b8] font-body-lg">
+                <ul className="space-y-4 text-base sm:text-lg text-[#475569] dark:text-[#94a3b8] font-body-lg">
                   <li className="flex items-start">
-                    <span className="material-symbols-outlined text-indigo-600 dark:text-[#fe9832] mr-3 mt-1 text-lg">check_circle</span>
+                    <span className="material-symbols-outlined text-indigo-600 dark:text-[#fe9832] mr-3 mt-1 text-xl">check_circle</span>
                     <span>{t('about.point1', 'ISL is a complete language with its own grammatical structure and spatial syntax.')}</span>
                   </li>
                   <li className="flex items-start">
-                    <span className="material-symbols-outlined text-indigo-600 dark:text-[#fe9832] mr-3 mt-1 text-lg">check_circle</span>
+                    <span className="material-symbols-outlined text-indigo-600 dark:text-[#fe9832] mr-3 mt-1 text-xl">check_circle</span>
                     <span>{t('about.point2', 'Sign language provides depth, emotion, and nuance that plain text captions cannot convey alone.')}</span>
                   </li>
                   <li className="flex items-start">
-                    <span className="material-symbols-outlined text-indigo-600 dark:text-[#fe9832] mr-3 mt-1 text-lg">check_circle</span>
+                    <span className="material-symbols-outlined text-indigo-600 dark:text-[#fe9832] mr-3 mt-1 text-xl">check_circle</span>
                     <span>{t('about.point3', 'True accessibility means full linguistic inclusion in workplaces, schools, and hospitals.')}</span>
                   </li>
                 </ul>
@@ -836,10 +836,10 @@ export const LandingPage: React.FC = () => {
         <section className="py-12 sm:py-16 lg:py-20">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
             <div className="w-12 h-1.5 bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 dark:bg-[#fe9832] mx-auto mb-6 rounded-full"></div>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-[#0f172a] dark:text-white mb-4 max-w-3xl mx-auto leading-tight tracking-tight font-headline">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-[#0f172a] dark:text-white mb-4 max-w-3xl mx-auto leading-tight tracking-tight font-headline">
               {t('mission.title', 'We are on a mission to make communication universal, regardless of ability.')}
             </h2>
-            <p className="text-sm sm:text-base md:text-lg text-[#475569] dark:text-[#94a3b8] max-w-2xl mx-auto leading-relaxed font-body-lg">
+            <p className="text-base sm:text-lg md:text-xl text-[#475569] dark:text-[#94a3b8] max-w-2xl mx-auto leading-relaxed font-body-lg">
               {t('mission.desc', "SAMBHAV is not just an app; it's a movement. By leveraging advanced computer vision and natural language processing, we are building a seamless bridge between Indian Sign Language and spoken languages.")}
             </p>
           </div>
@@ -851,10 +851,10 @@ export const LandingPage: React.FC = () => {
         <section id="how-it-works-section" className="py-12 sm:py-16 lg:py-20">
           <div className="max-w-6xl mx-auto px-4 sm:px-6">
             <div className="text-center mb-8 sm:mb-10">
-              <span className="px-3.5 py-1 bg-indigo-50 dark:bg-[#fe9832]/10 border border-indigo-200 dark:border-[#fe9832]/30 text-indigo-700 dark:text-[#fe9832] text-xs font-bold rounded-full mb-3 inline-block">
+              <span className="px-4 py-1.5 bg-indigo-50 dark:bg-[#fe9832]/10 border border-indigo-200 dark:border-[#fe9832]/30 text-indigo-700 dark:text-[#fe9832] text-sm font-bold rounded-full mb-3 inline-block">
                 {t('how.tag', 'System Architecture')}
               </span>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0f172a] dark:text-white font-headline">
+              <h2 className="text-3xl sm:text-4xl font-black text-[#0f172a] dark:text-white font-headline tracking-tight">
                 {t('how.title', 'How it Works')}
               </h2>
             </div>
@@ -874,13 +874,13 @@ export const LandingPage: React.FC = () => {
         <section id="features-section" className="py-12 sm:py-16 lg:py-20">
           <div className="max-w-6xl mx-auto px-4 sm:px-6">
             <div className="text-center mb-10 sm:mb-12">
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0f172a] dark:text-white mb-2 font-headline">
+              <h2 className="text-3xl sm:text-4xl font-black text-[#0f172a] dark:text-white mb-2 font-headline tracking-tight">
                 {t('why.title', 'Why Choose')}{' '}
                 <span className="text-indigo-600 dark:text-[#fe9832]">
                   SAMBHAV?
                 </span>
               </h2>
-              <p className="text-sm sm:text-base text-[#475569] dark:text-[#94a3b8] max-w-2xl mx-auto">
+              <p className="text-base sm:text-lg text-[#475569] dark:text-[#94a3b8] max-w-2xl mx-auto">
                 {t('why.subtitle', 'Next-generation accessibility features designed for seamless and instant interaction.')}
               </p>
             </div>
@@ -888,75 +888,75 @@ export const LandingPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
               
               {/* Feature 1 */}
-              <div className="bg-white dark:bg-[#0d121d] p-5 rounded-2xl border border-[#e2e8f0] dark:border-[#2d3133] hover:border-indigo-400 dark:hover:border-[#fe9832] shadow-xs flex flex-col h-full transition-all duration-200 hover:shadow-md hover:-translate-y-1 text-left">
-                <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-[#fe9832]/15 border border-indigo-200/80 dark:border-[#fe9832]/30 flex items-center justify-center mb-3">
-                  <span className="material-symbols-outlined text-indigo-600 dark:text-[#fe9832] text-xl">translate</span>
+              <div className="bg-white dark:bg-[#0d121d] p-5 sm:p-6 rounded-2xl border border-[#e2e8f0] dark:border-[#2d3133] hover:border-indigo-400 dark:hover:border-[#fe9832] shadow-xs flex flex-col h-full transition-all duration-200 hover:shadow-md hover:-translate-y-1 text-left">
+                <div className="w-11 h-11 rounded-xl bg-indigo-50 dark:bg-[#fe9832]/15 border border-indigo-200/80 dark:border-[#fe9832]/30 flex items-center justify-center mb-3.5">
+                  <span className="material-symbols-outlined text-indigo-600 dark:text-[#fe9832] text-2xl">translate</span>
                 </div>
-                <h3 className="text-base font-bold text-[#0f172a] dark:text-white mb-1.5 font-headline">{t('why.card1.title', 'Real-time Translation')}</h3>
-                <p className="text-[#64748b] dark:text-[#94a3b8] text-xs leading-relaxed">{t('why.card1.desc', 'Instant ISL-to-text conversion with minimal latency.')}</p>
+                <h3 className="text-lg sm:text-xl font-bold text-[#0f172a] dark:text-white mb-2 font-headline">{t('why.card1.title', 'Real-time Translation')}</h3>
+                <p className="text-[#64748b] dark:text-[#94a3b8] text-sm sm:text-base leading-relaxed">{t('why.card1.desc', 'Instant ISL-to-text conversion with minimal latency.')}</p>
               </div>
 
               {/* Feature 2 */}
-              <div className="bg-white dark:bg-[#0d121d] p-5 rounded-2xl border border-[#e2e8f0] dark:border-[#2d3133] hover:border-emerald-400 dark:hover:border-[#059669] shadow-xs flex flex-col h-full transition-all duration-200 hover:shadow-md hover:-translate-y-1 text-left">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200/80 dark:border-emerald-500/30 flex items-center justify-center mb-3">
-                  <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-xl">verified</span>
+              <div className="bg-white dark:bg-[#0d121d] p-5 sm:p-6 rounded-2xl border border-[#e2e8f0] dark:border-[#2d3133] hover:border-emerald-400 dark:hover:border-[#059669] shadow-xs flex flex-col h-full transition-all duration-200 hover:shadow-md hover:-translate-y-1 text-left">
+                <div className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200/80 dark:border-emerald-500/30 flex items-center justify-center mb-3.5">
+                  <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-2xl">verified</span>
                 </div>
-                <h3 className="text-base font-bold text-[#0f172a] dark:text-white mb-1.5 font-headline">{t('why.card2.title', 'High Precision')}</h3>
-                <p className="text-[#64748b] dark:text-[#94a3b8] text-xs leading-relaxed">{t('why.card2.desc', 'Accurate gesture recognition for clear communication.')}</p>
+                <h3 className="text-lg sm:text-xl font-bold text-[#0f172a] dark:text-white mb-2 font-headline">{t('why.card2.title', 'High Precision')}</h3>
+                <p className="text-[#64748b] dark:text-[#94a3b8] text-sm sm:text-base leading-relaxed">{t('why.card2.desc', 'Accurate gesture recognition for clear communication.')}</p>
               </div>
 
               {/* Feature 3 */}
-              <div className="bg-white dark:bg-[#0d121d] p-5 rounded-2xl border border-[#e2e8f0] dark:border-[#2d3133] hover:border-amber-400 dark:hover:border-[#fe9832] shadow-xs flex flex-col h-full transition-all duration-200 hover:shadow-md hover:-translate-y-1 text-left">
-                <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-[#fe9832]/15 border border-amber-200/80 dark:border-[#fe9832]/30 flex items-center justify-center mb-3">
-                  <span className="material-symbols-outlined text-amber-600 dark:text-[#fe9832] text-xl">bolt</span>
+              <div className="bg-white dark:bg-[#0d121d] p-5 sm:p-6 rounded-2xl border border-[#e2e8f0] dark:border-[#2d3133] hover:border-amber-400 dark:hover:border-[#fe9832] shadow-xs flex flex-col h-full transition-all duration-200 hover:shadow-md hover:-translate-y-1 text-left">
+                <div className="w-11 h-11 rounded-xl bg-amber-50 dark:bg-[#fe9832]/15 border border-amber-200/80 dark:border-[#fe9832]/30 flex items-center justify-center mb-3.5">
+                  <span className="material-symbols-outlined text-amber-600 dark:text-[#fe9832] text-2xl">bolt</span>
                 </div>
-                <h3 className="text-base font-bold text-[#0f172a] dark:text-white mb-1.5 font-headline">{t('why.card3.title', 'Fast Processing')}</h3>
-                <p className="text-[#64748b] dark:text-[#94a3b8] text-xs leading-relaxed">{t('why.card3.desc', 'Lightning-fast response times for smooth interaction.')}</p>
+                <h3 className="text-lg sm:text-xl font-bold text-[#0f172a] dark:text-white mb-2 font-headline">{t('why.card3.title', 'Fast Processing')}</h3>
+                <p className="text-[#64748b] dark:text-[#94a3b8] text-sm sm:text-base leading-relaxed">{t('why.card3.desc', 'Lightning-fast response times for smooth interaction.')}</p>
               </div>
 
               {/* Feature 4 */}
-              <div className="bg-white dark:bg-[#0d121d] p-5 rounded-2xl border border-[#e2e8f0] dark:border-[#2d3133] hover:border-rose-400 dark:hover:border-amber-500 shadow-xs flex flex-col h-full transition-all duration-200 hover:shadow-md hover:-translate-y-1 text-left">
-                <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-amber-500/15 border border-rose-200/80 dark:border-amber-500/30 flex items-center justify-center mb-3">
-                  <span className="material-symbols-outlined text-rose-600 dark:text-amber-400 text-xl">sentiment_satisfied</span>
+              <div className="bg-white dark:bg-[#0d121d] p-5 sm:p-6 rounded-2xl border border-[#e2e8f0] dark:border-[#2d3133] hover:border-rose-400 dark:hover:border-amber-500 shadow-xs flex flex-col h-full transition-all duration-200 hover:shadow-md hover:-translate-y-1 text-left">
+                <div className="w-11 h-11 rounded-xl bg-rose-50 dark:bg-amber-500/15 border border-rose-200/80 dark:border-amber-500/30 flex items-center justify-center mb-3.5">
+                  <span className="material-symbols-outlined text-rose-600 dark:text-amber-400 text-2xl">sentiment_satisfied</span>
                 </div>
-                <h3 className="text-base font-bold text-[#0f172a] dark:text-white mb-1.5 font-headline">{t('why.card4.title', 'User-Friendly')}</h3>
-                <p className="text-[#64748b] dark:text-[#94a3b8] text-xs leading-relaxed">{t('why.card4.desc', 'Simple interface designed for everyone to use.')}</p>
+                <h3 className="text-lg sm:text-xl font-bold text-[#0f172a] dark:text-white mb-2 font-headline">{t('why.card4.title', 'User-Friendly')}</h3>
+                <p className="text-[#64748b] dark:text-[#94a3b8] text-sm sm:text-base leading-relaxed">{t('why.card4.desc', 'Simple interface designed for everyone to use.')}</p>
               </div>
 
               {/* Feature 5 */}
-              <div className="bg-white dark:bg-[#0d121d] p-5 rounded-2xl border border-[#e2e8f0] dark:border-[#2d3133] hover:border-sky-400 dark:hover:border-[#fe9832] shadow-xs flex flex-col h-full transition-all duration-200 hover:shadow-md hover:-translate-y-1 text-left">
-                <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-[#fe9832]/15 border border-sky-200/80 dark:border-[#fe9832]/30 flex items-center justify-center mb-3">
-                  <span className="material-symbols-outlined text-sky-600 dark:text-[#fe9832] text-xl">auto_awesome</span>
+              <div className="bg-white dark:bg-[#0d121d] p-5 sm:p-6 rounded-2xl border border-[#e2e8f0] dark:border-[#2d3133] hover:border-sky-400 dark:hover:border-[#fe9832] shadow-xs flex flex-col h-full transition-all duration-200 hover:shadow-md hover:-translate-y-1 text-left">
+                <div className="w-11 h-11 rounded-xl bg-sky-50 dark:bg-[#fe9832]/15 border border-sky-200/80 dark:border-[#fe9832]/30 flex items-center justify-center mb-3.5">
+                  <span className="material-symbols-outlined text-sky-600 dark:text-[#fe9832] text-2xl">auto_awesome</span>
                 </div>
-                <h3 className="text-base font-bold text-[#0f172a] dark:text-white mb-1.5 font-headline">{t('why.card5.title', 'AI Intelligence')}</h3>
-                <p className="text-[#64748b] dark:text-[#94a3b8] text-xs leading-relaxed">{t('why.card5.desc', 'Advanced learning models for superior sign recognition.')}</p>
+                <h3 className="text-lg sm:text-xl font-bold text-[#0f172a] dark:text-white mb-2 font-headline">{t('why.card5.title', 'AI Intelligence')}</h3>
+                <p className="text-[#64748b] dark:text-[#94a3b8] text-sm sm:text-base leading-relaxed">{t('why.card5.desc', 'Advanced learning models for superior sign recognition.')}</p>
               </div>
 
               {/* Feature 6 */}
-              <div className="bg-white dark:bg-[#0d121d] p-5 rounded-2xl border border-[#e2e8f0] dark:border-[#2d3133] hover:border-teal-400 dark:hover:border-teal-500 shadow-xs flex flex-col h-full transition-all duration-200 hover:shadow-md hover:-translate-y-1 text-left">
-                <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-500/15 border border-teal-200/80 dark:border-teal-500/30 flex items-center justify-center mb-3">
-                  <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-xl">menu_book</span>
+              <div className="bg-white dark:bg-[#0d121d] p-5 sm:p-6 rounded-2xl border border-[#e2e8f0] dark:border-[#2d3133] hover:border-teal-400 dark:hover:border-teal-500 shadow-xs flex flex-col h-full transition-all duration-200 hover:shadow-md hover:-translate-y-1 text-left">
+                <div className="w-11 h-11 rounded-xl bg-teal-50 dark:bg-teal-500/15 border border-teal-200/80 dark:border-teal-500/30 flex items-center justify-center mb-3.5">
+                  <span className="material-symbols-outlined text-teal-600 dark:text-teal-400 text-2xl">menu_book</span>
                 </div>
-                <h3 className="text-base font-bold text-[#0f172a] dark:text-white mb-1.5 font-headline">{t('why.card6.title', 'Educational Tools')}</h3>
-                <p className="text-[#64748b] dark:text-[#94a3b8] text-xs leading-relaxed">{t('why.card6.desc', 'Easy lessons to help you learn and master ISL.')}</p>
+                <h3 className="text-lg sm:text-xl font-bold text-[#0f172a] dark:text-white mb-2 font-headline">{t('why.card6.title', 'Educational Tools')}</h3>
+                <p className="text-[#64748b] dark:text-[#94a3b8] text-sm sm:text-base leading-relaxed">{t('why.card6.desc', 'Easy lessons to help you learn and master ISL.')}</p>
               </div>
 
               {/* Feature 7 */}
-              <div className="bg-white dark:bg-[#0d121d] p-5 rounded-2xl border border-[#e2e8f0] dark:border-[#2d3133] hover:border-blue-400 dark:hover:border-blue-500 shadow-xs flex flex-col h-full transition-all duration-200 hover:shadow-md hover:-translate-y-1 text-left">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-500/15 border border-blue-200/80 dark:border-blue-500/30 flex items-center justify-center mb-3">
-                  <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-xl">verified_user</span>
+              <div className="bg-white dark:bg-[#0d121d] p-5 sm:p-6 rounded-2xl border border-[#e2e8f0] dark:border-[#2d3133] hover:border-blue-400 dark:hover:border-blue-500 shadow-xs flex flex-col h-full transition-all duration-200 hover:shadow-md hover:-translate-y-1 text-left">
+                <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-500/15 border border-blue-200/80 dark:border-blue-500/30 flex items-center justify-center mb-3.5">
+                  <span className="material-symbols-outlined text-blue-600 dark:text-blue-400 text-2xl">verified_user</span>
                 </div>
-                <h3 className="text-base font-bold text-[#0f172a] dark:text-white mb-1.5 font-headline">{t('why.card7.title', 'Secure Platform')}</h3>
-                <p className="text-[#64748b] dark:text-[#94a3b8] text-xs leading-relaxed">{t('why.card7.desc', 'Your data and privacy are always protected.')}</p>
+                <h3 className="text-lg sm:text-xl font-bold text-[#0f172a] dark:text-white mb-2 font-headline">{t('why.card7.title', 'Secure Platform')}</h3>
+                <p className="text-[#64748b] dark:text-[#94a3b8] text-sm sm:text-base leading-relaxed">{t('why.card7.desc', 'Your data and privacy are always protected.')}</p>
               </div>
 
               {/* Feature 8 */}
-              <div className="bg-white dark:bg-[#0d121d] p-5 rounded-2xl border border-[#e2e8f0] dark:border-[#2d3133] hover:border-purple-400 dark:hover:border-purple-500 shadow-xs flex flex-col h-full transition-all duration-200 hover:shadow-md hover:-translate-y-1 text-left">
-                <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-500/15 border border-purple-200/80 dark:border-purple-500/30 flex items-center justify-center mb-3">
-                  <span className="material-symbols-outlined text-purple-600 dark:text-purple-400 text-xl">diversity_3</span>
+              <div className="bg-white dark:bg-[#0d121d] p-5 sm:p-6 rounded-2xl border border-[#e2e8f0] dark:border-[#2d3133] hover:border-purple-400 dark:hover:border-purple-500 shadow-xs flex flex-col h-full transition-all duration-200 hover:shadow-md hover:-translate-y-1 text-left">
+                <div className="w-11 h-11 rounded-xl bg-purple-50 dark:bg-purple-500/15 border border-purple-200/80 dark:border-purple-500/30 flex items-center justify-center mb-3.5">
+                  <span className="material-symbols-outlined text-purple-600 dark:text-purple-400 text-2xl">diversity_3</span>
                 </div>
-                <h3 className="text-base font-bold text-[#0f172a] dark:text-white mb-1.5 font-headline">{t('why.card8.title', 'Community Focused')}</h3>
-                <p className="text-[#64748b] dark:text-[#94a3b8] text-xs leading-relaxed">{t('why.card8.desc', 'Built to connect deaf and hearing people everywhere.')}</p>
+                <h3 className="text-lg sm:text-xl font-bold text-[#0f172a] dark:text-white mb-2 font-headline">{t('why.card8.title', 'Community Focused')}</h3>
+                <p className="text-[#64748b] dark:text-[#94a3b8] text-sm sm:text-base leading-relaxed">{t('why.card8.desc', 'Built to connect deaf and hearing people everywhere.')}</p>
               </div>
 
             </div>
@@ -971,17 +971,17 @@ export const LandingPage: React.FC = () => {
             
             {/* Header */}
             <div className="text-center sm:text-left mb-8 sm:mb-10">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800/40 rounded-full text-indigo-600 dark:text-indigo-400 text-xs font-bold tracking-wide mb-2.5">
-                <span className="material-symbols-outlined text-sm">public</span>
+              <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800/40 rounded-full text-indigo-600 dark:text-indigo-400 text-sm font-bold tracking-wide mb-2.5">
+                <span className="material-symbols-outlined text-base">public</span>
                 <span>{t('diff.tag', 'Real-World Impact')}</span>
               </div>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#0f172a] dark:text-white font-headline">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-[#0f172a] dark:text-white font-headline tracking-tight">
                 {t('diff.title', 'Where We Can Make a')}{' '}
                 <span className="bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 bg-clip-text text-transparent dark:text-[#fe9832]">
                   {t('diff.highlight', 'Difference')}
                 </span>
               </h2>
-              <p className="text-sm sm:text-base text-[#475569] dark:text-[#94a3b8] mt-1.5 max-w-2xl">
+              <p className="text-base sm:text-lg text-[#475569] dark:text-[#94a3b8] mt-2 max-w-2xl leading-relaxed">
                 {t('diff.desc', 'Connecting People Beyond Words across retail, transit, banking, healthcare, workplace, and daily communication.')}
               </p>
             </div>
@@ -1045,8 +1045,8 @@ export const LandingPage: React.FC = () => {
                           <div className="absolute inset-0 bg-gradient-to-t from-[#0b1329] via-transparent to-transparent opacity-60 pointer-events-none" />
                           
                           {/* Tag badge */}
-                          <div className="absolute top-3.5 left-3.5 z-10 flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-950/80 backdrop-blur-md border border-slate-700/60 text-[10px] font-bold text-white shadow-xs">
-                            <span className="material-symbols-outlined text-xs text-indigo-400">{uc.icon}</span>
+                          <div className="absolute top-3.5 left-3.5 z-10 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-950/80 backdrop-blur-md border border-slate-700/60 text-xs font-bold text-white shadow-xs">
+                            <span className="material-symbols-outlined text-sm text-indigo-400">{uc.icon}</span>
                             <span>{t(`usecases.${uc.id}.tag`, uc.tag)}</span>
                           </div>
                         </div>
@@ -1054,20 +1054,20 @@ export const LandingPage: React.FC = () => {
                         {/* Text Content matching SAMBHAV copy */}
                         <div className="p-6 sm:p-7 flex flex-col flex-grow justify-between text-left">
                           <div>
-                            <h3 className="text-xl font-bold text-[#0f172a] dark:text-white mb-2.5 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 font-headline transition-colors">
+                            <h3 className="text-xl sm:text-2xl font-bold text-[#0f172a] dark:text-white mb-2.5 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 font-headline transition-colors">
                               {t(`usecases.${uc.id}.title`, uc.title)}
                             </h3>
-                            <p className="text-xs sm:text-sm text-[#475569] dark:text-slate-300 font-normal leading-relaxed">
+                            <p className="text-sm sm:text-base text-[#475569] dark:text-slate-300 font-normal leading-relaxed">
                               {t(`usecases.${uc.id}.desc`, uc.description)}
                             </p>
                           </div>
 
-                          <div className="mt-5 pt-3.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[11px]">
+                          <div className="mt-5 pt-3.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs sm:text-sm">
                             <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
-                              <span className="material-symbols-outlined text-sm">verified</span>
+                              <span className="material-symbols-outlined text-base">verified</span>
                               <span>{t('diff.badge', 'ISL Integrated')}</span>
                             </span>
-                            <span className="font-mono text-indigo-600 dark:text-indigo-400 font-medium">SAMBHAV AI</span>
+                            <span className="font-mono text-indigo-600 dark:text-indigo-400 font-semibold">SAMBHAV AI</span>
                           </div>
                         </div>
                       </div>
@@ -1105,10 +1105,10 @@ export const LandingPage: React.FC = () => {
         <section className="py-12 sm:py-16 lg:py-20">
           <div className="max-w-6xl mx-auto px-4 sm:px-6">
             <div className="text-center mb-10 sm:mb-12">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#0f172a] dark:text-white mb-2.5 font-headline">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-[#0f172a] dark:text-white mb-2.5 font-headline tracking-tight">
                 {t('testimonials.tag', 'Beta Tester Feedback')}
               </h2>
-              <p className="text-sm sm:text-base text-[#475569] dark:text-[#94a3b8] font-body-lg">
+              <p className="text-base sm:text-lg text-[#475569] dark:text-[#94a3b8] font-body-lg">
                 {t('testimonials.desc', 'What our community is saying about the prototype.')}
               </p>
             </div>
@@ -1117,8 +1117,8 @@ export const LandingPage: React.FC = () => {
               
               {/* Card 1: Anubhav Mohanty */}
               <div className="bg-white dark:bg-[#0d121d] rounded-2xl shadow-xs overflow-hidden flex flex-col h-full border border-[#e2e8f0] dark:border-[#2d3133] hover:border-indigo-400 dark:hover:border-[#fe9832]/50 transition-colors">
-                <div className="p-6 pb-14 flex-grow relative flex items-center justify-center text-center">
-                  <p className="text-[#334155] dark:text-[#cbd5e1] text-sm sm:text-base italic leading-relaxed font-body-md">
+                <div className="p-6 sm:p-7 pb-14 sm:pb-16 flex-grow relative flex items-center justify-center text-center">
+                  <p className="text-[#334155] dark:text-[#cbd5e1] text-base sm:text-lg italic leading-relaxed font-body-md">
                     {t('testimonials.t1.quote', '“We were impressed by the quality of service and attention to detail. Sambhav understood our requirements quickly and exceeded our expectations.”')}
                   </p>
                 </div>
@@ -1126,24 +1126,24 @@ export const LandingPage: React.FC = () => {
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
                     <img
                       alt="Anubhav Mohanty"
-                      className="w-14 h-14 rounded-full border-3 border-white dark:border-[#0d121d] object-cover shadow-sm"
+                      className="w-16 h-16 rounded-full border-3 border-white dark:border-[#0d121d] object-cover shadow-sm"
                       src="https://r.mobirisesite.com/3189180/assets/images/gc4f811ae8669f44688a2c0b044ee-h_mthqxsmc.jpg"
                     />
                   </div>
-                  <div className="bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 dark:bg-none dark:bg-[#fe9832] pt-9 pb-5 text-center text-white dark:text-[#3d1e00] relative">
+                  <div className="bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 dark:bg-none dark:bg-[#fe9832] pt-10 pb-5 text-center text-white dark:text-[#3d1e00] relative">
                     <svg className="absolute top-0 left-0 w-full -translate-y-[99%]" preserveAspectRatio="none" viewBox="0 0 1440 320">
                       <path d="M0,160L48,176C96,192,192,224,288,224C384,224,480,192,576,165.3C672,139,768,117,864,128C960,139,1056,181,1152,197.3C1248,213,1344,203,1392,197.3L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z" fill="#4f46e5" className="dark:fill-[#fe9832]"></path>
                     </svg>
-                    <h4 className="font-bold text-sm sm:text-base mb-0.5 font-headline">{t('testimonials.t1.name', 'Anubhav Mohanty')}</h4>
-                    <p className="text-[11px] opacity-90 uppercase tracking-wide font-semibold">{t('testimonials.t1.role', 'Business Owner')}</p>
+                    <h4 className="font-bold text-base sm:text-lg mb-0.5 font-headline">{t('testimonials.t1.name', 'Anubhav Mohanty')}</h4>
+                    <p className="text-xs sm:text-sm opacity-90 uppercase tracking-wide font-semibold">{t('testimonials.t1.role', 'Business Owner')}</p>
                   </div>
                 </div>
               </div>
 
               {/* Card 2: Prachi Mohapatra */}
               <div className="bg-white dark:bg-[#0d121d] rounded-2xl shadow-xs overflow-hidden flex flex-col h-full border border-[#e2e8f0] dark:border-[#2d3133] hover:border-emerald-400 dark:hover:border-[#fe9832]/50 transition-colors">
-                <div className="p-6 pb-14 flex-grow relative flex items-center justify-center text-center">
-                  <p className="text-[#334155] dark:text-[#cbd5e1] text-sm sm:text-base italic leading-relaxed font-body-md">
+                <div className="p-6 sm:p-7 pb-14 sm:pb-16 flex-grow relative flex items-center justify-center text-center">
+                  <p className="text-[#334155] dark:text-[#cbd5e1] text-base sm:text-lg italic leading-relaxed font-body-md">
                     {t('testimonials.t2.quote', '“Sambhav helped us save time and achieve better results. Their team is reliable, knowledgeable, and easy to work with.”')}
                   </p>
                 </div>
@@ -1151,24 +1151,24 @@ export const LandingPage: React.FC = () => {
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
                     <img
                       alt="Prachi Mohapatra"
-                      className="w-14 h-14 rounded-full border-3 border-white dark:border-[#0d121d] object-cover shadow-sm"
+                      className="w-16 h-16 rounded-full border-3 border-white dark:border-[#0d121d] object-cover shadow-sm"
                       src="https://r.mobirisesite.com/3189180/assets/images/gb5292c91c0837a47d680af6360ca-h_mthqwd8l.jpg"
                     />
                   </div>
-                  <div className="bg-emerald-600 dark:bg-[#059669] pt-9 pb-5 text-center text-white relative">
+                  <div className="bg-emerald-600 dark:bg-[#059669] pt-10 pb-5 text-center text-white relative">
                     <svg className="absolute top-0 left-0 w-full -translate-y-[99%]" preserveAspectRatio="none" viewBox="0 0 1440 320">
                       <path d="M0,160L48,176C96,192,192,224,288,224C384,224,480,192,576,165.3C672,139,768,117,864,128C960,139,1056,181,1152,197.3C1248,213,1344,203,1392,197.3L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z" fill="#059669"></path>
                     </svg>
-                    <h4 className="font-bold text-sm sm:text-base mb-0.5 font-headline">{t('testimonials.t2.name', 'Prachi Mohapatra')}</h4>
-                    <p className="text-[11px] text-white/90 uppercase tracking-wide">{t('testimonials.t2.role', 'Happy Customer')}</p>
+                    <h4 className="font-bold text-base sm:text-lg mb-0.5 font-headline">{t('testimonials.t2.name', 'Prachi Mohapatra')}</h4>
+                    <p className="text-xs sm:text-sm text-white/90 uppercase tracking-wide font-semibold">{t('testimonials.t2.role', 'Happy Customer')}</p>
                   </div>
                 </div>
               </div>
 
               {/* Card 3: Subrat Joshi */}
               <div className="bg-white dark:bg-[#0d121d] rounded-2xl shadow-xs overflow-hidden flex flex-col h-full border border-[#e2e8f0] dark:border-[#2d3133] hover:border-purple-400 dark:hover:border-[#fe9832]/50 transition-colors">
-                <div className="p-6 pb-14 flex-grow relative flex items-center justify-center text-center">
-                  <p className="text-[#334155] dark:text-[#cbd5e1] text-sm sm:text-base italic leading-relaxed font-body-md">
+                <div className="p-6 sm:p-7 pb-14 sm:pb-16 flex-grow relative flex items-center justify-center text-center">
+                  <p className="text-[#334155] dark:text-[#cbd5e1] text-base sm:text-lg italic leading-relaxed font-body-md">
                     {t('testimonials.t3.quote', '“The service was excellent, the communication was clear, and the results were exactly what we hoped for. Highly recommended!”')}
                   </p>
                 </div>
@@ -1176,16 +1176,16 @@ export const LandingPage: React.FC = () => {
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
                     <img
                       alt="Subrat Joshi"
-                      className="w-14 h-14 rounded-full border-3 border-white dark:border-[#0d121d] object-cover shadow-sm"
+                      className="w-16 h-16 rounded-full border-3 border-white dark:border-[#0d121d] object-cover shadow-sm"
                       src="https://r.mobirisesite.com/3189180/assets/images/g784e78d191e0fe3962c7db76cc06-h_mthqxgfq.jpg"
                     />
                   </div>
-                  <div className="bg-[#1e293b] dark:bg-[#1a202c] pt-9 pb-5 text-center text-white relative">
+                  <div className="bg-[#1e293b] dark:bg-[#1a202c] pt-10 pb-5 text-center text-white relative">
                     <svg className="absolute top-0 left-0 w-full -translate-y-[99%]" preserveAspectRatio="none" viewBox="0 0 1440 320">
                       <path d="M0,160L48,176C96,192,192,224,288,224C384,224,480,192,576,165.3C672,139,768,117,864,128C960,139,1056,181,1152,197.3C1248,213,1344,203,1392,197.3L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z" fill="#1e293b"></path>
                     </svg>
-                    <h4 className="font-bold text-sm sm:text-base mb-0.5 font-headline">{t('testimonials.t3.name', 'Subrat Joshi')}</h4>
-                    <p className="text-[11px] text-white/90 uppercase tracking-wide">{t('testimonials.t3.role', 'Operations Head')}</p>
+                    <h4 className="font-bold text-base sm:text-lg mb-0.5 font-headline">{t('testimonials.t3.name', 'Subrat Joshi')}</h4>
+                    <p className="text-xs sm:text-sm text-white/90 uppercase tracking-wide font-semibold">{t('testimonials.t3.role', 'Operations Head')}</p>
                   </div>
                 </div>
               </div>
@@ -1200,92 +1200,92 @@ export const LandingPage: React.FC = () => {
         <section className="py-12 sm:py-16 lg:py-20 border-t border-[#e2e8f0] dark:border-[#2d3133]">
           <div className="max-w-6xl mx-auto px-4 sm:px-6">
             <div className="text-center mb-12">
-              <span className="px-3.5 py-1 rounded-full text-xs font-black uppercase tracking-widest bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-[#fe9832]/20 dark:text-[#fe9832] dark:border-[#fe9832]/30 mb-3 inline-block">
+              <span className="px-4 py-1.5 rounded-full text-sm font-black uppercase tracking-widest bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-[#fe9832]/20 dark:text-[#fe9832] dark:border-[#fe9832]/30 mb-3 inline-block">
                 {t('team.badge', 'Team HacKNomads')}
               </span>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#0f172a] dark:text-white mb-4 font-headline">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-[#0f172a] dark:text-white mb-4 font-headline tracking-tight">
                 {t('team.title', 'Meet Our Team')}
               </h2>
-              <p className="text-sm sm:text-base md:text-lg text-[#475569] dark:text-[#94a3b8] max-w-2xl mx-auto font-body-lg">
+              <p className="text-base sm:text-lg md:text-xl text-[#475569] dark:text-[#94a3b8] max-w-2xl mx-auto font-body-lg">
                 {t('team.desc', 'We are Team HacKNomads — a dedicated team building AI accessibility solutions for Indian Sign Language communication.')}
               </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
               {/* Member 1: Subham Nayak */}
-              <div className="bg-white dark:bg-[#0d121d] rounded-2xl p-6 border border-[#e2e8f0] dark:border-[#2d3133] shadow-xs hover:border-indigo-400 dark:hover:border-[#fe9832]/50 transition-all flex flex-col items-center text-center group">
+              <div className="bg-white dark:bg-[#0d121d] rounded-2xl p-6 sm:p-7 border border-[#e2e8f0] dark:border-[#2d3133] shadow-xs hover:border-indigo-400 dark:hover:border-[#fe9832]/50 transition-all flex flex-col items-center text-center group">
                 <img
                   alt="Subham Nayak"
-                  className="w-24 h-24 rounded-full object-cover border-4 border-indigo-100 dark:border-[#fe9832]/20 group-hover:scale-105 transition-transform mb-4 shadow-md"
+                  className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-indigo-100 dark:border-[#fe9832]/20 group-hover:scale-105 transition-transform mb-4 shadow-md"
                   src="https://r.mobirisesite.com/3189180/assets/images/team1-h_mths0kza.jpg"
                 />
-                <h3 className="text-lg font-bold text-[#0f172a] dark:text-white font-headline mb-1">Subham Nayak</h3>
-                <p className="text-[#334155] dark:text-[#cbd5e1] text-xs sm:text-sm italic leading-relaxed">
+                <h3 className="text-xl font-bold text-[#0f172a] dark:text-white font-headline mb-1.5">Subham Nayak</h3>
+                <p className="text-[#334155] dark:text-[#cbd5e1] text-sm sm:text-base italic leading-relaxed">
                   {t('team.subham.quote', '“SAMBHAV Began With a Simple Thought: Communication Should Never Be Limited By The Way We Speak.”')}
                 </p>
               </div>
 
               {/* Member 2: Mohapatra S.H Gargi */}
-              <div className="bg-white dark:bg-[#0d121d] rounded-2xl p-6 border border-[#e2e8f0] dark:border-[#2d3133] shadow-xs hover:border-sky-400 dark:hover:border-[#fe9832]/50 transition-all flex flex-col items-center text-center group">
+              <div className="bg-white dark:bg-[#0d121d] rounded-2xl p-6 sm:p-7 border border-[#e2e8f0] dark:border-[#2d3133] shadow-xs hover:border-sky-400 dark:hover:border-[#fe9832]/50 transition-all flex flex-col items-center text-center group">
                 <img
                   alt="Mohapatra S.H Gargi"
-                  className="w-24 h-24 rounded-full object-cover border-4 border-sky-100 dark:border-[#fe9832]/20 group-hover:scale-105 transition-transform mb-4 shadow-md"
+                  className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-sky-100 dark:border-[#fe9832]/20 group-hover:scale-105 transition-transform mb-4 shadow-md"
                   src="https://r.mobirisesite.com/3189180/assets/images/team6-h_mths5r90.jpg"
                 />
-                <h3 className="text-lg font-bold text-[#0f172a] dark:text-white font-headline mb-1">Mohapatra S.H Gargi</h3>
-                <p className="text-[#334155] dark:text-[#cbd5e1] text-xs sm:text-sm italic leading-relaxed">
+                <h3 className="text-xl font-bold text-[#0f172a] dark:text-white font-headline mb-1.5">Mohapatra S.H Gargi</h3>
+                <p className="text-[#334155] dark:text-[#cbd5e1] text-sm sm:text-base italic leading-relaxed">
                   {t('team.gargi.quote', '“For us, Indian Sign Language is not just a collection of gestures; it is a language, an identity, and a way of expressing emotions.”')}
                 </p>
               </div>
 
               {/* Member 3: B Vineet Patro */}
-              <div className="bg-white dark:bg-[#0d121d] rounded-2xl p-6 border border-[#e2e8f0] dark:border-[#2d3133] shadow-xs hover:border-emerald-400 dark:hover:border-[#fe9832]/50 transition-all flex flex-col items-center text-center group">
+              <div className="bg-white dark:bg-[#0d121d] rounded-2xl p-6 sm:p-7 border border-[#e2e8f0] dark:border-[#2d3133] shadow-xs hover:border-emerald-400 dark:hover:border-[#fe9832]/50 transition-all flex flex-col items-center text-center group">
                 <img
                   alt="B Vineet Patro"
-                  className="w-24 h-24 rounded-full object-cover border-4 border-emerald-100 dark:border-[#fe9832]/20 group-hover:scale-105 transition-transform mb-4 shadow-md"
+                  className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-emerald-100 dark:border-[#fe9832]/20 group-hover:scale-105 transition-transform mb-4 shadow-md"
                   src="https://r.mobirisesite.com/3189180/assets/images/team3-h_mths6br8.jpg"
                 />
-                <h3 className="text-lg font-bold text-[#0f172a] dark:text-white font-headline mb-1">B Vineet Patro</h3>
-                <p className="text-[#334155] dark:text-[#cbd5e1] text-xs sm:text-sm italic leading-relaxed">
+                <h3 className="text-xl font-bold text-[#0f172a] dark:text-white font-headline mb-1.5">B Vineet Patro</h3>
+                <p className="text-[#334155] dark:text-[#cbd5e1] text-sm sm:text-base italic leading-relaxed">
                   {t('team.vineet.quote', '“SAMBHAV uses technology to understand these signs and create a bridge between people who communicate differently.”')}
                 </p>
               </div>
 
               {/* Member 4: Sidharth Kumar */}
-              <div className="bg-white dark:bg-[#0d121d] rounded-2xl p-6 border border-[#e2e8f0] dark:border-[#2d3133] shadow-xs hover:border-purple-400 dark:hover:border-[#fe9832]/50 transition-all flex flex-col items-center text-center group">
+              <div className="bg-white dark:bg-[#0d121d] rounded-2xl p-6 sm:p-7 border border-[#e2e8f0] dark:border-[#2d3133] shadow-xs hover:border-purple-400 dark:hover:border-[#fe9832]/50 transition-all flex flex-col items-center text-center group">
                 <img
                   alt="Sidharth Kumar"
-                  className="w-24 h-24 rounded-full object-cover border-4 border-purple-100 dark:border-[#fe9832]/20 group-hover:scale-105 transition-transform mb-4 shadow-md"
+                  className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-purple-100 dark:border-[#fe9832]/20 group-hover:scale-105 transition-transform mb-4 shadow-md"
                   src="https://r.mobirisesite.com/3189180/assets/images/team4-h_mthrnb56.jpg"
                 />
-                <h3 className="text-lg font-bold text-[#0f172a] dark:text-white font-headline mb-1">Sidharth Kumar</h3>
-                <p className="text-[#334155] dark:text-[#cbd5e1] text-xs sm:text-sm italic leading-relaxed">
+                <h3 className="text-xl font-bold text-[#0f172a] dark:text-white font-headline mb-1.5">Sidharth Kumar</h3>
+                <p className="text-[#334155] dark:text-[#cbd5e1] text-sm sm:text-base italic leading-relaxed">
                   {t('team.sidharth.quote', '“From sign recognition to real-time communication and an expressive digital avatar, every part of SAMBHAV is built around accessibility.”')}
                 </p>
               </div>
 
               {/* Member 5: Shreya Kashyap */}
-              <div className="bg-white dark:bg-[#0d121d] rounded-2xl p-6 border border-[#e2e8f0] dark:border-[#2d3133] shadow-xs hover:border-rose-400 dark:hover:border-[#fe9832]/50 transition-all flex flex-col items-center text-center group">
+              <div className="bg-white dark:bg-[#0d121d] rounded-2xl p-6 sm:p-7 border border-[#e2e8f0] dark:border-[#2d3133] shadow-xs hover:border-rose-400 dark:hover:border-[#fe9832]/50 transition-all flex flex-col items-center text-center group">
                 <img
                   alt="Shreya Kashyap"
-                  className="w-24 h-24 rounded-full object-cover border-4 border-rose-100 dark:border-[#fe9832]/20 group-hover:scale-105 transition-transform mb-4 shadow-md"
+                  className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-rose-100 dark:border-[#fe9832]/20 group-hover:scale-105 transition-transform mb-4 shadow-md"
                   src="https://r.mobirisesite.com/3189180/assets/images/team5-h_mthrfmge.jpg"
                 />
-                <h3 className="text-lg font-bold text-[#0f172a] dark:text-white font-headline mb-1">Shreya Kashyap</h3>
-                <p className="text-[#334155] dark:text-[#cbd5e1] text-xs sm:text-sm italic leading-relaxed">
+                <h3 className="text-xl font-bold text-[#0f172a] dark:text-white font-headline mb-1.5">Shreya Kashyap</h3>
+                <p className="text-[#334155] dark:text-[#cbd5e1] text-sm sm:text-base italic leading-relaxed">
                   {t('team.shreya.quote', '“We believe technology should not make people adapt to it. Technology should adapt to people.”')}
                 </p>
               </div>
 
               {/* Member 6: Avishek Raul */}
-              <div className="bg-white dark:bg-[#0d121d] rounded-2xl p-6 border border-[#e2e8f0] dark:border-[#2d3133] shadow-xs hover:border-amber-400 dark:hover:border-[#fe9832]/50 transition-all flex flex-col items-center text-center group">
+              <div className="bg-white dark:bg-[#0d121d] rounded-2xl p-6 sm:p-7 border border-[#e2e8f0] dark:border-[#2d3133] shadow-xs hover:border-amber-400 dark:hover:border-[#fe9832]/50 transition-all flex flex-col items-center text-center group">
                 <img
                   alt="Avishek Raul"
-                  className="w-24 h-24 rounded-full object-cover border-4 border-amber-100 dark:border-[#fe9832]/20 group-hover:scale-105 transition-transform mb-4 shadow-md"
+                  className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-amber-100 dark:border-[#fe9832]/20 group-hover:scale-105 transition-transform mb-4 shadow-md"
                   src="https://r.mobirisesite.com/3189180/assets/images/team2-h_mthsbdlh.jpg"
                 />
-                <h3 className="text-lg font-bold text-[#0f172a] dark:text-white font-headline mb-1">Avishek Raul</h3>
-                <p className="text-[#334155] dark:text-[#cbd5e1] text-xs sm:text-sm italic leading-relaxed">
+                <h3 className="text-xl font-bold text-[#0f172a] dark:text-white font-headline mb-1.5">Avishek Raul</h3>
+                <p className="text-[#334155] dark:text-[#cbd5e1] text-sm sm:text-base italic leading-relaxed">
                   {t('team.avishek.quote', '“And that is what SAMBHAV stands for — making inclusive communication not just an idea, but something possible.”')}
                 </p>
               </div>
@@ -1300,16 +1300,16 @@ export const LandingPage: React.FC = () => {
           <div className="max-w-4xl mx-auto px-4 sm:px-6">
             {/* Header */}
             <div className="text-center mb-10 sm:mb-12">
-              <span className="px-3.5 py-1 bg-indigo-50 dark:bg-[#fe9832]/10 border border-indigo-200 dark:border-[#fe9832]/30 text-indigo-700 dark:text-[#fe9832] text-xs font-bold rounded-full mb-3 inline-block">
+              <span className="px-4 py-1.5 bg-indigo-50 dark:bg-[#fe9832]/10 border border-indigo-200 dark:border-[#fe9832]/30 text-indigo-700 dark:text-[#fe9832] text-sm font-bold rounded-full mb-3 inline-block">
                 {t('faq.tag', 'Help & Support')}
               </span>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-[#0f172a] dark:text-white mb-2 font-headline">
+              <h2 className="text-3xl sm:text-4xl font-black text-[#0f172a] dark:text-white mb-2.5 font-headline tracking-tight">
                 {t('faq.title', 'Frequently Asked')}{' '}
                 <span className="bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 bg-clip-text text-transparent dark:text-[#fe9832]">
                   {t('faq.title.highlight', 'Questions')}
                 </span>
               </h2>
-              <p className="text-sm sm:text-base text-[#475569] dark:text-[#94a3b8] max-w-xl mx-auto">
+              <p className="text-base sm:text-lg text-[#475569] dark:text-[#94a3b8] max-w-xl mx-auto">
                 {t('faq.subtitle', 'Everything you need to know about SAMBHAV and how it works.')}
               </p>
             </div>
@@ -1356,15 +1356,15 @@ export const LandingPage: React.FC = () => {
 
             {/* CTA below FAQ */}
             <div className="mt-10 text-center">
-              <p className="text-sm text-[#64748b] dark:text-[#94a3b8] mb-4">
+              <p className="text-base text-[#64748b] dark:text-[#94a3b8] mb-4 font-medium">
                 {t('faq.cta.text', 'Still have questions? We are happy to help.')}
               </p>
               <button
                 type="button"
                 onClick={() => scrollTo('contact-section')}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 text-white dark:bg-none dark:bg-[#fe9832] dark:text-[#3d1e00] rounded-xl text-sm font-bold shadow-md shadow-indigo-500/25 dark:shadow-none hover:opacity-95 hover:-translate-y-0.5 transition-all cursor-pointer"
+                className="inline-flex items-center gap-2 px-6 py-3.5 bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 text-white dark:bg-none dark:bg-[#fe9832] dark:text-[#3d1e00] rounded-xl text-base font-bold shadow-md shadow-indigo-500/25 dark:shadow-none hover:opacity-95 hover:-translate-y-0.5 transition-all cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[18px]">mail</span>
+                <span className="material-symbols-outlined text-[20px]">mail</span>
                 <span>{t('faq.cta.btn', 'Contact Our Team')}</span>
               </button>
             </div>
@@ -1377,10 +1377,10 @@ export const LandingPage: React.FC = () => {
         <section id="contact-section" className="py-12 sm:py-16 lg:py-20 bg-slate-50/60 dark:bg-[#0d121d]/60 border-t border-[#e2e8f0] dark:border-[#2d3133] transition-colors">
           <div className="max-w-6xl mx-auto px-4 sm:px-6">
             <div className="text-center mb-10 sm:mb-12">
-              <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0f172a] dark:text-white mb-3 font-headline">
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#0f172a] dark:text-white mb-3 font-headline tracking-tight">
                 {t('contact.support.title', "We're here to help")}
               </h2>
-              <p className="text-sm sm:text-base text-[#475569] dark:text-[#94a3b8] max-w-2xl mx-auto">
+              <p className="text-base sm:text-lg text-[#475569] dark:text-[#94a3b8] max-w-2xl mx-auto">
                 {t('contact.support.desc', "Reach out to our team for support with Sambhav's accessibility ecosystem.")}
               </p>
             </div>
@@ -1389,26 +1389,26 @@ export const LandingPage: React.FC = () => {
               
               {/* Left Column: Contact Details */}
               <div className="bg-white dark:bg-[#0d121d] p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-[#e2e8f0] dark:border-[#2d3133] shadow-xs text-left transition-colors">
-                <h3 className="text-lg sm:text-xl font-bold text-[#0f172a] dark:text-white mb-6 font-headline">
+                <h3 className="text-xl sm:text-2xl font-bold text-[#0f172a] dark:text-white mb-6 font-headline">
                   {t('contact.details.title', 'Contact Details')}
                 </h3>
                 <div className="space-y-6">
-                  <div className="flex items-start space-x-3.5 sm:space-x-4">
-                    <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-[#fe9832]/15 flex items-center justify-center flex-shrink-0 border border-indigo-200/80 dark:border-[#fe9832]/30">
-                      <span className="material-symbols-outlined text-indigo-600 dark:text-[#fe9832] text-xl">mail</span>
+                  <div className="flex items-start space-x-4">
+                    <div className="w-11 h-11 rounded-full bg-indigo-50 dark:bg-[#fe9832]/15 flex items-center justify-center flex-shrink-0 border border-indigo-200/80 dark:border-[#fe9832]/30">
+                      <span className="material-symbols-outlined text-indigo-600 dark:text-[#fe9832] text-2xl">mail</span>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-sm font-semibold text-[#0f172a] dark:text-white">{t('contact.details.email', 'E-mail')}</p>
-                      <a className="block text-xs sm:text-sm text-[#475569] dark:text-[#cbd5e1] hover:text-indigo-600 dark:hover:text-[#fe9832] transition" href="mailto:imsidkr@gmail.com">imsidkr@gmail.com</a>
+                      <p className="text-base font-bold text-[#0f172a] dark:text-white">{t('contact.details.email', 'E-mail')}</p>
+                      <a className="block text-sm sm:text-base text-[#475569] dark:text-[#cbd5e1] hover:text-indigo-600 dark:hover:text-[#fe9832] transition font-medium" href="mailto:imsidkr@gmail.com">imsidkr@gmail.com</a>
                     </div>
                   </div>
-                  <div className="flex items-start space-x-3.5 sm:space-x-4">
-                    <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-[#fe9832]/15 flex items-center justify-center flex-shrink-0 border border-indigo-200/80 dark:border-[#fe9832]/30">
-                      <span className="material-symbols-outlined text-indigo-600 dark:text-[#fe9832] text-xl">location_on</span>
+                  <div className="flex items-start space-x-4">
+                    <div className="w-11 h-11 rounded-full bg-indigo-50 dark:bg-[#fe9832]/15 flex items-center justify-center flex-shrink-0 border border-indigo-200/80 dark:border-[#fe9832]/30">
+                      <span className="material-symbols-outlined text-indigo-600 dark:text-[#fe9832] text-2xl">location_on</span>
                     </div>
                     <div className="space-y-1">
-                      <p className="text-sm font-semibold text-[#0f172a] dark:text-white">{t('contact.details.location', 'Location')}</p>
-                      <p className="text-xs sm:text-sm text-[#475569] dark:text-[#cbd5e1]">{t('contact.details.address', "Institute of Technical Education & Research, Jagamara, Bhubaneswar - 751030")}</p>
+                      <p className="text-base font-bold text-[#0f172a] dark:text-white">{t('contact.details.location', 'Location')}</p>
+                      <p className="text-sm sm:text-base text-[#475569] dark:text-[#cbd5e1] leading-relaxed">{t('contact.details.address', "Institute of Technical Education & Research, Jagamara, Bhubaneswar - 751030")}</p>
                     </div>
                   </div>
                 </div>
@@ -1416,58 +1416,58 @@ export const LandingPage: React.FC = () => {
 
               {/* Right Column: Send a Message Form */}
               <div className="bg-white dark:bg-[#0d121d] p-6 sm:p-8 rounded-2xl sm:rounded-3xl border border-[#e2e8f0] dark:border-[#2d3133] shadow-xs text-left transition-colors">
-                <h3 className="text-lg sm:text-xl font-bold text-[#0f172a] dark:text-white mb-6 font-headline">
+                <h3 className="text-xl sm:text-2xl font-bold text-[#0f172a] dark:text-white mb-6 font-headline">
                   {t('contact.form.title', 'Send a Message')}
                 </h3>
                 {formSubmitted ? (
                   <div className="p-6 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-center flex flex-col items-center gap-2 animate-fadeIn">
                     <span className="material-symbols-outlined text-4xl text-emerald-600 dark:text-emerald-400">check_circle</span>
-                    <h4 className="font-bold text-base font-headline">{t('contact.sent.title', 'Message Sent Successfully!')}</h4>
-                    <p className="text-xs text-emerald-700 dark:text-emerald-300">{t('contact.sent.desc', 'Thank you for reaching out. Our accessibility team will contact you shortly.')}</p>
+                    <h4 className="font-bold text-lg font-headline">{t('contact.sent.title', 'Message Sent Successfully!')}</h4>
+                    <p className="text-sm text-emerald-700 dark:text-emerald-300">{t('contact.sent.desc', 'Thank you for reaching out. Our accessibility team will contact you shortly.')}</p>
                   </div>
                 ) : (
                   <form onSubmit={handleContactSubmit} className="space-y-4">
                     <div>
-                      <label className="block text-xs sm:text-sm font-medium text-[#334155] dark:text-[#cbd5e1] mb-1.5">
+                      <label className="block text-sm sm:text-base font-semibold text-[#334155] dark:text-[#cbd5e1] mb-1.5">
                         {t('contact.form.name', 'Name')}
                       </label>
                       <input
                         required
                         value={formName}
                         onChange={(e) => setFormName(e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-[#e2e8f0] dark:border-[#2d3133] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 dark:focus:ring-[#fe9832]/30 dark:focus:border-[#fe9832] outline-none transition bg-[#f8fafc] dark:bg-[#1a202c] focus:bg-white text-xs sm:text-sm text-[#0f172a] dark:text-white"
+                        className="w-full px-4 py-2.5 rounded-xl border border-[#e2e8f0] dark:border-[#2d3133] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 dark:focus:ring-[#fe9832]/30 dark:focus:border-[#fe9832] outline-none transition bg-[#f8fafc] dark:bg-[#1a202c] focus:bg-white text-sm sm:text-base text-[#0f172a] dark:text-white"
                         placeholder={t('contact.form.namePlaceholder', 'Your Name')}
                         type="text"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs sm:text-sm font-medium text-[#334155] dark:text-[#cbd5e1] mb-1.5">
+                      <label className="block text-sm sm:text-base font-semibold text-[#334155] dark:text-[#cbd5e1] mb-1.5">
                         {t('contact.form.email', 'Email')}
                       </label>
                       <input
                         required
                         value={formEmail}
                         onChange={(e) => setFormEmail(e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-[#e2e8f0] dark:border-[#2d3133] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 dark:focus:ring-[#fe9832]/30 dark:focus:border-[#fe9832] outline-none transition bg-[#f8fafc] dark:bg-[#1a202c] focus:bg-white text-xs sm:text-sm text-[#0f172a] dark:text-white"
+                        className="w-full px-4 py-2.5 rounded-xl border border-[#e2e8f0] dark:border-[#2d3133] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 dark:focus:ring-[#fe9832]/30 dark:focus:border-[#fe9832] outline-none transition bg-[#f8fafc] dark:bg-[#1a202c] focus:bg-white text-sm sm:text-base text-[#0f172a] dark:text-white"
                         placeholder={t('contact.form.emailPlaceholder', 'your@email.com')}
                         type="email"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs sm:text-sm font-medium text-[#334155] dark:text-[#cbd5e1] mb-1.5">
+                      <label className="block text-sm sm:text-base font-semibold text-[#334155] dark:text-[#cbd5e1] mb-1.5">
                         {t('contact.form.message', 'Message')}
                       </label>
                       <textarea
                         required
                         value={formMessage}
                         onChange={(e) => setFormMessage(e.target.value)}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-[#e2e8f0] dark:border-[#2d3133] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 dark:focus:ring-[#fe9832]/30 dark:focus:border-[#fe9832] outline-none transition resize-none bg-[#f8fafc] dark:bg-[#1a202c] focus:bg-white text-xs sm:text-sm text-[#0f172a] dark:text-white"
+                        className="w-full px-4 py-2.5 rounded-xl border border-[#e2e8f0] dark:border-[#2d3133] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 dark:focus:ring-[#fe9832]/30 dark:focus:border-[#fe9832] outline-none transition resize-none bg-[#f8fafc] dark:bg-[#1a202c] focus:bg-white text-sm sm:text-base text-[#0f172a] dark:text-white"
                         placeholder={t('contact.form.messagePlaceholder', 'How can we help you?')}
                         rows={3}
                       />
                     </div>
                     <button
-                      className="w-full bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 text-white dark:bg-none dark:bg-[#fe9832] dark:text-[#3d1e00] font-bold py-3 rounded-xl hover:opacity-95 shadow-md shadow-indigo-500/25 dark:shadow-none transition-all cursor-pointer text-xs sm:text-sm"
+                      className="w-full bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 text-white dark:bg-none dark:bg-[#fe9832] dark:text-[#3d1e00] font-bold py-3.5 rounded-xl hover:opacity-95 shadow-md shadow-indigo-500/25 dark:shadow-none transition-all cursor-pointer text-sm sm:text-base"
                       type="submit"
                     >
                       {t('contact.form.submit', 'Send Message')}
@@ -1505,25 +1505,25 @@ export const LandingPage: React.FC = () => {
               >
                 <img
                   alt="SAMBHAV Circular Logo Icon"
-                  className="h-9 w-9 rounded-full object-contain border border-[#e2e8f0] dark:border-[#2d3133] group-hover:scale-105 transition-transform"
+                  className="h-10 w-10 rounded-full object-contain border border-[#e2e8f0] dark:border-[#2d3133] group-hover:scale-105 transition-transform"
                   src="https://lh3.googleusercontent.com/aida-public/AB6AXuBTg0HBcA_4tr0W91LDkwqOnVSfSNqNLfncEA1PPwyGzu5JLTBXpp_wsXkZjo9tzLvf4KFNyaXk060fIQSGUovqRqh34LlLcrxxAUa5VojHfDfu4jRQJGk6QxnzQbHigwRz16MDMj2DwoCRu_i77QAzKuRLVJ8e2mLUwC7-UvMJ_JB5sui2SpIRfZM5c9yAP4gD3yTYgJBzlXm_PtIyr70gHi3MkHGC95pbUZ_Mid5Kj_my4OpeXflK15WPybnDecsYaov545CM4kLxeQ"
                 />
-                <span className="text-xl font-bold tracking-tight text-[#0f172a] dark:text-white font-headline">
+                <span className="text-2xl font-bold tracking-tight text-[#0f172a] dark:text-white font-headline">
                   SAM<span className="text-indigo-600 dark:text-[#fe9832] font-extrabold">BHAV</span>
                 </span>
               </button>
-              <p className="text-xs sm:text-sm text-[#475569] dark:text-[#94a3b8] leading-relaxed max-w-sm">
+              <p className="text-sm sm:text-base text-[#475569] dark:text-[#94a3b8] leading-relaxed max-w-sm">
                 {t('footer.brand.desc', 'Empowering two-way accessible communication for classrooms, healthcare, and everyday life with AI-powered Indian Sign Language.')}
               </p>
               
               <div className="pt-2">
-                <p className="text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-widest">{t('footer.connect', 'Connect with us')}</p>
+                <p className="text-xs font-bold text-gray-400 mb-2 uppercase tracking-widest">{t('footer.connect', 'Connect with us')}</p>
                 <div className="flex items-center space-x-4">
-                  <a className="flex items-center text-xs text-[#475569] dark:text-[#cbd5e1] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors" href="https://linkedin.com" target="_blank" rel="noopener noreferrer">
+                  <a className="flex items-center text-sm text-[#475569] dark:text-[#cbd5e1] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors" href="https://linkedin.com" target="_blank" rel="noopener noreferrer">
                     <svg className="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"></path></svg>
                     LinkedIn
                   </a>
-                  <a className="flex items-center text-xs text-[#475569] dark:text-[#cbd5e1] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors" href="https://instagram.com" target="_blank" rel="noopener noreferrer">
+                  <a className="flex items-center text-sm text-[#475569] dark:text-[#cbd5e1] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors" href="https://instagram.com" target="_blank" rel="noopener noreferrer">
                     <span className="material-symbols-outlined text-base mr-1">photo_camera</span>
                     Instagram
                   </a>
@@ -1531,15 +1531,15 @@ export const LandingPage: React.FC = () => {
               </div>
 
               <div className="pt-2 border-t border-[#e2e8f0] dark:border-[#2d3133]">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">{t('footer.location.title', 'LOCATION')}</p>
-                <p className="text-xs text-[#475569] dark:text-[#94a3b8] leading-relaxed">{t('contact.details.address', 'Institute of Technical Education & Research, Jagamara, Bhubaneswar - 751030')}</p>
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-0.5">{t('footer.location.title', 'LOCATION')}</p>
+                <p className="text-sm text-[#475569] dark:text-[#94a3b8] leading-relaxed">{t('contact.details.address', 'Institute of Technical Education & Research, Jagamara, Bhubaneswar - 751030')}</p>
               </div>
             </div>
 
             {/* Column 2: Product Links */}
             <div>
-              <p className="text-xs font-bold text-[#0f172a] dark:text-white uppercase tracking-wider mb-4 font-headline">{t('footer.col.product', 'Product')}</p>
-              <ul className="space-y-2.5 text-xs sm:text-sm">
+              <p className="text-sm font-bold text-[#0f172a] dark:text-white uppercase tracking-wider mb-4 font-headline">{t('footer.col.product', 'Product')}</p>
+              <ul className="space-y-3 text-sm sm:text-base">
                 <li>
                   <button type="button" onClick={() => scrollTo('how-it-works-section')} className="text-[#475569] dark:text-[#94a3b8] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors cursor-pointer text-left">
                     {t('footer.link.how', 'How it Works?')}
@@ -1565,8 +1565,8 @@ export const LandingPage: React.FC = () => {
 
             {/* Column 3: Solutions */}
             <div>
-              <p className="text-xs font-bold text-[#0f172a] dark:text-white uppercase tracking-wider mb-4 font-headline">{t('footer.col.solutions', 'Solutions')}</p>
-              <ul className="space-y-2.5 text-xs sm:text-sm">
+              <p className="text-sm font-bold text-[#0f172a] dark:text-white uppercase tracking-wider mb-4 font-headline">{t('footer.col.solutions', 'Solutions')}</p>
+              <ul className="space-y-3 text-sm sm:text-base">
                 <li>
                   <button type="button" onClick={() => navigate('/learn')} className="text-[#475569] dark:text-[#94a3b8] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors cursor-pointer text-left">
                     {t('footer.link.edu', 'Educational Learning')}
@@ -1592,8 +1592,8 @@ export const LandingPage: React.FC = () => {
 
             {/* Column 4: Resources */}
             <div>
-              <p className="text-xs font-bold text-[#0f172a] dark:text-white uppercase tracking-wider mb-4 font-headline">{t('footer.col.resources', 'Resources')}</p>
-              <ul className="space-y-2.5 text-xs sm:text-sm">
+              <p className="text-sm font-bold text-[#0f172a] dark:text-white uppercase tracking-wider mb-4 font-headline">{t('footer.col.resources', 'Resources')}</p>
+              <ul className="space-y-3 text-sm sm:text-base">
                 <li>
                   <button type="button" onClick={() => navigate('/communicate')} className="text-[#475569] dark:text-[#94a3b8] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors cursor-pointer text-left">
                     {t('footer.link.digital', 'Digital Platform')}
@@ -1631,7 +1631,7 @@ export const LandingPage: React.FC = () => {
 
           {/* Large background watermark */}
           <div className="pt-6 border-t border-[#e2e8f0] dark:border-[#2d3133] text-center">
-            <p className="text-xs sm:text-sm text-gray-400">{t('footer.copyright', '© 2026 Sambhav Accessibility AI. All rights reserved.')}</p>
+            <p className="text-sm sm:text-base text-gray-400">{t('footer.copyright', '© 2026 Sambhav Accessibility AI. All rights reserved.')}</p>
           </div>
           
           <div className="mt-8 select-none relative md:h-32 flex items-center justify-center h-20 opacity-80 dark:opacity-10 pointer-events-none transition-opacity">
