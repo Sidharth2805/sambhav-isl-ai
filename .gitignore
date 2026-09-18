@@ -32,6 +32,10 @@ build/
 ### VS Code ###
 .vscode/
 
+# Node / JS
+node_modules/
+dist/
+
 # Local Environment Variables
 .env
 .env.local
@@ -43,7 +47,12 @@ build/
 __pycache__/
 *.pyc
 dataset/
+ml_service/old dataset/
 *.task
 ml_service/processed_data*/
 tuner_results/
+
+# Temporary / Local Reference Folders
+WEBRTC2_Sambhav_WebRTC_Connected/
+.qodo/
 

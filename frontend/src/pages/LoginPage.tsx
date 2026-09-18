@@ -236,8 +236,8 @@ export const LoginPage: React.FC = () => {
 
             {/* Form Header */}
             <div className="mb-6">
-              <h2 className="text-2xl sm:text-3xl font-black text-[#030813] dark:text-white tracking-tight">Log In</h2>
-              <p className="text-xs sm:text-sm text-[#45474c] dark:text-[#828796] mt-1">
+              <h2 className="text-2xl sm:text-3xl font-black text-gray-900 dark:text-white tracking-tight">Log In</h2>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-[#828796] mt-1">
                 Access your SAMBHAV dashboard and real-time workspaces.
               </p>
             </div>
@@ -245,7 +245,7 @@ export const LoginPage: React.FC = () => {
             {/* Error Message */}
             {error && (
               <div
-                className="p-3.5 mb-5 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-xs font-semibold flex items-center gap-2"
+                className="p-3.5 mb-5 rounded-xl bg-rose-50 dark:bg-red-950/40 border border-rose-200 dark:border-red-800 text-rose-700 dark:text-red-300 text-xs font-semibold flex items-center gap-2"
                 role="alert"
               >
                 <span className="material-symbols-outlined text-[18px]">error</span>
@@ -256,11 +256,11 @@ export const LoginPage: React.FC = () => {
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               {/* Email Input */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold text-[#181c1e] dark:text-white" htmlFor="email">
+                <label className="text-xs font-bold text-gray-900 dark:text-white" htmlFor="email">
                   Email Address
                 </label>
                 <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[#45474c] dark:text-[#828796] text-[18px]">
+                  <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-[#828796] text-[18px]">
                     mail
                   </span>
                   <input
@@ -270,7 +270,7 @@ export const LoginPage: React.FC = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@example.com"
-                    className="w-full pl-10 pr-4 py-3 bg-[#f7fafc] dark:bg-[#151c28] border border-[#c6c6cc] dark:border-[#243044] rounded-xl text-xs sm:text-sm text-[#030813] dark:text-white focus:border-[#fe9832] outline-none transition-colors"
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-[#151c28] border border-slate-200 dark:border-[#243044] rounded-xl text-xs sm:text-sm text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-0 dark:focus:border-[#fe9832] outline-none transition-colors"
                   />
                 </div>
               </div>
@@ -278,18 +278,18 @@ export const LoginPage: React.FC = () => {
               {/* Password Input */}
               <div className="flex flex-col gap-1.5">
                 <div className="flex justify-between items-center">
-                  <label className="text-xs font-bold text-[#181c1e] dark:text-white" htmlFor="password">
+                  <label className="text-xs font-bold text-gray-900 dark:text-white" htmlFor="password">
                     Password
                   </label>
                   <Link
                     to="/forgot-password"
-                    className="text-[11px] font-bold text-[#fe9832] hover:underline"
+                    className="text-[11px] font-bold text-indigo-600 dark:text-[#fe9832] hover:underline"
                   >
                     Forgot Password?
                   </Link>
                 </div>
                 <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[#45474c] dark:text-[#828796] text-[18px]">
+                  <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-[#828796] text-[18px]">
                     lock
                   </span>
                   <input
@@ -299,12 +299,12 @@ export const LoginPage: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
-                    className="w-full pl-10 pr-10 py-3 bg-[#f7fafc] dark:bg-[#151c28] border border-[#c6c6cc] dark:border-[#243044] rounded-xl text-xs sm:text-sm text-[#030813] dark:text-white focus:border-[#fe9832] outline-none transition-colors"
+                    className="w-full pl-10 pr-10 py-3 bg-slate-50 dark:bg-[#151c28] border border-slate-200 dark:border-[#243044] rounded-xl text-xs sm:text-sm text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-0 dark:focus:border-[#fe9832] outline-none transition-colors"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#45474c] dark:text-[#828796] hover:text-[#030813] dark:hover:text-white"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-[#828796] hover:text-gray-900 dark:hover:text-white cursor-pointer"
                     aria-label="Toggle password visibility"
                   >
                     <span className="material-symbols-outlined text-[18px]">
@@ -321,9 +321,9 @@ export const LoginPage: React.FC = () => {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 rounded text-[#fe9832] focus:ring-[#fe9832] cursor-pointer"
+                  className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 dark:text-[#fe9832] dark:focus:ring-[#fe9832] cursor-pointer accent-indigo-600"
                 />
-                <label htmlFor="remember" className="text-xs text-[#45474c] dark:text-[#c1c6d7] cursor-pointer select-none font-medium">
+                <label htmlFor="remember" className="text-xs text-gray-600 dark:text-[#c1c6d7] cursor-pointer select-none font-medium">
                   Keep me signed in on this device
                 </label>
               </div>
@@ -332,7 +332,7 @@ export const LoginPage: React.FC = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className="mt-2 w-full py-3.5 bg-gradient-to-r from-[#fe9832] to-[#e8872b] hover:brightness-110 text-[#542900] font-black text-xs sm:text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.99]"
+                className="mt-2 w-full py-3.5 bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 text-white dark:bg-none dark:bg-[#fe9832] dark:hover:bg-[#e8872b] dark:text-[#542900] hover:opacity-95 font-black text-xs sm:text-sm rounded-xl transition-all shadow-md shadow-indigo-500/25 dark:shadow-none flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.99] cursor-pointer"
               >
                 {loading ? (
                   <span className="material-symbols-outlined text-[18px] animate-spin">sync</span>
@@ -346,10 +346,10 @@ export const LoginPage: React.FC = () => {
             </form>
 
             {/* Footer Registration Link */}
-            <div className="mt-8 pt-6 border-t border-[#e0e3e5] dark:border-[#243044] text-center">
-              <p className="text-xs text-[#45474c] dark:text-[#828796]">
+            <div className="mt-8 pt-6 border-t border-slate-200 dark:border-[#243044] text-center">
+              <p className="text-xs text-gray-500 dark:text-[#828796]">
                 Don&apos;t have an account yet?{' '}
-                <Link to="/register" className="font-bold text-[#fe9832] hover:underline">
+                <Link to="/register" className="font-bold text-indigo-600 dark:text-[#fe9832] hover:underline">
                   Create an account
                 </Link>
               </p>

@@ -1,6 +1,22 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { VideoTrack } from '@livekit/components-react';
-import { Track, ConnectionState as LkConnectionState } from 'livekit-client';
+import { VideoTrack } from './VideoTrack';
+
+export type LkConnectionState = 'connected' | 'connecting' | 'reconnecting' | 'disconnected';
+export const LkConnectionState = {
+  Connected: 'connected' as const,
+  Connecting: 'connecting' as const,
+  Reconnecting: 'reconnecting' as const,
+  Disconnected: 'disconnected' as const,
+};
+export const Track = {
+  Source: {
+    Camera: 'camera',
+    Microphone: 'microphone',
+    ScreenShare: 'screen_share',
+    ScreenShareAudio: 'screen_share_audio',
+    Unknown: 'unknown',
+  }
+};
 import DraggableSelfView from './DraggableSelfView';
 import type { TranscriptEvent } from '../../types/transcript';
 import { ISLAvatarCanvas, type ISLAvatarCanvasRef } from '../cultural/ISLAvatarCanvas';
@@ -152,7 +168,7 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
   };
 
   const avatarCanvasRef = useRef<ISLAvatarCanvasRef | null>(null);
-  const [modelPath, setModelPath] = useState('/models/ybot.glb');
+  const [modelPath] = useState('/models/ybot.glb');
   const [activeAvatarChar, setActiveAvatarChar] = useState<string | null>(null);
 
   const speedOptions = [0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0];
@@ -256,29 +272,8 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
           <div className="absolute top-2.5 left-3 z-20 flex items-center gap-2">
             <span className="px-2.5 py-0.5 bg-black/70 backdrop-blur-md border border-white/10 text-white rounded-full text-[10px] font-bold flex items-center gap-1.5 shadow">
               <span className="w-2 h-2 rounded-full bg-[#fe9832] animate-pulse" />
-              <span>ISL 3D Avatar (Letter-by-Letter)</span>
+              <span>ISL 3D Avatar</span>
             </span>
-
-            <div className="flex items-center gap-1 bg-black/60 backdrop-blur-md p-0.5 rounded-full border border-white/10 text-[10px]">
-              <button
-                type="button"
-                onClick={() => setModelPath('/models/ybot.glb')}
-                className={`px-2 py-0.5 rounded-full font-bold transition-all ${
-                  modelPath.includes('ybot') ? 'bg-[#fe9832] text-[#542900]' : 'text-white/70'
-                }`}
-              >
-                YBot
-              </button>
-              <button
-                type="button"
-                onClick={() => setModelPath('/models/xbot.glb')}
-                className={`px-2 py-0.5 rounded-full font-bold transition-all ${
-                  modelPath.includes('xbot') ? 'bg-[#fe9832] text-[#542900]' : 'text-white/70'
-                }`}
-              >
-                XBot
-              </button>
-            </div>
           </div>
 
           <div className="flex-1 w-full h-full flex items-center justify-center relative overflow-hidden bg-gradient-to-b from-[#050b16] via-[#091325] to-[#040914]">
@@ -287,7 +282,7 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
               modelPath={modelPath}
               speed={avatarSpeed}
               pauseTimeMs={Math.round(400 / avatarSpeed)}
-              onProgressChar={(char) => setActiveAvatarChar(char)}
+              onProgressChar={(char: string) => setActiveAvatarChar(char)}
               className="w-full h-full"
             />
 
@@ -631,20 +626,10 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
               <span className={`w-1.5 h-1.5 rounded-full ${isRemoteSpeaking ? 'bg-green-500 animate-ping' : 'bg-[#fe9832]'}`} />
               <span>LIVE CC</span>
             </span>
-
-            {/* Live speech activity indicator */}
-            <div className="flex items-end gap-0.5 h-3 px-1">
-              <span className={`w-1 bg-[#fe9832] rounded-full transition-all duration-150 ${isRemoteSpeaking ? 'h-3 animate-pulse' : 'h-1 opacity-40'}`} />
-              <span className={`w-1 bg-green-500 rounded-full transition-all duration-150 ${isRemoteSpeaking ? 'h-3.5 animate-pulse' : 'h-1.5 opacity-40'}`} />
-            </div>
-
-            <span className="text-[10px] font-semibold text-[#45474c] dark:text-[#828796] hidden sm:inline">
-              Conversational Subtitles (Click 🤟 on any message to sign in 3D Avatar)
-            </span>
           </div>
 
           {/* Subtitle Font Size Scaler */}
-          <div className="flex items-center gap-0.5 bg-[#f1f4f6] dark:bg-white/10 p-0.5 rounded-lg border border-[#e0e3e5] dark:border-white/10">
+          <div className="flex items-center gap-0.5 bg-[#f1f4f6] dark:bg-white/10 p-0.5 rounded-lg border border-[#e0e3e5] dark:border-white/10 ml-auto">
             <span className="text-[9px] font-bold text-[#828796] pl-1 pr-0.5">Size:</span>
             {(['sm', 'base', 'lg'] as const).map((size) => (
               <button
@@ -663,90 +648,83 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
           </div>
         </div>
 
-        {/* Subtitle Messages Container */}
-        <div className={`flex-1 overflow-y-auto flex flex-col gap-1.5 leading-relaxed pr-1.5 font-medium custom-scrollbar ${
-          captionFontSize === 'sm' ? 'text-xs' : captionFontSize === 'lg' ? 'text-base font-semibold' : 'text-sm'
-        }`}>
-          {finalTranscripts.map((t) => {
-            const isMe = isSenderMe(t.senderId, t.senderName);
-            const isCurrentlyReading = activeReadingMessageId === t.id;
+          {/* Subtitle Messages Container */}
+          <div className={`flex-1 overflow-y-auto flex flex-col gap-1.5 leading-relaxed pr-1.5 font-medium custom-scrollbar ${
+            captionFontSize === 'sm' ? 'text-xs' : captionFontSize === 'lg' ? 'text-base font-semibold' : 'text-sm'
+          }`}>
+            {finalTranscripts.map((t) => {
+              const isMe = isSenderMe(t.senderId, t.senderName);
+              const isCurrentlyReading = activeReadingMessageId === t.id;
 
-            return (
-              <div
-                key={t.id}
-                className={`group flex items-start justify-between gap-2 p-1.5 sm:p-2 rounded-xl transition-all ${
-                  isCurrentlyReading
-                    ? 'bg-[#fe9832]/25 dark:bg-[#fe9832]/30 border border-[#fe9832] ring-2 ring-[#fe9832]/40 shadow-sm'
-                    : isMe
-                    ? 'bg-[#fe9832]/10 dark:bg-[#fe9832]/15 border border-[#fe9832]/25 self-end max-w-[88%]'
-                    : 'bg-[#f7fafc] dark:bg-white/5 border border-[#e0e3e5] dark:border-white/15 self-start max-w-[92%]'
-                }`}
-              >
-                <div className="flex items-start gap-1.5 flex-1 min-w-0">
-                  <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded shrink-0 mt-0.5 ${
-                    isMe
-                      ? 'bg-[#fe9832]/25 text-[#8f4e00] dark:text-[#fe9832]'
-                      : 'bg-emerald-500/20 text-emerald-800 dark:text-[#8dfc75]'
-                  }`}>
-                    {isMe ? 'You' : (t.senderName || 'Participant')}
+              return (
+                <div
+                  key={t.id}
+                  className={`group flex items-start justify-between gap-2 p-1.5 sm:p-2 rounded-xl transition-all ${
+                    isCurrentlyReading
+                      ? 'bg-[#fe9832]/25 dark:bg-[#fe9832]/30 border border-[#fe9832] ring-2 ring-[#fe9832]/40 shadow-sm'
+                      : isMe
+                      ? 'bg-[#fe9832]/10 dark:bg-[#fe9832]/15 border border-[#fe9832]/25 self-end max-w-[88%]'
+                      : 'bg-[#f7fafc] dark:bg-white/5 border border-[#e0e3e5] dark:border-white/15 self-start max-w-[92%]'
+                  }`}
+                >
+                  <div className="flex items-start gap-1.5 flex-1 min-w-0">
+                    <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded shrink-0 mt-0.5 ${
+                      isMe
+                        ? 'bg-[#fe9832]/25 text-[#8f4e00] dark:text-[#fe9832]'
+                        : 'bg-emerald-500/20 text-emerald-800 dark:text-[#8dfc75]'
+                    }`}>
+                      {isMe ? 'You' : (t.senderName || 'Participant')}
+                    </span>
+                    <span className="text-[#030813] dark:text-white tracking-wide break-words flex-1">{t.text}</span>
+                  </div>
+
+                  {/* Read Actions for this Message */}
+                  <div className="flex items-center gap-1 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
+                    <button
+                      type="button"
+                      onClick={() => handleReadMessageInSign(t.text, t.id)}
+                      className="p-1 hover:bg-[#fe9832]/20 rounded-md text-[#fe9832] transition-all active:scale-95 cursor-pointer"
+                      title="Read this message in 3D ISL Sign Avatar"
+                      aria-label="Read in Sign Avatar"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">sign_language</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSpeakMessageAloud(t.text)}
+                      className="p-1 hover:bg-green-500/20 rounded-md text-green-600 dark:text-green-400 transition-all active:scale-95 cursor-pointer"
+                      title="Read this message aloud (Voice Audio)"
+                      aria-label="Read Aloud in Voice"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">volume_up</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Live In-Progress Interim Speech Stream */}
+            {Object.entries(interimTranscripts).map(([senderId, text]) => {
+              const isMe = isSenderMe(senderId);
+              const senderName = finalTranscripts.find((t) => t.senderId === senderId)?.senderName || 'Participant';
+              return (
+                <div
+                  key={senderId}
+                  className={`flex items-start gap-2 p-1.5 rounded-xl bg-amber-500/10 border border-amber-400/30 max-w-[90%] ${
+                    isMe ? 'self-end' : 'self-start'
+                  }`}
+                >
+                  <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-400 text-black shrink-0 mt-0.5">
+                    {isMe ? 'You' : senderName}
                   </span>
-                  <span className="text-[#030813] dark:text-white tracking-wide break-words flex-1">{t.text}</span>
+                  <span className="text-[#b45309] dark:text-[#fe9832] italic text-xs break-words">{text}...</span>
                 </div>
+              );
+            })}
 
-                {/* Read Actions for this Message */}
-                <div className="flex items-center gap-1 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
-                  <button
-                    type="button"
-                    onClick={() => handleReadMessageInSign(t.text, t.id)}
-                    className="p-1 hover:bg-[#fe9832]/20 rounded-md text-[#fe9832] transition-all active:scale-95 cursor-pointer"
-                    title="Read this message in 3D ISL Sign Avatar"
-                    aria-label="Read in Sign Avatar"
-                  >
-                    <span className="material-symbols-outlined text-[14px]">sign_language</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSpeakMessageAloud(t.text)}
-                    className="p-1 hover:bg-green-500/20 rounded-md text-green-600 dark:text-green-400 transition-all active:scale-95 cursor-pointer"
-                    title="Read this message aloud (Voice Audio)"
-                    aria-label="Read Aloud in Voice"
-                  >
-                    <span className="material-symbols-outlined text-[14px]">volume_up</span>
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Live In-Progress Interim Speech Stream */}
-          {Object.entries(interimTranscripts).map(([senderId, text]) => {
-            const isMe = isSenderMe(senderId);
-            const senderName = finalTranscripts.find((t) => t.senderId === senderId)?.senderName || 'Participant';
-            return (
-              <div
-                key={senderId}
-                className={`flex items-start gap-2 p-1.5 rounded-xl bg-amber-500/10 border border-amber-400/30 max-w-[90%] ${
-                  isMe ? 'self-end' : 'self-start'
-                }`}
-              >
-                <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-400 text-black shrink-0 mt-0.5">
-                  {isMe ? 'You' : senderName}
-                </span>
-                <span className="text-[#b45309] dark:text-[#fe9832] italic text-xs break-words">{text}...</span>
-              </div>
-            );
-          })}
-
-          {finalTranscripts.length === 0 && Object.keys(interimTranscripts).length === 0 && (
-            <div className="flex items-center justify-center my-auto text-center text-[#828796] gap-1.5 text-xs py-1">
-              <span className="material-symbols-outlined text-[16px] text-[#fe9832]/60 animate-pulse">hearing</span>
-              <span>Subtitles will appear here in real-time. Click 🤟 on any message to sign in 3D.</span>
-            </div>
-          )}
-
-          <div ref={captionsEndRef} />
-        </div>
+            <div ref={captionsEndRef} />
+          </div>
       </section>
 
       {/* ========================================================= */}

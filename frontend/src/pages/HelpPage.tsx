@@ -7,10 +7,12 @@ import {
 } from '../data/helpAssistantData';
 import { ProblemDetailViewer } from '../components/help/ProblemDetailViewer';
 import { SupportContactSection } from '../components/help/SupportContactSection';
+import { useAccessibility } from '../hooks/useAccessibility';
 
 type HelpViewState = 'categories' | 'questions' | 'solution';
 
 export const HelpPage: React.FC = () => {
+  const { t } = useAccessibility();
   const [viewState, setViewState] = useState<HelpViewState>('categories');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('communication');
   const [selectedProblem, setSelectedProblem] = useState<SupportProblem | null>(null);
@@ -92,13 +94,13 @@ export const HelpPage: React.FC = () => {
                 </div>
                 <div>
                   <h1 className="text-2xl sm:text-3xl font-black text-[#030813] dark:text-white tracking-tight flex items-center gap-2.5">
-                    <span>Help & Support Center</span>
+                    <span>{t('help.pageTitle', 'Help & Support Center')}</span>
                     <span className="text-xs font-bold text-[#8dfc75] bg-[#8dfc75]/10 border border-[#8dfc75]/20 px-2.5 py-0.5 rounded-full">
-                      Self-Service
+                      {t('help.selfService', 'Self-Service')}
                     </span>
                   </h1>
                   <p className="text-xs sm:text-sm text-[#45474c] dark:text-[#c1c6d7] mt-0.5 font-medium">
-                    Find instant solutions, guided troubleshooting, and user-end fixes for Sambhav.
+                    {t('help.pageDesc', 'Find instant solutions, guided troubleshooting, and user-end fixes for Sambhav.')}
                   </p>
                 </div>
               </div>
@@ -109,7 +111,7 @@ export const HelpPage: React.FC = () => {
                 className="self-start md:self-auto flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-[#151c28] border border-[#e0e3e5] dark:border-[#243044] hover:border-[#fe9832] rounded-xl text-xs font-bold text-[#030813] dark:text-white transition-all shadow-sm hover:scale-105 active:scale-95"
               >
                 <span className="material-symbols-outlined text-[18px] text-[#fe9832]">contact_support</span>
-                <span>Contact Support</span>
+                <span>{t('help.contactSupport', 'Contact Support')}</span>
               </button>
             </div>
 
@@ -122,7 +124,7 @@ export const HelpPage: React.FC = () => {
                 type="text"
                 value={globalSearchQuery}
                 onChange={(e) => setGlobalSearchQuery(e.target.value)}
-                placeholder="Search any issue directly (e.g. 'microphone not working', 'avatar is stuck', 'camera blocked', 'login password')..."
+                placeholder={t('help.searchPlaceholder', "Search any issue directly (e.g. 'microphone not working', 'avatar is stuck', 'camera blocked', 'login password')...")}
                 className="w-full pl-12 pr-10 py-3.5 bg-white dark:bg-[#151c28] border border-[#e0e3e5] dark:border-[#243044] focus:border-[#fe9832] focus:ring-2 focus:ring-[#fe9832]/20 rounded-2xl text-xs sm:text-sm text-[#030813] dark:text-white placeholder-[#45474c]/50 dark:placeholder-[#828796]/60 transition-all outline-none shadow-xs"
               />
               {globalSearchQuery && (
@@ -143,9 +145,9 @@ export const HelpPage: React.FC = () => {
               <div className="flex items-center justify-between border-b border-[#e0e3e5] dark:border-[#243044] pb-4">
                 <span className="text-xs font-black uppercase tracking-wider text-[#030813] dark:text-white flex items-center gap-2">
                   <span className="material-symbols-outlined text-[#fe9832]">manage_search</span>
-                  <span>Search Results for &ldquo;{globalSearchQuery}&rdquo;</span>
+                  <span>{t('help.searchResultsFor', 'Search Results for')} &ldquo;{globalSearchQuery}&rdquo;</span>
                 </span>
-                <span className="text-xs text-gray-400 font-semibold">{globalSearchResults.length} issues found</span>
+                <span className="text-xs text-gray-400 font-semibold">{globalSearchResults.length} {t('help.issuesFound', 'issues found')}</span>
               </div>
 
               {globalSearchResults.length > 0 ? (
@@ -172,7 +174,7 @@ export const HelpPage: React.FC = () => {
                 </div>
               ) : (
                 <div className="py-8 text-center text-xs sm:text-sm text-[#45474c] dark:text-[#c1c6d7]">
-                  No direct matches found for &ldquo;{globalSearchQuery}&rdquo;. You can explore the categories below or contact support.
+                  {t('help.noMatches', 'No direct matches found. You can explore the categories below or contact support.')}
                 </div>
               )}
             </section>
@@ -182,14 +184,14 @@ export const HelpPage: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-xl sm:text-2xl font-black text-[#030813] dark:text-white tracking-tight">
-                    Choose a Problem Category
+                    {t('help.chooseCategory', 'Choose a Problem Category')}
                   </h2>
                   <p className="text-xs sm:text-sm text-[#45474c] dark:text-[#828796] mt-0.5">
-                    Click any category to browse all related questions and solutions.
+                    {t('help.chooseCategoryDesc', 'Click any category to browse all related questions and solutions.')}
                   </p>
                 </div>
                 <span className="text-xs font-bold text-[#fe9832] bg-[#fe9832]/10 border border-[#fe9832]/20 px-3 py-1 rounded-full">
-                  {SUPPORT_CATEGORIES.length} Categories
+                  {SUPPORT_CATEGORIES.length} {t('help.categoriesCount', 'Categories')}
                 </span>
               </div>
 

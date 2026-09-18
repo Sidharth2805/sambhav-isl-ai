@@ -8,20 +8,6 @@ interface ChatbotButtonProps {
 export const ChatbotButton: React.FC<ChatbotButtonProps> = ({ isOpen, onClick }) => {
   return (
     <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 font-['Inter',sans-serif]">
-      {/* Floating Tooltip / Helper pill when closed */}
-      {!isOpen && (
-        <div
-          onClick={onClick}
-          className="hidden sm:flex items-center gap-2.5 px-3.5 py-2 bg-[#030813]/90 dark:bg-[#0c121e]/90 text-white text-xs font-bold rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.2)] border border-white/15 cursor-pointer hover:border-[#fe9832] hover:scale-105 transition-all duration-300 backdrop-blur-md animate-fadeIn group"
-        >
-          <span className="w-2.5 h-2.5 rounded-full bg-[#8dfc75] animate-pulse" />
-          <span className="group-hover:text-[#fe9832] transition-colors">Need Help? Ask SAMBHAV</span>
-          <span className="material-symbols-outlined text-[16px] text-[#fe9832] group-hover:translate-x-0.5 transition-transform">
-            chat
-          </span>
-        </div>
-      )}
-
       {/* Main Floating Action Button */}
       <button
         type="button"

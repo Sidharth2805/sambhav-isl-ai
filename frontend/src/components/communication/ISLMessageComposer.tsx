@@ -25,7 +25,6 @@ export const ISLMessageComposer: React.FC<ISLMessageComposerProps> = ({
   incomingCommittedSign,
   incomingMLWord,
   incomingConfidence = 0.0,
-  isModelActive = true,
   onSendMessage,
   onSpeakDraft,
   onReadInSign,
@@ -68,7 +67,7 @@ export const ISLMessageComposer: React.FC<ISLMessageComposerProps> = ({
       lastAppendedSequenceIdRef.current = sequenceId;
       const cleanWord = rawWord;
       const now = Date.now();
-      const conf = confidence > 0 ? confidence : 0.95;
+      const conf = typeof confidence === 'number' ? confidence : 0.0;
 
       setLastDetectedToken({ word: cleanWord, confidence: conf });
 
@@ -153,11 +152,6 @@ export const ISLMessageComposer: React.FC<ISLMessageComposerProps> = ({
     textareaRef.current?.focus();
   };
 
-  // Add space helper
-  const handleAddSpace = () => {
-    setDraftText((prev) => `${prev} `);
-    textareaRef.current?.focus();
-  };
 
   // Clear all helper
   const handleClearDraft = () => {
@@ -177,48 +171,32 @@ export const ISLMessageComposer: React.FC<ISLMessageComposerProps> = ({
   };
 
   return (
-    <div className={`flex flex-col gap-1.5 bg-white dark:bg-[#1a202c] rounded-2xl p-2.5 sm:p-3 border border-[#e0e3e5] dark:border-[#2d3133] shadow-md transition-all ${className}`}>
+    <div className={`flex flex-col gap-1.5 bg-white/20 dark:bg-black/30 backdrop-blur-md rounded-2xl p-2.5 sm:p-3 border border-white/40 dark:border-white/10 shadow-md transition-all ${className}`}>
       
       {/* Top Bar: ML Detection Status & Quick Action Buttons */}
-      <div className="flex items-center justify-between gap-2 text-xs flex-wrap">
-        {/* ML Status Pill */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span className={`w-2 h-2 rounded-full ${isModelActive ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
-          {lastDetectedToken ? (
-            <span className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-700/60 px-2 py-0.5 rounded-md text-[11px] font-bold text-emerald-800 dark:text-emerald-300 animate-scaleUp">
-              <span className="material-symbols-outlined text-[13px] text-emerald-600 dark:text-emerald-400">sign_language</span>
-              <span>Captured:</span>
-              <span className="uppercase font-black text-[#fe9832] dark:text-[#fe9832]">"{lastDetectedToken.word}"</span>
-              <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-normal">({Math.round(lastDetectedToken.confidence * 100)}%)</span>
-            </span>
-          ) : (
-            <span className="text-[11px] text-[#45474c] dark:text-[#828796] font-medium flex items-center gap-1">
-              <span className="material-symbols-outlined text-[14px] text-[#fe9832]">sign_language</span>
-              <span>{isModelActive ? 'Show signs to camera to write into draft...' : 'Model standby'}</span>
-            </span>
-          )}
-        </div>
+      {(lastDetectedToken || draftText.trim()) && (
+        <div className="flex items-center justify-between gap-2 text-xs flex-wrap">
+          {/* ML Status Pill (shows only when token captured) */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {lastDetectedToken && (
+              <span className="flex items-center gap-1.5 bg-emerald-50/90 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-700/60 px-2 py-0.5 rounded-md text-[11px] font-bold text-emerald-800 dark:text-emerald-300 animate-scaleUp">
+                <span className="material-symbols-outlined text-[13px] text-emerald-600 dark:text-emerald-400">sign_language</span>
+                <span>Captured:</span>
+                <span className="uppercase font-black text-[#fe9832] dark:text-[#fe9832]">"{lastDetectedToken.word}"</span>
+                <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-normal">({Math.round(lastDetectedToken.confidence * 100)}%)</span>
+              </span>
+            )}
+          </div>
 
-        {/* Quick Helper Actions */}
-        <div className="flex items-center gap-1 shrink-0 ml-auto">
-          {/* Add Space button */}
-          <button
-            type="button"
-            onClick={handleAddSpace}
-            className="px-2 py-0.5 bg-[#f1f4f6] dark:bg-[#0d121d] hover:bg-[#e0e3e5] text-[#030813] dark:text-white rounded-md text-[10px] font-bold border border-[#e0e3e5] dark:border-[#2d3133] transition flex items-center gap-1 cursor-pointer active:scale-95"
-            title="Add Space"
-          >
-            <span className="material-symbols-outlined text-[12px]">space_bar</span>
-            <span>Space</span>
-          </button>
-
-          {draftText.trim() && (
-            <>
+          {/* Quick Helper Actions */}
+          <div className="flex items-center gap-1 shrink-0 ml-auto">
+            {draftText.trim() && (
+              <>
               {/* Backspace Word button */}
               <button
                 type="button"
                 onClick={handleBackspaceLastWord}
-                className="px-2 py-0.5 bg-[#f1f4f6] dark:bg-[#0d121d] hover:bg-[#e0e3e5] text-[#030813] dark:text-white rounded-md text-[10px] font-bold border border-[#e0e3e5] dark:border-[#2d3133] transition flex items-center gap-1 cursor-pointer active:scale-95"
+                className="px-2 py-0.5 bg-white/50 dark:bg-black/50 hover:bg-white text-gray-900 dark:text-white rounded-md text-[10px] font-bold border border-white/50 dark:border-white/10 transition flex items-center gap-1 cursor-pointer active:scale-95"
                 title="Delete last word"
               >
                 <span className="material-symbols-outlined text-[12px]">backspace</span>
@@ -229,7 +207,7 @@ export const ISLMessageComposer: React.FC<ISLMessageComposerProps> = ({
               <button
                 type="button"
                 onClick={handleClearDraft}
-                className="px-2 py-0.5 bg-[#f1f4f6] dark:bg-[#0d121d] hover:bg-red-100 hover:text-red-700 text-gray-500 rounded-md text-[10px] font-bold border border-[#e0e3e5] dark:border-[#2d3133] transition flex items-center gap-1 cursor-pointer active:scale-95"
+                className="px-2 py-0.5 bg-white/50 dark:bg-black/50 hover:bg-red-100 hover:text-red-700 text-gray-700 dark:text-[#828796] dark:hover:text-red-400 rounded-md text-[10px] font-bold border border-white/50 dark:border-white/10 transition flex items-center gap-1 cursor-pointer active:scale-95"
                 title="Clear draft"
               >
                 <span className="material-symbols-outlined text-[12px]">close</span>
@@ -243,7 +221,7 @@ export const ISLMessageComposer: React.FC<ISLMessageComposerProps> = ({
             <button
               type="button"
               onClick={() => onReadInSign(draftText.trim())}
-              className="px-2 py-0.5 bg-[#f1f4f6] dark:bg-[#0d121d] hover:bg-[#fe9832]/20 text-[#fe9832] rounded-md text-[10px] font-bold border border-[#e0e3e5] dark:border-[#2d3133] transition flex items-center gap-1 cursor-pointer active:scale-95"
+              className="px-2 py-0.5 bg-white/50 dark:bg-black/50 hover:bg-[#fe9832]/30 text-[#fe9832] rounded-md text-[10px] font-bold border border-white/50 dark:border-white/10 transition flex items-center gap-1 cursor-pointer active:scale-95"
               title="Preview in 3D ISL Sign Avatar"
               aria-label="Preview in Sign Avatar"
             >
@@ -257,7 +235,7 @@ export const ISLMessageComposer: React.FC<ISLMessageComposerProps> = ({
             <button
               type="button"
               onClick={() => onSpeakDraft(draftText.trim())}
-              className="px-2 py-0.5 bg-[#f1f4f6] dark:bg-[#0d121d] hover:bg-green-500/20 text-green-600 dark:text-green-400 rounded-md text-[10px] font-bold border border-[#e0e3e5] dark:border-[#2d3133] transition flex items-center gap-1 cursor-pointer active:scale-95"
+              className="px-2 py-0.5 bg-white/50 dark:bg-black/50 hover:bg-green-500/30 text-green-700 dark:text-green-400 rounded-md text-[10px] font-bold border border-white/50 dark:border-white/10 transition flex items-center gap-1 cursor-pointer active:scale-95"
               title="Preview Speech Audio"
               aria-label="Preview Speech"
             >
@@ -265,11 +243,12 @@ export const ISLMessageComposer: React.FC<ISLMessageComposerProps> = ({
               <span className="hidden sm:inline">Voice</span>
             </button>
           )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main Composition Row */}
-      <div className="flex items-end gap-2 bg-[#f7fafc] dark:bg-[#0d121d] rounded-xl p-1.5 sm:p-2 border border-[#e0e3e5] dark:border-[#2d3133] focus-within:border-[#fe9832] dark:focus-within:border-[#fe9832] focus-within:ring-2 focus-within:ring-[#fe9832]/20 transition-all">
+      <div className="flex items-end gap-2 bg-white/30 dark:bg-black/25 rounded-xl p-1.5 sm:p-2 border border-white/40 dark:border-white/10 focus-within:border-[#fe9832] dark:focus-within:border-[#fe9832] focus-within:ring-2 focus-within:ring-[#fe9832]/20 transition-all">
         
         {/* Text Input / Editable Draft Area */}
         <textarea
@@ -280,7 +259,7 @@ export const ISLMessageComposer: React.FC<ISLMessageComposerProps> = ({
           placeholder={placeholder}
           disabled={disabled}
           rows={2}
-          className="flex-1 bg-transparent border-0 resize-none text-xs sm:text-sm text-[#030813] dark:text-white placeholder-[#828796] focus:outline-none leading-relaxed p-1 min-h-[38px] max-h-[90px]"
+          className="flex-1 bg-transparent border-0 resize-none text-xs sm:text-sm text-gray-950 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none leading-relaxed p-1 min-h-[38px] max-h-[90px] font-medium"
         />
 
         {/* Saffron Round Send Button */}
@@ -291,7 +270,7 @@ export const ISLMessageComposer: React.FC<ISLMessageComposerProps> = ({
           className={`h-9 px-3 sm:px-4 rounded-xl flex items-center justify-center gap-1.5 transition-all shrink-0 cursor-pointer shadow-md font-bold text-xs ${
             draftText.trim() && !disabled
               ? 'bg-[#fe9832] hover:bg-[#e8872b] text-[#542900] active:scale-95 shadow-[#fe9832]/30 font-black'
-              : 'bg-gray-200 dark:bg-gray-800 text-gray-400 cursor-not-allowed opacity-50'
+              : 'bg-gray-200/80 dark:bg-gray-800/80 text-gray-400 cursor-not-allowed opacity-50'
           }`}
           title="Send Complete Message to Call (Enter)"
           aria-label="Send Message"
@@ -306,13 +285,13 @@ export const ISLMessageComposer: React.FC<ISLMessageComposerProps> = ({
       {/* Detected Token Chips Helper Bar */}
       {recentTokens.length > 0 && (
         <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 custom-scrollbar">
-          <span className="text-[10px] text-[#828796] font-semibold shrink-0">Recent Signs:</span>
+          <span className="text-[10px] text-gray-700 dark:text-gray-300 font-semibold shrink-0">Recent Signs:</span>
           {recentTokens.map((tok) => (
             <button
               key={tok.id}
               type="button"
               onClick={() => handleInsertToken(tok.word)}
-              className="px-2 py-0.5 rounded-full bg-white dark:bg-[#1a202c] hover:bg-[#fe9832]/20 text-[#030813] dark:text-white border border-[#e0e3e5] dark:border-[#2d3133] text-[10px] font-bold transition shrink-0 flex items-center gap-1 cursor-pointer active:scale-95"
+              className="px-2 py-0.5 rounded-full bg-white/80 dark:bg-black/50 hover:bg-[#fe9832]/30 text-gray-950 dark:text-white border border-white/60 dark:border-white/10 text-[10px] font-bold transition shrink-0 flex items-center gap-1 cursor-pointer active:scale-95"
               title="Click to insert into draft"
             >
               <span className="text-[#fe9832]">+</span>

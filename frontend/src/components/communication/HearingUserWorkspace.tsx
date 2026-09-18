@@ -1,9 +1,16 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
-import { VideoTrack } from '@livekit/components-react';
-import { ConnectionState as LkConnectionState } from 'livekit-client';
+import { VideoTrack } from './VideoTrack';
 import DraggableSelfView from './DraggableSelfView';
 import type { TranscriptEvent } from '../../types/transcript';
 import { naturalSpeech } from '../../utils/naturalSpeech';
+
+export type LkConnectionState = 'connected' | 'connecting' | 'reconnecting' | 'disconnected';
+export const LkConnectionState = {
+  Connected: 'connected' as const,
+  Connecting: 'connecting' as const,
+  Reconnecting: 'reconnecting' as const,
+  Disconnected: 'disconnected' as const,
+};
 
 interface HearingUserWorkspaceProps {
   sessionId: string;

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useAccessibility } from '../hooks/useAccessibility';
 
@@ -16,14 +17,14 @@ export const CommonDashboard: React.FC = () => {
       {/* Header bar */}
       <header className="border-b border-border bg-cardBg py-4 px-6 md:px-8 shadow-sm transition-colors duration-200">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex items-center gap-2">
+          <Link to="/dashboard" className="flex items-center gap-2 hover:opacity-90 transition-opacity cursor-pointer">
             <span className="text-2xl font-bold tracking-tight">
               Sign<span className="text-primary font-extrabold">Bridge</span>
             </span>
             <span className="text-xs font-semibold px-2 py-0.5 bg-primary/10 text-primary rounded-full">
               Common Workspace
             </span>
-          </div>
+          </Link>
 
           <div className="flex flex-wrap items-center gap-4">
             

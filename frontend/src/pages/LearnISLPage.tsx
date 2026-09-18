@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useAccessibility } from '../hooks/useAccessibility';
 
 interface VideoLesson {
   id: string;
@@ -13,7 +13,7 @@ interface VideoLesson {
 }
 
 export const LearnISLPage: React.FC = () => {
-  const navigate = useNavigate();
+  const { t } = useAccessibility();
   const [activeVideo, setActiveVideo] = useState<VideoLesson | null>(null);
   const [lessons, setLessons] = useState<VideoLesson[]>([
     {
@@ -105,78 +105,43 @@ export const LearnISLPage: React.FC = () => {
     <div className="flex flex-col gap-8 w-full animate-fadeIn font-['Inter',sans-serif]">
       
       {/* Header */}
-      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b border-[#e0e3e5] dark:border-[#2d3133] pb-4">
+      <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b border-slate-200 dark:border-[#2d3133] pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#fe9832] dark:text-[#8dfc75] text-[28px]">sign_language</span>
-            <h1 className="text-3xl font-bold text-[#030813] dark:text-white tracking-tight">Learn Indian Sign Language</h1>
+            <span className="material-symbols-outlined text-amber-600 dark:text-[#8dfc75] text-[28px]">sign_language</span>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">{t('learn.title', 'Learn Indian Sign Language')}</h1>
           </div>
-          <p className="text-sm text-[#45474c] dark:text-[#c1c6d7] mt-1">
-            Watch curated video lessons directly inside SAMBHAV, master vocabulary, and track your ISL journey.
+          <p className="text-sm text-gray-600 dark:text-[#c1c6d7] mt-1">
+            {t('learn.description', 'Watch curated video lessons directly inside SAMBHAV, master vocabulary, and track your ISL journey.')}
           </p>
         </div>
 
         {/* Global Progress Widget */}
-        <div className="bg-white dark:bg-[#1a202c] rounded-2xl p-4 shadow-sm border border-[#e0e3e5] dark:border-[#2d3133] flex items-center gap-4 min-w-[240px]">
+        <div className="bg-white dark:bg-[#1a202c] rounded-2xl p-4 shadow-sm border border-amber-200/80 dark:border-[#2d3133] flex items-center gap-4 min-w-[240px]">
           <div className="flex-1">
             <div className="flex justify-between items-center text-xs font-bold mb-1.5">
-              <span className="text-[#181c1e] dark:text-white">Course Progress</span>
-              <span className="text-[#012700] dark:text-[#8dfc75] font-black">{progressPercent}%</span>
+              <span className="text-gray-900 dark:text-white">{t('learn.progress', 'Course Progress')}</span>
+              <span className="text-amber-700 dark:text-[#8dfc75] font-black">{progressPercent}%</span>
             </div>
-            <div className="w-full bg-[#e0e3e5] dark:bg-[#2d3133] rounded-full h-2.5 overflow-hidden">
+            <div className="w-full bg-slate-100 dark:bg-[#2d3133] rounded-full h-2.5 overflow-hidden">
               <div
-                className="bg-gradient-to-r from-[#fe9832] to-[#8dfc75] h-2.5 rounded-full transition-all duration-500"
+                className="bg-gradient-to-r from-amber-500 via-orange-500 to-emerald-500 dark:from-[#fe9832] dark:to-[#8dfc75] h-2.5 rounded-full transition-all duration-500"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
-            <span className="text-[10px] text-[#45474c] dark:text-[#828796] mt-1 block">
-              {watchedCount} of {lessons.length} lessons completed
+            <span className="text-[10px] text-gray-500 dark:text-[#828796] mt-1 block">
+              {watchedCount} {t('learn.of', 'of')} {lessons.length} {t('learn.lessonsCompleted', 'lessons completed')}
             </span>
           </div>
         </div>
       </header>
-
-      {/* Cultural ISL Spotlight Banner */}
-      <div className="bg-gradient-to-r from-[#030813] via-[#0d172a] to-[#122316] p-5 sm:p-6 rounded-3xl border border-[#e0e3e5] dark:border-white/10 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 text-white relative overflow-hidden">
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#ff9933] via-white to-[#138808]" />
-        
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-[24px] shrink-0 border border-white/20">
-            🇮🇳
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold text-white tracking-tight">
-                Jana Gana Mana in ISL
-              </h2>
-              <span className="px-2 py-0.5 bg-[#fe9832]/20 text-[#fe9832] border border-[#fe9832]/30 rounded-full text-[10px] font-bold">
-                Cultural ISL
-              </span>
-            </div>
-            <p className="text-xs text-white/70 mt-0.5">
-              Experience India&apos;s National Anthem rendered in Indian Sign Language with word-by-word tokenized performance.
-            </p>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => navigate('/cultural-isl')}
-          className="self-stretch sm:self-auto px-4 py-2.5 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 shrink-0 shadow-sm group cursor-pointer"
-        >
-          <span>Explore Cultural ISL</span>
-          <span className="material-symbols-outlined text-[16px] group-hover:translate-x-0.5 transition-transform">
-            arrow_forward
-          </span>
-        </button>
-      </div>
 
       {/* Video Lessons Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {lessons.map((lesson) => (
           <div
             key={lesson.id}
-            className="bg-white dark:bg-[#1a202c] rounded-[24px] overflow-hidden border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all flex flex-col justify-between group"
+            className="bg-white dark:bg-[#1a202c] rounded-[24px] overflow-hidden border border-slate-200 hover:border-amber-300 dark:border-[#2d3133] shadow-sm hover:shadow-md hover:-translate-y-1 transition-all flex flex-col justify-between group"
           >
             {/* Thumbnail Header with Interactive Play Trigger */}
             <div
@@ -191,7 +156,7 @@ export const LearnISLPage: React.FC = () => {
               
               {/* Play Button Overlay */}
               <div className="absolute inset-0 bg-black/30 group-hover:bg-black/50 flex items-center justify-center transition-all">
-                <div className="w-12 h-12 rounded-full bg-[#fe9832] text-[#683700] flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white dark:bg-none dark:bg-[#fe9832] dark:text-[#683700] flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
                   <span className="material-symbols-outlined text-[28px]">play_arrow</span>
                 </div>
               </div>
@@ -202,9 +167,9 @@ export const LearnISLPage: React.FC = () => {
                   {lesson.category}
                 </span>
                 {lesson.watched && (
-                  <span className="px-2.5 py-0.5 bg-green-600/90 text-white rounded-full text-[10px] font-bold flex items-center gap-1">
+                  <span className="px-2.5 py-0.5 bg-emerald-600/90 text-white rounded-full text-[10px] font-bold flex items-center gap-1">
                     <span className="material-symbols-outlined text-[12px]">check_circle</span>
-                    <span>Completed</span>
+                    <span>{t('learn.completed', 'Completed')}</span>
                   </span>
                 )}
               </div>
@@ -219,36 +184,36 @@ export const LearnISLPage: React.FC = () => {
               <div>
                 <h3
                   onClick={() => setActiveVideo(lesson)}
-                  className="text-base font-bold text-[#181c1e] dark:text-white leading-snug mb-1 cursor-pointer hover:text-[#fe9832] transition-colors"
+                  className="text-base font-bold text-gray-900 dark:text-white leading-snug mb-1 cursor-pointer hover:text-amber-600 dark:hover:text-[#fe9832] transition-colors"
                 >
                   {lesson.title}
                 </h3>
-                <p className="text-xs text-[#45474c] dark:text-[#828796] flex items-center gap-1.5">
-                  <span>Instructor / Source:</span>
-                  <span className="font-semibold text-[#030813] dark:text-white">{lesson.creator}</span>
+                <p className="text-xs text-gray-500 dark:text-[#828796] flex items-center gap-1.5">
+                  <span>{t('learn.instructorSource', 'Instructor / Source:')}</span>
+                  <span className="font-semibold text-gray-800 dark:text-white">{lesson.creator}</span>
                 </p>
               </div>
 
               {/* Actions Footer */}
-              <div className="pt-3 border-t border-[#e0e3e5] dark:border-[#2d3133] flex items-center justify-between gap-2">
+              <div className="pt-3 border-t border-slate-100 dark:border-[#2d3133] flex items-center justify-between gap-2">
                 {/* Watched Toggle Checkbox */}
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-[#45474c] dark:text-[#c1c6d7] hover:text-[#030813] dark:hover:text-white select-none">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-gray-600 dark:text-[#c1c6d7] hover:text-gray-900 dark:hover:text-white select-none">
                   <input
                     type="checkbox"
                     checked={lesson.watched}
                     onChange={() => toggleWatched(lesson.id)}
-                    className="w-4 h-4 rounded text-[#fe9832] focus:ring-[#fe9832] cursor-pointer"
+                    className="w-4 h-4 rounded text-amber-500 focus:ring-amber-500 cursor-pointer accent-amber-500"
                   />
-                  <span>{lesson.watched ? 'Completed' : 'Mark as Watched'}</span>
+                  <span>{lesson.watched ? t('learn.completed', 'Completed') : t('learn.markWatched', 'Mark as Watched')}</span>
                 </label>
 
                 <button
                   type="button"
                   onClick={() => setActiveVideo(lesson)}
-                  className="px-3.5 py-1.5 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 shadow-sm active:scale-95 cursor-pointer"
+                  className="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white dark:bg-none dark:bg-[#fe9832] dark:text-[#683700] hover:opacity-95 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 shadow-sm active:scale-95 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-[15px]">play_circle</span>
-                  <span>Watch Video</span>
+                  <span>{t('learn.watchVideo', 'Watch Video')}</span>
                 </button>
               </div>
 
@@ -275,7 +240,7 @@ export const LearnISLPage: React.FC = () => {
                 type="button"
                 onClick={() => setActiveVideo(null)}
                 className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all shrink-0 cursor-pointer"
-                title="Close Player"
+                title={t('learn.closePlayer', 'Close Player')}
               >
                 <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
@@ -295,7 +260,7 @@ export const LearnISLPage: React.FC = () => {
             {/* Modal Footer */}
             <div className="p-4 bg-[#0d121d] border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3">
               <div className="text-xs text-[#828796] flex items-center gap-1.5">
-                <span>Instructor:</span>
+                <span>{t('learn.instructor', 'Instructor:')}</span>
                 <span className="text-white font-semibold">{activeVideo.creator}</span>
               </div>
 
@@ -315,7 +280,7 @@ export const LearnISLPage: React.FC = () => {
                   <span className="material-symbols-outlined text-[15px]">
                     {activeVideo.watched ? 'check_circle' : 'done'}
                   </span>
-                  <span>{activeVideo.watched ? 'Completed' : 'Mark as Watched'}</span>
+                  <span>{activeVideo.watched ? t('learn.completed', 'Completed') : t('learn.markWatched', 'Mark as Watched')}</span>
                 </button>
 
                 <a
@@ -324,7 +289,7 @@ export const LearnISLPage: React.FC = () => {
                   rel="noreferrer"
                   className="px-3.5 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1"
                 >
-                  <span>Open on YouTube</span>
+                  <span>{t('learn.openYouTube', 'Open on YouTube')}</span>
                   <span className="material-symbols-outlined text-[14px]">open_in_new</span>
                 </a>
               </div>

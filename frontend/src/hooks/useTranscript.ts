@@ -61,7 +61,7 @@ export const useTranscript = (currentSessionId: string) => {
       text,
       isFinal,
       timestamp,
-      confidence: event.confidence || 0.95,
+      confidence: typeof event.confidence === 'number' ? event.confidence : 1.0,
     };
 
     if (isFinal) {

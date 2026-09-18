@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useAccessibility } from '../hooks/useAccessibility';
 
@@ -72,14 +73,14 @@ export const AccessibilityDashboard: React.FC = () => {
       {/* Header */}
       <header className="border-b border-border bg-cardBg py-4 px-6 md:px-8 shadow-sm transition-colors duration-200">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex items-center gap-2">
+          <Link to="/dashboard" className="flex items-center gap-2 hover:opacity-90 transition-opacity cursor-pointer">
             <span className="text-2xl font-bold tracking-tight">
               Sign<span className="text-primary font-extrabold">Bridge</span>
             </span>
             <span className="text-xs font-semibold px-2.5 py-1 bg-yellow-400 text-black rounded-full font-bold">
               Accessibility Workspace
             </span>
-          </div>
+          </Link>
 
           <div className="flex flex-wrap items-center gap-4">
             
@@ -145,12 +146,12 @@ export const AccessibilityDashboard: React.FC = () => {
 
             {/* Alert status blocks */}
             {error && (
-              <div className={`p-4 rounded-lg border text-sm font-semibold ${highContrast ? 'bg-black text-yellow-400 border-yellow-400' : 'bg-red-50 text-red-700 border-red-200'}`} role="alert">
+              <div className={`p-4 rounded-lg border text-sm font-semibold ${highContrast ? 'bg-black text-yellow-400 border-yellow-400' : 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800'}`} role="alert">
                 <span>⚠️ {error}</span>
               </div>
             )}
             {success && (
-              <div className={`p-4 rounded-lg border text-sm font-semibold ${highContrast ? 'bg-black text-yellow-400 border-yellow-400' : 'bg-green-50 text-green-700 border-green-200'}`} role="status">
+              <div className={`p-4 rounded-lg border text-sm font-semibold ${highContrast ? 'bg-black text-yellow-400 border-yellow-400' : 'bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800'}`} role="status">
                 <span>✅ {success}</span>
               </div>
             )}

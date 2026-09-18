@@ -235,29 +235,29 @@ export const RegisterPage: React.FC = () => {
         {/* Right Side: Registration Form */}
         <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-10 md:p-12 bg-[#f7fafc] dark:bg-[#030813] relative overflow-y-auto">
           
-          <div className="w-full max-w-lg bg-white dark:bg-[#1a202c] p-6 sm:p-8 rounded-2xl shadow-lg border border-[#e0e3e5] dark:border-[#2d3133]">
+          <div className="w-full max-w-lg bg-white dark:bg-[#1a202c] p-6 sm:p-8 rounded-2xl shadow-lg border border-slate-200 dark:border-[#2d3133]">
             
             {/* Header & Step Indicator */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-[#fe9832]">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-indigo-600 dark:text-[#fe9832]">
                   Step {step} of {totalSteps}
                 </span>
-                <span className="text-xs text-[#45474c] dark:text-[#828796]">
+                <span className="text-xs text-gray-500 dark:text-[#828796]">
                   {step === 1 ? 'Personal Details' : step === 2 ? 'Account Type' : 'Accessibility Preferences'}
                 </span>
               </div>
               
               <div className="flex items-center gap-2 mb-4">
-                <div className={`flex-1 h-1.5 rounded-full transition-all ${step >= 1 ? 'bg-[#fe9832]' : 'bg-[#e0e3e5] dark:bg-[#2d3133]'}`} />
-                <div className={`flex-1 h-1.5 rounded-full transition-all ${step >= 2 ? 'bg-[#fe9832]' : 'bg-[#e0e3e5] dark:bg-[#2d3133]'}`} />
+                <div className={`flex-1 h-1.5 rounded-full transition-all ${step >= 1 ? 'bg-gradient-to-r from-sky-500 to-indigo-600 dark:bg-none dark:bg-[#fe9832]' : 'bg-slate-200 dark:bg-[#2d3133]'}`} />
+                <div className={`flex-1 h-1.5 rounded-full transition-all ${step >= 2 ? 'bg-gradient-to-r from-indigo-600 to-purple-600 dark:bg-none dark:bg-[#fe9832]' : 'bg-slate-200 dark:bg-[#2d3133]'}`} />
                 {accountType === 'ACCESSIBILITY_USER' && (
-                  <div className={`flex-1 h-1.5 rounded-full transition-all ${step >= 3 ? 'bg-[#fe9832]' : 'bg-[#e0e3e5] dark:bg-[#2d3133]'}`} />
+                  <div className={`flex-1 h-1.5 rounded-full transition-all ${step >= 3 ? 'bg-gradient-to-r from-purple-600 to-pink-600 dark:bg-none dark:bg-[#fe9832]' : 'bg-slate-200 dark:bg-[#2d3133]'}`} />
                 )}
               </div>
 
-              <h2 className="text-2xl font-bold text-[#030813] dark:text-white tracking-tight">Create an Account</h2>
-              <p className="text-xs text-[#45474c] dark:text-[#828796] mt-1">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Create an Account</h2>
+              <p className="text-xs text-gray-500 dark:text-[#828796] mt-1">
                 {step === 1 && 'Enter your basic information to get started.'}
                 {step === 2 && 'Select how you would like to use SAMBHAV.'}
                 {step === 3 && 'Tailor your assistive preferences for optimal communication.'}
@@ -267,7 +267,7 @@ export const RegisterPage: React.FC = () => {
             {/* Error Message */}
             {error && (
               <div
-                className="p-3.5 mb-5 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-xs font-semibold flex items-center gap-2"
+                className="p-3.5 mb-5 rounded-xl bg-rose-50 dark:bg-red-950/40 border border-rose-200 dark:border-red-800 text-rose-700 dark:text-red-300 text-xs font-semibold flex items-center gap-2"
                 role="alert"
               >
                 <span className="material-symbols-outlined text-[18px]">error</span>
@@ -282,11 +282,11 @@ export const RegisterPage: React.FC = () => {
               <div className="flex flex-col gap-4 text-xs">
                 {/* Full Name */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="font-bold text-[#181c1e] dark:text-white" htmlFor="reg-name">
-                    Full Name <span className="text-red-500">*</span>
+                  <label className="font-bold text-gray-900 dark:text-white" htmlFor="reg-name">
+                    Full Name <span className="text-rose-500">*</span>
                   </label>
                   <div className="relative">
-                    <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[#45474c] dark:text-[#828796] text-[18px]">
+                    <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-[#828796] text-[18px]">
                       person
                     </span>
                     <input
@@ -296,18 +296,18 @@ export const RegisterPage: React.FC = () => {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="e.g. Priyanshu Sharma"
-                      className="w-full pl-10 pr-4 py-2.5 bg-[#f7fafc] dark:bg-[#030813] border border-[#c6c6cc] dark:border-[#2d3133] rounded-xl text-[#030813] dark:text-white focus:border-[#fe9832] outline-none"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-[#030813] border border-slate-200 dark:border-[#2d3133] rounded-xl text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-0 dark:focus:border-[#fe9832] outline-none transition-colors"
                     />
                   </div>
                 </div>
 
                 {/* Email Address */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="font-bold text-[#181c1e] dark:text-white" htmlFor="reg-email">
-                    Email Address <span className="text-red-500">*</span>
+                  <label className="font-bold text-gray-900 dark:text-white" htmlFor="reg-email">
+                    Email Address <span className="text-rose-500">*</span>
                   </label>
                   <div className="relative">
-                    <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[#45474c] dark:text-[#828796] text-[18px]">
+                    <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-[#828796] text-[18px]">
                       mail
                     </span>
                     <input
@@ -317,18 +317,18 @@ export const RegisterPage: React.FC = () => {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="name@example.com"
-                      className="w-full pl-10 pr-4 py-2.5 bg-[#f7fafc] dark:bg-[#030813] border border-[#c6c6cc] dark:border-[#2d3133] rounded-xl text-[#030813] dark:text-white focus:border-[#fe9832] outline-none"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-[#030813] border border-slate-200 dark:border-[#2d3133] rounded-xl text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-0 dark:focus:border-[#fe9832] outline-none transition-colors"
                     />
                   </div>
                 </div>
 
                 {/* Phone (Optional) */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="font-bold text-[#181c1e] dark:text-white" htmlFor="reg-phone">
-                    Phone Number <span className="text-xs font-normal text-[#828796]">(Optional)</span>
+                  <label className="font-bold text-gray-900 dark:text-white" htmlFor="reg-phone">
+                    Phone Number <span className="text-xs font-normal text-gray-500 dark:text-[#828796]">(Optional)</span>
                   </label>
                   <div className="relative">
-                    <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-[#45474c] dark:text-[#828796] text-[18px]">
+                    <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 dark:text-[#828796] text-[18px]">
                       call
                     </span>
                     <input
@@ -337,7 +337,7 @@ export const RegisterPage: React.FC = () => {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="+91 98765 43210"
-                      className="w-full pl-10 pr-4 py-2.5 bg-[#f7fafc] dark:bg-[#030813] border border-[#c6c6cc] dark:border-[#2d3133] rounded-xl text-[#030813] dark:text-white focus:border-[#fe9832] outline-none"
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-[#030813] border border-slate-200 dark:border-[#2d3133] rounded-xl text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-0 dark:focus:border-[#fe9832] outline-none transition-colors"
                     />
                   </div>
                 </div>
@@ -345,8 +345,8 @@ export const RegisterPage: React.FC = () => {
                 {/* Password Fields Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="flex flex-col gap-1.5">
-                    <label className="font-bold text-[#181c1e] dark:text-white" htmlFor="reg-password">
-                      Password <span className="text-red-500">*</span>
+                    <label className="font-bold text-gray-900 dark:text-white" htmlFor="reg-password">
+                      Password <span className="text-rose-500">*</span>
                     </label>
                     <div className="relative">
                       <input
@@ -356,14 +356,14 @@ export const RegisterPage: React.FC = () => {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="Min 8 characters"
-                        className="w-full px-3.5 py-2.5 bg-[#f7fafc] dark:bg-[#030813] border border-[#c6c6cc] dark:border-[#2d3133] rounded-xl text-[#030813] dark:text-white focus:border-[#fe9832] outline-none"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-[#030813] border border-slate-200 dark:border-[#2d3133] rounded-xl text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-0 dark:focus:border-[#fe9832] outline-none transition-colors"
                       />
                     </div>
                   </div>
 
                   <div className="flex flex-col gap-1.5">
-                    <label className="font-bold text-[#181c1e] dark:text-white" htmlFor="reg-confirm">
-                      Confirm Password <span className="text-red-500">*</span>
+                    <label className="font-bold text-gray-900 dark:text-white" htmlFor="reg-confirm">
+                      Confirm Password <span className="text-rose-500">*</span>
                     </label>
                     <div className="relative">
                       <input
@@ -373,7 +373,7 @@ export const RegisterPage: React.FC = () => {
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         placeholder="Re-enter password"
-                        className="w-full px-3.5 py-2.5 bg-[#f7fafc] dark:bg-[#030813] border border-[#c6c6cc] dark:border-[#2d3133] rounded-xl text-[#030813] dark:text-white focus:border-[#fe9832] outline-none"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-[#030813] border border-slate-200 dark:border-[#2d3133] rounded-xl text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-0 dark:focus:border-[#fe9832] outline-none transition-colors"
                       />
                     </div>
                   </div>
@@ -381,9 +381,9 @@ export const RegisterPage: React.FC = () => {
 
                 {/* Real-time Password Strength Meter */}
                 {password && (
-                  <div className="p-3 bg-[#f8fafc] dark:bg-[#0c121e] border border-[#e0e3e5] dark:border-[#243044] rounded-xl flex flex-col gap-2 animate-fadeIn text-xs">
+                  <div className="p-3 bg-slate-50 dark:bg-[#0c121e] border border-slate-200 dark:border-[#243044] rounded-xl flex flex-col gap-2 animate-fadeIn text-xs">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold">Password Strength:</span>
+                      <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300">Password Strength:</span>
                       <span className={`text-[11px] font-black ${passwordValidation.strengthColor.split(' ')[1]}`}>
                         {passwordValidation.strengthLabel}
                       </span>
@@ -404,20 +404,20 @@ export const RegisterPage: React.FC = () => {
                     </div>
 
                     {/* Requirement Checklist */}
-                    <div className="grid grid-cols-2 gap-1 text-[10px] text-gray-400 pt-1">
-                      <span className={passwordValidation.hasMinLength ? 'text-emerald-500 font-bold' : ''}>
+                    <div className="grid grid-cols-2 gap-1 text-[10px] text-gray-500 dark:text-gray-400 pt-1">
+                      <span className={passwordValidation.hasMinLength ? 'text-emerald-600 dark:text-emerald-500 font-bold' : ''}>
                         {passwordValidation.hasMinLength ? '✓' : '•'} 8+ characters
                       </span>
-                      <span className={passwordValidation.hasUppercase ? 'text-emerald-500 font-bold' : ''}>
+                      <span className={passwordValidation.hasUppercase ? 'text-emerald-600 dark:text-emerald-500 font-bold' : ''}>
                         {passwordValidation.hasUppercase ? '✓' : '•'} Uppercase (A-Z)
                       </span>
-                      <span className={passwordValidation.hasLowercase ? 'text-emerald-500 font-bold' : ''}>
+                      <span className={passwordValidation.hasLowercase ? 'text-emerald-600 dark:text-emerald-500 font-bold' : ''}>
                         {passwordValidation.hasLowercase ? '✓' : '•'} Lowercase (a-z)
                       </span>
-                      <span className={passwordValidation.hasNumber ? 'text-emerald-500 font-bold' : ''}>
+                      <span className={passwordValidation.hasNumber ? 'text-emerald-600 dark:text-emerald-500 font-bold' : ''}>
                         {passwordValidation.hasNumber ? '✓' : '•'} Number (0-9)
                       </span>
-                      <span className={`col-span-2 ${passwordValidation.hasSpecial ? 'text-emerald-500 font-bold' : ''}`}>
+                      <span className={`col-span-2 ${passwordValidation.hasSpecial ? 'text-emerald-600 dark:text-emerald-500 font-bold' : ''}`}>
                         {passwordValidation.hasSpecial ? '✓' : '•'} Special Symbol (!@#$%...)
                       </span>
                     </div>
@@ -431,9 +431,9 @@ export const RegisterPage: React.FC = () => {
                     type="checkbox"
                     checked={showPassword}
                     onChange={(e) => setShowPassword(e.target.checked)}
-                    className="w-4 h-4 rounded text-[#fe9832] focus:ring-[#fe9832] cursor-pointer"
+                    className="w-4 h-4 rounded text-indigo-600 dark:text-[#fe9832] focus:ring-indigo-500 dark:focus:ring-[#fe9832] cursor-pointer"
                   />
-                  <label htmlFor="show-pass" className="text-xs text-[#45474c] dark:text-[#c1c6d7] cursor-pointer select-none">
+                  <label htmlFor="show-pass" className="text-xs text-gray-600 dark:text-[#c1c6d7] cursor-pointer select-none">
                     Show passwords
                   </label>
                 </div>
@@ -441,7 +441,7 @@ export const RegisterPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleNextStep}
-                  className="mt-2 w-full py-3 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] font-bold text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-2"
+                  className="mt-2 w-full py-3 bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 dark:bg-none dark:bg-[#fe9832] text-white dark:text-[#683700] hover:opacity-95 font-bold text-xs rounded-xl transition-all shadow-md shadow-indigo-500/20 dark:shadow-none flex items-center justify-center gap-2"
                 >
                   <span>Continue to Account Type</span>
                   <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
@@ -460,16 +460,16 @@ export const RegisterPage: React.FC = () => {
                     onClick={() => setAccountType('COMMON_USER')}
                     className={`p-4 rounded-xl border-2 text-left transition-all flex items-start gap-3.5 ${
                       accountType === 'COMMON_USER'
-                        ? 'border-[#fe9832] bg-[#fe9832]/10 dark:bg-[#fe9832]/15'
-                        : 'border-[#e0e3e5] dark:border-[#2d3133] bg-[#f7fafc] dark:bg-[#030813] hover:border-[#fe9832]'
+                        ? 'border-indigo-500 bg-indigo-50/70 dark:bg-[#fe9832]/15 dark:border-[#fe9832]'
+                        : 'border-slate-200 dark:border-[#2d3133] bg-slate-50/50 dark:bg-[#030813] hover:border-indigo-300 dark:hover:border-[#fe9832]'
                     }`}
                   >
-                    <div className="w-10 h-10 rounded-lg bg-[#fe9832]/20 text-[#fe9832] flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-[#fe9832]/20 text-indigo-600 dark:text-[#fe9832] flex items-center justify-center shrink-0">
                       <span className="material-symbols-outlined text-[22px]">person</span>
                     </div>
                     <div>
-                      <h3 className="font-bold text-sm text-[#030813] dark:text-white">Common User</h3>
-                      <p className="text-xs text-[#45474c] dark:text-[#c1c6d7] mt-0.5 leading-relaxed">
+                      <h3 className="font-bold text-sm text-gray-900 dark:text-white">Common User</h3>
+                      <p className="text-xs text-gray-500 dark:text-[#c1c6d7] mt-0.5 leading-relaxed">
                         Standard workspace for vocal/text communication sessions and real-time remote calls.
                       </p>
                     </div>
@@ -480,16 +480,16 @@ export const RegisterPage: React.FC = () => {
                     onClick={() => setAccountType('ACCESSIBILITY_USER')}
                     className={`p-4 rounded-xl border-2 text-left transition-all flex items-start gap-3.5 ${
                       accountType === 'ACCESSIBILITY_USER'
-                        ? 'border-[#fe9832] bg-[#fe9832]/10 dark:bg-[#fe9832]/15'
-                        : 'border-[#e0e3e5] dark:border-[#2d3133] bg-[#f7fafc] dark:bg-[#030813] hover:border-[#fe9832]'
+                        ? 'border-emerald-500 bg-emerald-50/70 dark:bg-[#fe9832]/15 dark:border-[#fe9832]'
+                        : 'border-slate-200 dark:border-[#2d3133] bg-slate-50/50 dark:bg-[#030813] hover:border-emerald-300 dark:hover:border-[#fe9832]'
                     }`}
                   >
-                    <div className="w-10 h-10 rounded-lg bg-[#8dfc75]/20 text-[#8dfc75] flex items-center justify-center shrink-0">
+                    <div className="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-[#8dfc75]/20 text-emerald-600 dark:text-[#8dfc75] flex items-center justify-center shrink-0">
                       <span className="material-symbols-outlined text-[22px]">accessibility_new</span>
                     </div>
                     <div>
-                      <h3 className="font-bold text-sm text-[#030813] dark:text-white">Accessibility User</h3>
-                      <p className="text-xs text-[#45474c] dark:text-[#c1c6d7] mt-0.5 leading-relaxed">
+                      <h3 className="font-bold text-sm text-gray-900 dark:text-white">Accessibility User</h3>
+                      <p className="text-xs text-gray-500 dark:text-[#c1c6d7] mt-0.5 leading-relaxed">
                         Tailored for Deaf & Hard-of-Hearing individuals with automated 3D ISL avatar rendering and sign learning.
                       </p>
                     </div>
@@ -500,7 +500,7 @@ export const RegisterPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={handlePrevStep}
-                    className="w-1/3 py-3 border border-[#c6c6cc] dark:border-[#2d3133] text-[#181c1e] dark:text-white font-bold text-xs rounded-xl hover:bg-[#f1f4f6] dark:hover:bg-[#2d3133] transition-colors"
+                    className="w-1/3 py-3 border border-slate-200 dark:border-[#2d3133] text-gray-700 dark:text-white font-bold text-xs rounded-xl hover:bg-slate-100 dark:hover:bg-[#2d3133] transition-colors"
                   >
                     Back
                   </button>
@@ -508,7 +508,7 @@ export const RegisterPage: React.FC = () => {
                     type="button"
                     onClick={handleNextStep}
                     disabled={loading}
-                    className="flex-1 py-3 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] font-bold text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-2"
+                    className="flex-1 py-3 bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 dark:bg-none dark:bg-[#fe9832] text-white dark:text-[#683700] hover:opacity-95 font-bold text-xs rounded-xl transition-all shadow-md shadow-indigo-500/20 dark:shadow-none flex items-center justify-center gap-2"
                   >
                     {loading ? (
                       <span className="material-symbols-outlined text-[18px] animate-spin">sync</span>
@@ -528,7 +528,7 @@ export const RegisterPage: React.FC = () => {
             {/* ========================================================= */}
             {step === 3 && (
               <div className="flex flex-col gap-4 text-xs">
-                <p className="text-xs text-[#45474c] dark:text-[#c1c6d7]">
+                <p className="text-xs text-gray-600 dark:text-[#c1c6d7]">
                   Select the accessibility features you would like enabled by default:
                 </p>
 
@@ -543,15 +543,15 @@ export const RegisterPage: React.FC = () => {
                       key={item.key} 
                       className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-all ${
                         selectedNeeds.includes(item.key) 
-                          ? 'border-[#fe9832] bg-[#fe9832]/10 text-[#030813] dark:text-white' 
-                          : 'border-[#e0e3e5] dark:border-[#2d3133] bg-[#f7fafc] dark:bg-[#030813] text-[#45474c] dark:text-[#c1c6d7]'
+                          ? 'border-indigo-500 bg-indigo-50/60 text-indigo-950 dark:border-[#fe9832] dark:bg-[#fe9832]/10 dark:text-white' 
+                          : 'border-slate-200 dark:border-[#2d3133] bg-slate-50/50 dark:bg-[#030813] text-gray-700 dark:text-[#c1c6d7]'
                       }`}
                     >
                       <input
                         type="checkbox"
                         checked={selectedNeeds.includes(item.key)}
                         onChange={() => handleNeedToggle(item.key)}
-                        className="w-4 h-4 rounded text-[#fe9832] focus:ring-[#fe9832] cursor-pointer"
+                        className="w-4 h-4 rounded text-indigo-600 dark:text-[#fe9832] focus:ring-indigo-500 dark:focus:ring-[#fe9832] cursor-pointer"
                       />
                       <span className="text-xs font-bold">{item.label}</span>
                     </label>
@@ -559,11 +559,11 @@ export const RegisterPage: React.FC = () => {
                 </div>
 
                 <div className="flex flex-col gap-1 mt-1">
-                  <label className="font-bold text-[#181c1e] dark:text-white">Primary Input Mode</label>
+                  <label className="font-bold text-gray-900 dark:text-white">Primary Input Mode</label>
                   <select
                     value={communicationPreference}
                     onChange={(e) => setCommunicationPreference(e.target.value)}
-                    className="px-3 py-2 bg-[#f7fafc] dark:bg-[#030813] border border-[#c6c6cc] dark:border-[#2d3133] rounded-xl text-[#030813] dark:text-white font-semibold outline-none"
+                    className="px-3 py-2 bg-slate-50 dark:bg-[#030813] border border-slate-200 dark:border-[#2d3133] rounded-xl text-gray-900 dark:text-white font-semibold outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:focus:ring-0 dark:focus:border-[#fe9832]"
                   >
                     <option value="text">Text Input</option>
                     <option value="sign">Indian Sign Language (ISL) Gestures &amp; Avatar</option>
@@ -575,7 +575,7 @@ export const RegisterPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={handlePrevStep}
-                    className="w-1/3 py-3 border border-[#c6c6cc] dark:border-[#2d3133] text-[#181c1e] dark:text-white font-bold text-xs rounded-xl hover:bg-[#f1f4f6] dark:hover:bg-[#2d3133] transition-colors"
+                    className="w-1/3 py-3 border border-slate-200 dark:border-[#2d3133] text-gray-700 dark:text-white font-bold text-xs rounded-xl hover:bg-slate-100 dark:hover:bg-[#2d3133] transition-colors"
                   >
                     Back
                   </button>
@@ -583,7 +583,7 @@ export const RegisterPage: React.FC = () => {
                     type="button"
                     onClick={handleRegister}
                     disabled={loading}
-                    className="flex-1 py-3 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] font-bold text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="flex-1 py-3 bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 dark:bg-none dark:bg-[#fe9832] text-white dark:text-[#683700] hover:opacity-95 font-bold text-xs rounded-xl transition-all shadow-md shadow-indigo-500/20 dark:shadow-none flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {loading ? (
                       <span className="material-symbols-outlined text-[18px] animate-spin">sync</span>
@@ -599,9 +599,9 @@ export const RegisterPage: React.FC = () => {
             )}
 
             {/* Footer Sign In Link */}
-            <div className="mt-6 pt-5 border-t border-[#e0e3e5] dark:border-[#2d3133] text-center text-xs text-[#45474c] dark:text-[#828796]">
+            <div className="mt-6 pt-5 border-t border-slate-200 dark:border-[#2d3133] text-center text-xs text-gray-500 dark:text-[#828796]">
               Already have an account?{' '}
-              <Link to="/login" className="text-[#fe9832] font-bold hover:underline">
+              <Link to="/login" className="text-indigo-600 dark:text-[#fe9832] font-bold hover:underline">
                 Sign In
               </Link>
             </div>

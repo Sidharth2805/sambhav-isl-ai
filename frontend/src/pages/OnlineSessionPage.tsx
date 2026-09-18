@@ -1,27 +1,24 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getSession, endSession, getLiveKitToken, startSession, sendFinalTranscript, getTranslationHistory } from '../utils/communicationApi';
-import type { CommunicationSessionDto, LiveKitTokenResponseDto } from '../utils/communicationApi';
-import {
-  LiveKitRoom,
-  RoomAudioRenderer,
-  useTracks,
-  useLocalParticipant,
-  useConnectionState,
-  useRoomContext,
-  useMediaDeviceSelect,
-} from '@livekit/components-react';
-import { Track, ConnectionState as LkConnectionState, RoomEvent, VideoPresets } from 'livekit-client';
-import '@livekit/components-styles';
+import { getSession, endSession, startSession } from '../utils/communicationApi';
+import type { CommunicationSessionDto } from '../utils/communicationApi';
 import type { TranscriptEvent } from '../types/transcript';
-import { SpeechToTextService } from '../services/SpeechToTextService';
-import { useTranscript } from '../hooks/useTranscript';
-import { HearingUserWorkspace } from '../components/communication/HearingUserWorkspace';
+import { HearingUserWorkspace, LkConnectionState } from '../components/communication/HearingUserWorkspace';
 import { DeafUserWorkspace } from '../components/communication/DeafUserWorkspace';
+import { SpeechToTextService } from '../services/SpeechToTextService';
+
+const SIGNALING_URL = (import.meta as any).env?.VITE_SIGNALING_URL || 'ws://localhost:8080';
+
+const STUN_SERVERS = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+];
 
 export const OnlineSessionPage: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
+  const [searchParams] = useSearchParams();
   const { user, accessToken } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -30,764 +27,514 @@ export const OnlineSessionPage: React.FC = () => {
     initialVideo?: boolean;
     initialAudio?: boolean;
     initialSpeaker?: number;
+    userRole?: 'normal' | 'deaf';
+    roomCode?: string;
+    isHost?: boolean;
   };
 
   const [session, setSession] = useState<CommunicationSessionDto | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [roomCode] = useState<string>(
+    incomingSettings.roomCode || sessionId || 'SAMBHAV'
+  );
 
-  // LiveKit Connection info state
-  const [lkCredentials, setLkCredentials] = useState<LiveKitTokenResponseDto | null>(null);
+  const isDeafDefault =
+    (user as any)?.disabilityType === 'DEAF' ||
+    (user as any)?.disabilityType === 'DEAF_MUTE' ||
+    (user as any)?.disabilityType === 'MUTE' ||
+    user?.accountType === 'ACCESSIBILITY_USER';
 
-  // Call Settings UI State (Respecting pre-call choices: camera default OFF)
-  const [micEnabled] = useState(
+  const userRole = searchParams.get('role') || incomingSettings.userRole || (isDeafDefault ? 'deaf' : 'normal');
+  const isDeafWorkspace = userRole === 'deaf' || user?.accountType === 'ACCESSIBILITY_USER';
+
+  // Call Settings UI State
+  const [micState, setMicState] = useState<boolean>(
     incomingSettings.initialAudio !== undefined ? incomingSettings.initialAudio : true
   );
-  const [cameraEnabled] = useState(
-    incomingSettings.initialVideo !== undefined ? incomingSettings.initialVideo : false
+  const [cameraState, setCameraState] = useState<boolean>(
+    incomingSettings.initialVideo !== undefined ? incomingSettings.initialVideo : true
   );
-  const [speakerVolume, setSpeakerVolume] = useState(
+  const [screenShareState, setScreenShareState] = useState<boolean>(false);
+  const [speakerVolume, setSpeakerVolume] = useState<number>(
     incomingSettings.initialSpeaker !== undefined ? incomingSettings.initialSpeaker : 80
   );
-  const [showSettings, setShowSettings] = useState(false);
 
-  // Connection control states
-  const [isLeaving, setIsLeaving] = useState(false);
-  const [connectionError, setConnectionError] = useState<string | null>(null);
-
-  // Sync volume with all audio elements dynamically
-  useEffect(() => {
-    const audios = document.querySelectorAll('audio');
-    audios.forEach((audio) => {
-      audio.volume = speakerVolume / 100;
-    });
-  }, [speakerVolume]);
-
-  const getFriendlyErrorMessage = (errMsg: string) => {
-    if (!errMsg) return 'Session could not be established.';
-    const lower = errMsg.toLowerCase();
-    
-    if (lower.includes('permission denied') || 
-        lower.includes('notallowederror') || 
-        lower.includes('permission dismissed') || 
-        lower.includes('user denied') || 
-        lower.includes('notallowed') || 
-        lower.includes('permission') ||
-        lower.includes('client initiated disconnect')) {
-      return 'Camera or microphone access was denied or blocked. Please verify that camera and microphone permissions are allowed in your browser settings and try again.';
-    }
-    if (lower.includes('network') || lower.includes('failed to fetch') || lower.includes('networkerror')) {
-      return 'Network connection failure. Please verify your internet connection and check if the backend server is running.';
-    }
-    if (lower.includes('token') && (lower.includes('expired') || lower.includes('invalid') || lower.includes('unauthorized') || lower.includes('401'))) {
-      return 'Unable to obtain token: Your authentication session is invalid or has expired. Please log in again.';
-    }
-    if (lower.includes('ended')) {
-      return 'Session expired: This communication session has already been ended.';
-    }
-    if (lower.includes('cancelled')) {
-      return 'Room unavailable: This communication session has been cancelled.';
-    }
-    if (lower.includes('not found') || lower.includes('404')) {
-      return 'Room unavailable: The requested session could not be found.';
-    }
-    if (lower.includes('connection failed') || lower.includes('livekit')) {
-      return `LiveKit connection failure: ${errMsg}`;
-    }
-    return errMsg;
-  };
-
-  const fetchSessionDetails = useCallback(async () => {
-    if (!sessionId) return;
-    try {
-      setLoading(true);
-      setError(null);
-      setConnectionError(null);
-      
-      let data: CommunicationSessionDto | null = null;
-      let lastErr: any = null;
-
-      // Auto-retry session fetching up to 3 times for cold-starts/network blips
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          data = await getSession(sessionId, accessToken);
-          if (data) break;
-        } catch (err: any) {
-          lastErr = err;
-          if (attempt < 3) {
-            await new Promise((res) => setTimeout(res, 800 * attempt));
-          }
-        }
-      }
-
-      if (!data) {
-        throw lastErr || new Error('Failed to retrieve online session details.');
-      }
-
-      setSession(data);
-
-      // Auto-activate session if not already active
-      if (data.status === 'CREATED' || data.status === 'WAITING') {
-        if (data.creatorUserId === user?.id) {
-          try {
-            const activeSession = await startSession(sessionId, accessToken);
-            setSession(activeSession);
-          } catch (startErr) {
-            console.warn('[Auto-Start Note]:', startErr);
-          }
-        }
-      }
-
-      // Acquire LiveKit Token with 3 resilient retry attempts
-      let credentials: LiveKitTokenResponseDto | null = null;
-      let credLastErr: any = null;
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-          credentials = await getLiveKitToken(sessionId, accessToken);
-          if (credentials && credentials.token) break;
-        } catch (credErr: any) {
-          credLastErr = credErr;
-          if (attempt < 3) {
-            await new Promise((res) => setTimeout(res, 800 * attempt));
-          }
-        }
-      }
-
-      if (credentials) {
-        setLkCredentials(credentials);
-      } else {
-        console.error('[SignBridge Debug] LiveKit token acquisition failed after retries:', credLastErr);
-        setConnectionError(credLastErr?.message || 'Unable to connect to the LiveKit video service.');
-      }
-    } catch (err: any) {
-      console.error('[SignBridge Debug] fetchSessionDetails caught error:', err);
-      setError(err?.message || 'Failed to retrieve online session details.');
-    } finally {
-      setLoading(false);
-    }
-  }, [sessionId, accessToken, user?.id]);
-
-  useEffect(() => {
-    fetchSessionDetails();
-  }, [fetchSessionDetails]);
-
-  // Poll for activation if waiting as non-creator
-  useEffect(() => {
-    if (!sessionId || !session || session.status === 'ACTIVE' || lkCredentials) return;
-
-    const interval = setInterval(async () => {
-      try {
-        const data = await getSession(sessionId, accessToken);
-        if (data.status === 'ACTIVE') {
-          setSession(data);
-          const credentials = await getLiveKitToken(sessionId, accessToken);
-          setLkCredentials(credentials);
-          clearInterval(interval);
-        }
-      } catch (err) {
-        console.error('[SignBridge Debug] Polling session status failed:', err);
-      }
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [sessionId, session, lkCredentials, accessToken]);
-
-  const handleLeaveSession = () => {
-    setIsLeaving(true);
-    navigate('/communicate');
-  };
-
-  const handleRetryConnection = () => {
-    fetchSessionDetails();
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-[70vh] flex flex-col items-center justify-center gap-4 text-center animate-fadeIn font-['Inter',sans-serif]">
-        <div className="w-14 h-14 rounded-full border-4 border-[#fe9832]/30 border-t-[#fe9832] animate-spin" />
-        <div>
-          <h2 className="text-base font-bold text-[#030813] dark:text-white">Connecting to Video Room...</h2>
-          <p className="text-xs text-[#45474c] dark:text-[#828796] mt-1">Initializing WebRTC session credentials</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (connectionError || error || !session) {
-    return (
-      <div className="min-h-[65vh] flex flex-col items-center justify-center p-6 text-center animate-fadeIn font-['Inter',sans-serif]">
-        <div className="bg-white dark:bg-[#1a202c] p-8 rounded-[28px] border border-[#e0e3e5] dark:border-[#2d3133] shadow-lg max-w-md w-full flex flex-col items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-            <span className="material-symbols-outlined text-[32px]">videocam_off</span>
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-[#030813] dark:text-white">Call Connection Issue</h2>
-            <p className="text-xs text-[#45474c] dark:text-[#828796] mt-1.5 leading-relaxed">
-              {getFriendlyErrorMessage(connectionError || error || 'Session could not be established.')}
-            </p>
-          </div>
-          <div className="flex gap-3 w-full pt-2">
-            <button
-              type="button"
-              onClick={handleRetryConnection}
-              className="flex-1 py-3 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5"
-            >
-              <span className="material-symbols-outlined text-[16px]">refresh</span>
-              <span>Retry</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleLeaveSession}
-              className="flex-1 py-3 bg-[#f1f4f6] dark:bg-[#2d3133] hover:bg-[#e0e3e5] text-[#030813] dark:text-white rounded-xl text-xs font-bold transition-all"
-            >
-              Return
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!lkCredentials) {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center min-h-[70vh] gap-6 text-center animate-fadeIn p-6 font-['Inter',sans-serif]">
-        <div className="relative flex items-center justify-center">
-          <div className="w-16 h-16 rounded-full border-4 border-[#fe9832]/30 border-t-[#fe9832] animate-spin" />
-          <span className="material-symbols-outlined text-[#fe9832] text-[28px] absolute">videocam</span>
-        </div>
-        <div className="max-w-md flex flex-col items-center">
-          <h2 className="text-xl font-bold text-[#030813] dark:text-white mb-1.5">Connecting to Video Call...</h2>
-          <p className="text-xs text-[#45474c] dark:text-[#828796] mb-4">
-            Room Code: <span className="font-mono font-bold text-[#fe9832]">{session?.roomCode}</span> &bull; Establishing secure WebRTC media stream
-          </p>
-          <button
-            type="button"
-            onClick={handleLeaveSession}
-            className="px-4 py-2 bg-[#f1f4f6] dark:bg-[#2d3133] hover:bg-[#e0e3e5] text-[#030813] dark:text-white rounded-xl text-xs font-bold transition-all shadow-sm"
-          >
-            Cancel & Return
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const isCreator = session.creatorUserId === user?.id;
-
-  // Render ACTIVE LiveKit Call view
-  return (
-    <div className="w-full h-full flex-1 flex flex-col gap-4 relative min-h-[82vh]">
-      <LiveKitRoom
-        video={
-          cameraEnabled
-            ? {
-                resolution: VideoPresets.h720.resolution,
-              }
-            : false
-        }
-        audio={micEnabled}
-        token={lkCredentials.token}
-        serverUrl={lkCredentials.url}
-        connect={true}
-        options={{
-          adaptiveStream: true,
-          dynacast: true,
-          publishDefaults: {
-            videoCodec: 'vp8',
-            simulcast: true,
-          },
-          videoCaptureDefaults: {
-            resolution: VideoPresets.h720.resolution,
-            frameRate: 30,
-          },
-        }}
-        onDisconnected={() => {
-          if (isLeaving) {
-            navigate('/communicate');
-          }
-        }}
-        onError={(err) => {
-          console.error('[SignBridge Debug] LiveKitRoom connection error:', err);
-          setConnectionError(
-            `Unable to connect to the communication room. Details: ${err.message}`
-          );
-          setLkCredentials(null);
-        }}
-        className="flex-grow flex flex-col gap-4"
-      >
-        <RoomAudioRenderer />
-        <ActiveCallWorkspace
-          sessionId={session.id}
-          roomCode={session.roomCode || ''}
-          session={session}
-          isCreator={isCreator}
-          onLeaveCall={handleLeaveSession}
-          showSettings={showSettings}
-          setShowSettings={setShowSettings}
-          speakerVolume={speakerVolume}
-          setSpeakerVolume={setSpeakerVolume}
-          initialCamera={cameraEnabled}
-          initialMic={micEnabled}
-          user={user}
-        />
-      </LiveKitRoom>
-    </div>
-  );
-};
-
-// Internal Sub-component to manage Room Context & render Video Conference Workspace
-interface ActiveCallWorkspaceProps {
-  sessionId: string;
-  roomCode: string;
-  session: CommunicationSessionDto;
-  isCreator: boolean;
-  onLeaveCall: () => void;
-  showSettings: boolean;
-  setShowSettings: (val: boolean) => void;
-  speakerVolume: number;
-  setSpeakerVolume: (val: number) => void;
-  initialCamera: boolean;
-  initialMic: boolean;
-  user: any;
-}
-
-const ActiveCallWorkspace: React.FC<ActiveCallWorkspaceProps> = ({
-  sessionId,
-  roomCode,
-  session: _session,
-  isCreator,
-  onLeaveCall: _onLeaveCall,
-  showSettings: _showSettings,
-  setShowSettings: _setShowSettings,
-  speakerVolume,
-  setSpeakerVolume,
-  initialCamera,
-  initialMic,
-  user,
-}) => {
-  const { localParticipant } = useLocalParticipant();
-  const connectionState = useConnectionState();
-  const room = useRoomContext();
-  const { accessToken } = useAuth();
-  const navigate = useNavigate();
-
-  // Transcripts & Chat Stream
-  const { finalTranscripts, interimTranscripts, addTranscriptEvent, clearTranscript } = useTranscript(sessionId);
-
-  // End Call Modal States
-  const [showEndModal, setShowEndModal] = useState(false);
-  const [remoteLeftNotice, setRemoteLeftNotice] = useState(false);
-
-  const handleConfirmEndCall = async () => {
-    try {
-      if (sessionId) {
-        await endSession(sessionId, accessToken);
-      }
-      clearTranscript();
-      if (sessionId) {
-        sessionStorage.removeItem(`sambhav_call_transcripts_${sessionId}`);
-      }
-      navigate('/communicate');
-    } catch (err: any) {
-      console.error('[SignBridge Debug] handleConfirmEndCall caught error:', err);
-      navigate('/communicate');
-    }
-  };
-
-  const handleOpenEndModal = () => {
-    setShowEndModal(true);
-  };
-
-  const [sequenceQueue, setSequenceQueue] = useState<any[]>([]);
-  const [processedSequenceIds] = useState(() => new Set<string>());
-  const [recoveryState, setRecoveryState] = useState<'CONNECTED' | 'RECONNECTING' | 'RECOVERING' | 'READY'>('CONNECTED');
-  const lastSeqNumRef = useRef<number>(0);
-
-  const handleSequenceReceived = useCallback((sequence: any) => {
-    if (!sequence || !sequence.sequenceId) return;
-    if (processedSequenceIds.has(sequence.sequenceId)) {
-      return;
-    }
-    processedSequenceIds.add(sequence.sequenceId);
-
-    if (sequence.sequenceNumber && sequence.sequenceNumber > lastSeqNumRef.current) {
-      lastSeqNumRef.current = sequence.sequenceNumber;
-    }
-    
-    setSequenceQueue((prev) => {
-      const merged = [...prev, sequence];
-      return merged.sort((a, b) => (a.sequenceNumber || 0) - (b.sequenceNumber || 0));
-    });
-  }, [processedSequenceIds]);
-
-  const handleSequenceComplete = useCallback(() => {
-    setSequenceQueue((prev) => prev.slice(1));
-  }, []);
-
-  const recoverSessionHistory = useCallback(async () => {
-    try {
-      setRecoveryState('RECOVERING');
-      const limit = 50;
-      const history = await getTranslationHistory(sessionId, lastSeqNumRef.current, limit, accessToken);
-
-      if (history && history.length > 0) {
-        history.forEach((item: any) => {
-          if (item && item.sequenceId) {
-            processedSequenceIds.add(item.sequenceId);
-          }
-        });
-
-        const maxSeq = Math.max(...history.map((item: any) => item.sequenceNumber || 0));
-        if (maxSeq > lastSeqNumRef.current) {
-          lastSeqNumRef.current = maxSeq;
-        }
-
-        history.forEach((h: any) => {
-          if (h.sourceText) {
-            addTranscriptEvent({
-              id: h.sourceTranscriptId || h.sequenceId,
-              sessionId: sessionId,
-              senderId: h.senderId || 'participant',
-              senderName: h.senderName || 'Participant',
-              senderType: 'COMMON_USER',
-              text: h.sourceText,
-              confidence: 1.0,
-              isFinal: true,
-              timestamp: h.createdAt || Date.now(),
-            });
-          }
-        });
-      }
-
-      setRecoveryState('READY');
-    } catch (err) {
-      console.error('[SignBridge Recovery] Sequence history recovery failed:', err);
-      setRecoveryState('READY');
-    }
-  }, [sessionId, accessToken, processedSequenceIds, addTranscriptEvent]);
-
-  useEffect(() => {
-    if (connectionState === LkConnectionState.Connected) {
-      recoverSessionHistory();
-    } else if (connectionState === LkConnectionState.Reconnecting) {
-      setRecoveryState('RECONNECTING');
-    }
-  }, [connectionState, recoverSessionHistory]);
-
-  const [micState, setMicState] = useState(initialMic);
-  const [cameraState, setCameraState] = useState(initialCamera);
-  const [screenShareState, setScreenShareState] = useState(false);
-
-  // Synchronize initial hardware tracks when local participant connects
-  useEffect(() => {
-    if (localParticipant) {
-      localParticipant.setCameraEnabled(initialCamera).catch(() => {});
-      localParticipant.setMicrophoneEnabled(initialMic).catch(() => {});
-    }
-  }, [localParticipant, initialCamera, initialMic]);
-
-  const senderIdentity = localParticipant?.identity || user?.email || user?.id || 'me';
-  const senderDisplayName = user?.name || user?.email || 'Me';
-  const senderAccountType = user?.accountType || 'COMMON_USER';
-
-  const { devices: audioDevices, activeDeviceId: activeAudioDeviceId, setActiveMediaDevice: setActiveAudioDeviceRaw } = useMediaDeviceSelect({ kind: 'audioinput' });
-  const { devices: videoDevices, activeDeviceId: activeVideoDeviceId, setActiveMediaDevice: setActiveVideoDeviceRaw } = useMediaDeviceSelect({ kind: 'videoinput' });
-  const { devices: speakerDevices, activeDeviceId: activeSpeakerDeviceId, setActiveMediaDevice: setActiveSpeakerDeviceRaw } = useMediaDeviceSelect({ kind: 'audiooutput' });
-
+  // Device selectors state
+  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
+  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
+  const [speakerDevices, setSpeakerDevices] = useState<MediaDeviceInfo[]>([]);
+  const [activeAudioDeviceId, setActiveAudioDeviceId] = useState<string>('');
+  const [activeVideoDeviceId, setActiveVideoDeviceId] = useState<string>('');
+  const [activeSpeakerDeviceId, setActiveSpeakerDeviceId] = useState<string>('');
   const [showMicDevices, setShowMicDevices] = useState(false);
   const [showCameraDevices, setShowCameraDevices] = useState(false);
   const [showSpeakerDevices, setShowSpeakerDevices] = useState(false);
 
-  const setActiveAudioDevice = useCallback(async (deviceId: string) => {
-    try {
-      if (room) {
-        await room.switchActiveDevice('audioinput', deviceId);
-      }
-      await setActiveAudioDeviceRaw(deviceId);
+  // Connection states
+  const [connectionState, setConnectionState] = useState<LkConnectionState>(LkConnectionState.Connecting);
+  const [showEndModal, setShowEndModal] = useState<boolean>(false);
+  const [remoteLeftNotice, setRemoteLeftNotice] = useState<boolean>(false);
 
-      // Re-bind STT recognition to active microphone stream
-      const stt = SpeechToTextService.getInstance();
-      if (micState && connectionState === LkConnectionState.Connected) {
-        stt.stopRecording();
-        setTimeout(() => {
-          stt.startRecording(
-            sessionId,
-            senderIdentity,
-            senderDisplayName,
-            senderAccountType,
-            (event: TranscriptEvent) => {
-              transcriptCallbackRef.current(event);
-            }
-          );
-        }, 300);
-      }
-    } catch (err) {
-      console.warn('[SignBridge] Audio device switch note:', err);
-    }
-  }, [room, setActiveAudioDeviceRaw, micState, connectionState, sessionId, senderIdentity, senderDisplayName, senderAccountType]);
-
-  const setActiveVideoDevice = useCallback(async (deviceId: string) => {
-    try {
-      if (room) {
-        await room.switchActiveDevice('videoinput', deviceId);
-      }
-      await setActiveVideoDeviceRaw(deviceId);
-    } catch (err) {
-      console.warn('[SignBridge] Video device switch note:', err);
-    }
-  }, [room, setActiveVideoDeviceRaw]);
-
-  const setActiveSpeakerDevice = useCallback(async (deviceId: string) => {
-    try {
-      if (room) {
-        await room.switchActiveDevice('audiooutput', deviceId);
-      }
-      await setActiveSpeakerDeviceRaw(deviceId);
-
-      // Apply sinkId to all audio elements on document if supported
-      const audios = document.querySelectorAll('audio');
-      audios.forEach((audio: any) => {
-        if (typeof audio.setSinkId === 'function') {
-          audio.setSinkId(deviceId).catch((e: any) => console.warn('setSinkId note:', e));
-        }
-      });
-    } catch (err) {
-      console.warn('[SignBridge] Speaker output device switch note:', err);
-    }
-  }, [room, setActiveSpeakerDeviceRaw]);
-
-  const [controlsVisible, setControlsVisible] = useState(true);
-  const hideTimeoutRef = useRef<any>(null);
-
-  const resetControlsTimer = useCallback(() => {
-    setControlsVisible(true);
-    if (hideTimeoutRef.current) {
-      clearTimeout(hideTimeoutRef.current);
-    }
-    hideTimeoutRef.current = setTimeout(() => {
-      if (!showMicDevices && !showCameraDevices) {
-        setControlsVisible(false);
-      }
-    }, 4000);
-  }, [showMicDevices, showCameraDevices]);
-
-  useEffect(() => {
-    resetControlsTimer();
-    return () => {
-      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-    };
-  }, [resetControlsTimer]);
-
-  const handleToggleMic = async () => {
-    if (!localParticipant) return;
-    try {
-      const nextState = !micState;
-      await localParticipant.setMicrophoneEnabled(nextState);
-      setMicState(nextState);
-    } catch (err) {
-      console.error('Failed to toggle mic:', err);
-    }
-  };
-
-  const handleToggleCamera = async () => {
-    if (!localParticipant) return;
-    try {
-      const nextState = !cameraState;
-      await localParticipant.setCameraEnabled(nextState);
-      setCameraState(nextState);
-    } catch (err) {
-      console.error('Failed to toggle camera:', err);
-    }
-  };
-
-  const handleToggleScreen = async () => {
-    if (!localParticipant) return;
-    try {
-      const nextState = !screenShareState;
-      await localParticipant.setScreenShareEnabled(nextState);
-      setScreenShareState(nextState);
-    } catch (err) {
-      console.error('Failed to toggle screen share:', err);
-    }
-  };
-
-  const tracks = useTracks([
-    { source: Track.Source.Camera, withPlaceholder: false },
-    { source: Track.Source.ScreenShare, withPlaceholder: false },
-  ]);
-
-  const localTrack = tracks.find((tr) => tr.participant.isLocal && tr.source === Track.Source.Camera);
-  const remoteCameraTrack = tracks.find((tr) => !tr.participant.isLocal && tr.source === Track.Source.Camera);
-  const remoteScreenTrack = tracks.find((tr) => !tr.participant.isLocal && tr.source === Track.Source.ScreenShare);
-  const primaryRemoteTrack = remoteScreenTrack || remoteCameraTrack;
-
-  const [sttSupported, setSttSupported] = useState(true);
+  // Transcripts and Sequence logs
+  const [finalTranscripts, setFinalTranscripts] = useState<TranscriptEvent[]>([]);
+  const [interimTranscripts, setInterimTranscripts] = useState<Record<string, string>>({});
   const captionsEndRef = useRef<HTMLDivElement | null>(null);
 
+  // WebRTC Native Streams & Connections
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const [localTrackObj, setLocalTrackObj] = useState<any>(null);
+  const [remoteTrackObj, setRemoteTrackObj] = useState<any>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  const signalWsRef = useRef<WebSocket | null>(null);
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
+
+  // Fetch Session details from API if available
   useEffect(() => {
-    if (captionsEndRef.current) {
-      captionsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (!sessionId) return;
+    getSession(sessionId, accessToken)
+      .then((data) => {
+        if (data) {
+          setSession(data);
+          if (data.status === 'CREATED' || data.status === 'WAITING') {
+            startSession(sessionId, accessToken).catch(() => {});
+          }
+        }
+      })
+      .catch((e) => {
+        console.warn('Session API note (proceeding with native WebRTC session):', e);
+      });
+  }, [sessionId, accessToken]);
+
+  // Enumerate Media Devices
+  useEffect(() => {
+    navigator.mediaDevices?.enumerateDevices().then((devices) => {
+      setAudioDevices(devices.filter((d) => d.kind === 'audioinput'));
+      setVideoDevices(devices.filter((d) => d.kind === 'videoinput'));
+      setSpeakerDevices(devices.filter((d) => d.kind === 'audiooutput'));
+    }).catch(() => {});
+  }, []);
+
+  // Sync volume with audio elements
+  useEffect(() => {
+    document.querySelectorAll('audio').forEach((audio) => {
+      audio.volume = speakerVolume / 100;
+    });
+  }, [speakerVolume]);
+
+  // Attach remote stream to hidden audio element to ensure audio plays
+  useEffect(() => {
+    if (remoteAudioRef.current && remoteTrackObj) {
+      remoteAudioRef.current.srcObject = remoteTrackObj;
+      remoteAudioRef.current.play().catch(() => {});
     }
-  }, [finalTranscripts, interimTranscripts]);
+  }, [remoteTrackObj]);
 
-  const broadcastTranscriptEvent = useCallback(
-    (event: TranscriptEvent) => {
-      if (!room || connectionState !== LkConnectionState.Connected) return;
-
-      try {
-        const payload = JSON.stringify({
-          type: 'TRANSCRIPT',
-          data: event,
-        });
-        const encoder = new TextEncoder();
-        const bytes = encoder.encode(payload);
-
-        room.localParticipant.publishData(bytes, {
-          reliable: event.isFinal,
-          topic: 'transcripts',
-        });
-      } catch (err) {
-        console.error('Failed to broadcast transcript data packet:', err);
-      }
-    },
-    [room, connectionState]
-  );
-
-  // Stable callback ref to prevent STT thrashing on every re-render
-  const transcriptCallbackRef = useRef<(event: TranscriptEvent) => void>(() => {});
-  transcriptCallbackRef.current = async (event: TranscriptEvent) => {
-    addTranscriptEvent(event);
-    broadcastTranscriptEvent(event);
+  // Add Transcript Event Helper
+  const addTranscriptEvent = useCallback((event: TranscriptEvent) => {
+    if (!event || !event.text) return;
+    const senderId = event.senderId || 'participant';
 
     if (event.isFinal) {
-      try {
-        await sendFinalTranscript(sessionId, event, accessToken);
-      } catch (err) {
-        console.error('Failed to persist final transcript to backend:', err);
-      }
+      setFinalTranscripts((prev) => {
+        if (prev.some((e) => e.id === event.id)) return prev;
+        return [...prev, event];
+      });
+      setInterimTranscripts((prev) => {
+        const next = { ...prev };
+        delete next[senderId];
+        return next;
+      });
+    } else {
+      setInterimTranscripts((prev) => ({
+        ...prev,
+        [senderId]: event.text,
+      }));
     }
-  };
+  }, []);
 
+  // Send Transcript / Message over WebRTC Signaling
+  const handleSendTextMessage = useCallback((text: string) => {
+    const clean = text.trim();
+    if (!clean) return;
+
+    const event: TranscriptEvent = {
+      id: `tx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      sessionId: sessionId || roomCode,
+      senderId: user?.id || user?.email || 'self',
+      senderName: (user as any)?.fullName || (user as any)?.name || 'You',
+      senderType: isDeafWorkspace ? 'ACCESSIBILITY_USER' : 'COMMON_USER',
+      text: clean,
+      timestamp: Date.now(),
+      isFinal: true,
+      confidence: 1.0,
+    };
+
+    addTranscriptEvent(event);
+
+    if (signalWsRef.current?.readyState === WebSocket.OPEN) {
+      signalWsRef.current.send(
+        JSON.stringify({
+          type: 'app-message',
+          roomId: roomCode,
+          payload: {
+            kind: 'transcript',
+            event,
+            text: clean,
+            timestamp: Date.now(),
+          },
+        })
+      );
+    }
+  }, [addTranscriptEvent, isDeafWorkspace, roomCode, sessionId, user]);
+
+  // Live Microphone Audio Recognition (Web Speech STT)
   useEffect(() => {
     const stt = SpeechToTextService.getInstance();
-    const isSupported = stt.isSupported();
-    setSttSupported(isSupported);
+    const mySenderId = user?.id || user?.email || 'me';
+    const mySenderName = (user as any)?.fullName || (user as any)?.name || 'You';
+    const mySenderType = isDeafWorkspace ? 'ACCESSIBILITY_USER' : 'COMMON_USER';
 
-    if (!isSupported) {
-      return;
-    }
-
-    if (micState && connectionState === LkConnectionState.Connected) {
+    if (micState && connectionState !== LkConnectionState.Disconnected) {
       stt.startRecording(
-        sessionId,
-        senderIdentity,
-        senderDisplayName,
-        senderAccountType,
+        sessionId || roomCode,
+        mySenderId,
+        mySenderName,
+        mySenderType,
         (event: TranscriptEvent) => {
-          transcriptCallbackRef.current(event);
-        }
+          addTranscriptEvent(event);
+          if (signalWsRef.current?.readyState === WebSocket.OPEN) {
+            signalWsRef.current.send(
+              JSON.stringify({
+                type: 'app-message',
+                roomId: roomCode,
+                fromRole: userRole,
+                payload: {
+                  kind: 'transcript',
+                  event,
+                },
+              })
+            );
+          }
+        },
+        'en-IN'
       );
     } else {
       stt.stopRecording();
+      setInterimTranscripts((prev) => {
+        const next = { ...prev };
+        delete next[mySenderId];
+        return next;
+      });
     }
 
     return () => {
       stt.stopRecording();
     };
-  }, [micState, connectionState, sessionId, senderIdentity, senderDisplayName, senderAccountType]);
+  }, [micState, connectionState, sessionId, roomCode, user, isDeafWorkspace, userRole, addTranscriptEvent]);
 
-  const handleSendTextMessage = useCallback(
-    async (text: string) => {
-      if (!text || !text.trim()) return;
-      const cleanText = text.trim();
-      const eventId = `${sessionId}-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
-      const transcriptEvent: TranscriptEvent = {
-        id: eventId,
-        sessionId,
-        senderId: senderIdentity,
-        senderName: senderDisplayName,
-        senderType: senderAccountType,
-        text: cleanText,
-        isFinal: true,
-        timestamp: Date.now(),
-        confidence: 1.0,
-      };
+  // Create WebRTC Peer Connection
+  const createPeerConnection = useCallback(() => {
+    if (peerConnectionRef.current) return peerConnectionRef.current;
 
-      addTranscriptEvent(transcriptEvent);
-      broadcastTranscriptEvent(transcriptEvent);
+    const pc = new RTCPeerConnection({ iceServers: STUN_SERVERS });
+    peerConnectionRef.current = pc;
 
-      try {
-        await sendFinalTranscript(sessionId, transcriptEvent, accessToken);
-      } catch (err) {
-        console.error('Failed to persist typed message to backend:', err);
-      }
-    },
-    [sessionId, senderIdentity, senderDisplayName, senderAccountType, addTranscriptEvent, broadcastTranscriptEvent, accessToken]
-  );
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => {
+        pc.addTrack(track, localStreamRef.current!);
+      });
+    }
 
-  useEffect(() => {
-    if (!room) return;
-
-    const handleDataReceived = (
-      payload: Uint8Array,
-      participant?: any,
-      _kind?: any,
-      topic?: string
-    ) => {
-      try {
-        const decoder = new TextDecoder();
-        const jsonStr = decoder.decode(payload);
-        const parsed = JSON.parse(jsonStr);
-
-        if (topic === 'transcripts' || parsed.type === 'TRANSCRIPT') {
-          const event: TranscriptEvent = parsed.data || parsed;
-          addTranscriptEvent(event);
-        } else if (topic === 'SIGN_SEQUENCE' || parsed.type === 'SIGN_SEQUENCE') {
-          const seqData = parsed.data || parsed;
-          handleSequenceReceived(seqData);
-        }
-      } catch (err) {
-        console.error('Failed to parse incoming data packet:', err, participant);
-      }
-    };
-
-    room.on(RoomEvent.DataReceived, handleDataReceived);
-    return () => {
-      room.off(RoomEvent.DataReceived, handleDataReceived);
-    };
-  }, [room, addTranscriptEvent, handleSequenceReceived]);
-
-    const handleRemoteDisconnect = useCallback(
-    (_participant: any) => {
-      // 1-on-1 call rule: If either user leaves the call, end the call immediately for both
-      setRemoteLeftNotice(true);
-      setShowEndModal(true);
-      if (sessionId) {
-        endSession(sessionId, accessToken).catch((e) =>
-          console.warn('[SignBridge] Session auto-ended on participant leave:', e)
+    pc.onicecandidate = (event) => {
+      if (event.candidate && signalWsRef.current?.readyState === WebSocket.OPEN) {
+        signalWsRef.current.send(
+          JSON.stringify({
+            type: 'signal',
+            roomId: roomCode,
+            data: {
+              type: 'ice',
+              candidate: event.candidate,
+            },
+          })
         );
       }
-    },
-    [sessionId, accessToken]
-  );
-
-  useEffect(() => {
-    if (!room) return;
-    room.on(RoomEvent.ParticipantDisconnected, handleRemoteDisconnect);
-    return () => {
-      room.off(RoomEvent.ParticipantDisconnected, handleRemoteDisconnect);
     };
-  }, [room, handleRemoteDisconnect]);
 
-  const formatSpeakerLabel = useCallback(
-    (senderId: string, senderName: string): string => {
-      if (senderId === localParticipant.identity) {
-        return 'You';
+    pc.ontrack = (event) => {
+      const [remoteStream] = event.streams;
+      if (remoteStream) {
+        setRemoteTrackObj(remoteStream);
+      } else if (event.track) {
+        const ms = new MediaStream([event.track]);
+        setRemoteTrackObj(ms);
       }
-      return senderName || 'Remote Participant';
-    },
-    [localParticipant]
-  );
+    };
+
+    pc.onconnectionstatechange = () => {
+      const state = pc.connectionState;
+      if (state === 'connected') {
+        setConnectionState(LkConnectionState.Connected);
+      } else if (state === 'connecting') {
+        setConnectionState(LkConnectionState.Connecting);
+      } else if (state === 'disconnected' || state === 'failed') {
+        setConnectionState(LkConnectionState.Disconnected);
+      }
+    };
+
+    return pc;
+  }, [roomCode]);
+
+  // Make SDP Offer
+  const makeOffer = useCallback(async () => {
+    try {
+      const pc = createPeerConnection();
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      signalWsRef.current?.send(
+        JSON.stringify({
+          type: 'signal',
+          roomId: roomCode,
+          data: {
+            type: 'offer',
+            sdp: offer,
+          },
+        })
+      );
+    } catch (err) {
+      console.warn('Make offer error:', err);
+    }
+  }, [createPeerConnection, roomCode]);
+
+  // Handle Signaling Messages
+  const handleSignalMessage = useCallback(async (msg: any) => {
+    if (msg.type === 'joined') {
+      createPeerConnection();
+      if (msg.initiator) {
+        setConnectionState(LkConnectionState.Connecting);
+      } else {
+        setConnectionState(LkConnectionState.Connecting);
+      }
+      return;
+    }
+
+    if (msg.type === 'peer-joined') {
+      if (msg.initiator) {
+        await makeOffer();
+      }
+      return;
+    }
+
+    if (msg.type === 'peer-left') {
+      setRemoteTrackObj(null);
+      setRemoteLeftNotice(true);
+      setShowEndModal(true);
+      return;
+    }
+
+    if (msg.type === 'signal') {
+      const data = msg.data;
+      if (!data) return;
+
+      const pc = createPeerConnection();
+
+      if (data.type === 'offer') {
+        await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        signalWsRef.current?.send(
+          JSON.stringify({
+            type: 'signal',
+            roomId: roomCode,
+            data: {
+              type: 'answer',
+              sdp: answer,
+            },
+          })
+        );
+
+        while (pendingIceRef.current.length > 0) {
+          const c = pendingIceRef.current.shift();
+          if (c) await pc.addIceCandidate(new RTCIceCandidate(c)).catch(console.warn);
+        }
+      }
+
+      if (data.type === 'answer') {
+        await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+        while (pendingIceRef.current.length > 0) {
+          const c = pendingIceRef.current.shift();
+          if (c) await pc.addIceCandidate(new RTCIceCandidate(c)).catch(console.warn);
+        }
+      }
+
+      if (data.type === 'ice') {
+        if (pc.remoteDescription) {
+          await pc.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(console.warn);
+        } else {
+          pendingIceRef.current.push(data.candidate);
+        }
+      }
+    }
+
+    if (msg.type === 'app-message') {
+      const payload = msg.payload || {};
+      if (payload.kind === 'transcript' && payload.event) {
+        addTranscriptEvent(payload.event);
+      } else if (payload.kind === 'text' || payload.kind === 'speech') {
+        const ev: TranscriptEvent = {
+          id: `tx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          sessionId: sessionId || roomCode,
+          senderId: 'peer',
+          senderName: msg.fromRole === 'deaf' ? 'Deaf Participant' : 'Hearing Participant',
+          senderType: msg.fromRole === 'deaf' ? 'ACCESSIBILITY_USER' : 'COMMON_USER',
+          text: payload.text,
+          timestamp: Date.now(),
+          isFinal: true,
+          confidence: 1.0,
+        };
+        addTranscriptEvent(ev);
+      } else if (payload.kind === 'sign-result') {
+        const text = payload.english || payload.gloss || '';
+        if (text) {
+          const ev: TranscriptEvent = {
+            id: `sign-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            sessionId: sessionId || roomCode,
+            senderId: 'peer',
+            senderName: 'ISL Sign',
+            senderType: 'ACCESSIBILITY_USER',
+            text: text,
+            timestamp: Date.now(),
+            isFinal: true,
+            confidence: 0.98,
+          };
+          addTranscriptEvent(ev);
+        }
+      }
+    }
+  }, [addTranscriptEvent, createPeerConnection, makeOffer, roomCode]);
+
+  // Initialize Media and Signaling
+  useEffect(() => {
+    let localStream: MediaStream | null = null;
+    let ws: WebSocket | null = null;
+
+    const startMedia = async () => {
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true,
+        });
+        localStreamRef.current = localStream;
+
+        localStream.getAudioTracks().forEach((t) => (t.enabled = micState));
+        localStream.getVideoTracks().forEach((t) => (t.enabled = cameraState));
+
+        setLocalTrackObj(localStream);
+
+        ws = new WebSocket(SIGNALING_URL);
+        signalWsRef.current = ws;
+
+        ws.onopen = () => {
+          ws?.send(
+            JSON.stringify({
+              type: 'join',
+              roomId: roomCode,
+              role: userRole,
+            })
+          );
+        };
+
+        ws.onmessage = (e) => {
+          try {
+            const data = JSON.parse(e.data);
+            handleSignalMessage(data);
+          } catch (err) {
+            console.error('Signaling parse error:', err);
+          }
+        };
+
+        ws.onerror = () => {
+          console.warn('Signaling error (ws://localhost:8080)');
+        };
+
+        ws.onclose = () => {
+          setConnectionState(LkConnectionState.Disconnected);
+        };
+      } catch (mediaErr) {
+        console.warn('Media capture error:', mediaErr);
+        setConnectionState(LkConnectionState.Disconnected);
+      }
+    };
+
+    startMedia();
+
+    return () => {
+      if (localStream) {
+        localStream.getTracks().forEach((t) => t.stop());
+      }
+      if (ws) {
+        ws.send(JSON.stringify({ type: 'leave', roomId: roomCode }));
+        ws.close();
+      }
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+      }
+    };
+  }, [roomCode, userRole, handleSignalMessage]);
+
+  // Toggle Controls Handlers
+  const handleToggleMic = async () => {
+    setMicState((prev) => {
+      const next = !prev;
+      localStreamRef.current?.getAudioTracks().forEach((t) => (t.enabled = next));
+      return next;
+    });
+  };
+
+  const handleToggleCamera = async () => {
+    setCameraState((prev) => {
+      const next = !prev;
+      localStreamRef.current?.getVideoTracks().forEach((t) => (t.enabled = next));
+      return next;
+    });
+  };
+
+  const handleToggleScreen = async () => {
+    try {
+      if (!screenShareState) {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        const screenTrack = screenStream.getVideoTracks()[0];
+        if (peerConnectionRef.current && screenTrack) {
+          const senders = peerConnectionRef.current.getSenders();
+          const videoSender = senders.find((s) => s.track?.kind === 'video');
+          if (videoSender) {
+            videoSender.replaceTrack(screenTrack);
+          }
+        }
+        screenTrack.onended = () => {
+          setScreenShareState(false);
+          const localVideo = localStreamRef.current?.getVideoTracks()[0];
+          if (peerConnectionRef.current && localVideo) {
+            const videoSender = peerConnectionRef.current.getSenders().find((s) => s.track?.kind === 'video');
+            if (videoSender) videoSender.replaceTrack(localVideo);
+          }
+        };
+        setScreenShareState(true);
+      } else {
+        setScreenShareState(false);
+        const localVideo = localStreamRef.current?.getVideoTracks()[0];
+        if (peerConnectionRef.current && localVideo) {
+          const videoSender = peerConnectionRef.current.getSenders().find((s) => s.track?.kind === 'video');
+          if (videoSender) videoSender.replaceTrack(localVideo);
+        }
+      }
+    } catch (e) {
+      console.warn('Screen share toggle note:', e);
+    }
+  };
 
   const getConnectionStatusText = () => {
     switch (connectionState) {
@@ -800,12 +547,31 @@ const ActiveCallWorkspace: React.FC<ActiveCallWorkspaceProps> = ({
       case LkConnectionState.Disconnected:
         return 'Disconnected';
       default:
-        return connectionState;
+        return 'Connected';
     }
   };
 
+  const handleOpenEndModal = () => {
+    setShowEndModal(true);
+  };
+
+  const handleConfirmEndCall = async () => {
+    if (sessionId && accessToken) {
+      try {
+        await endSession(sessionId, accessToken);
+      } catch (e) {
+        console.warn('End session note:', e);
+      }
+    }
+    navigate('/communicate');
+  };
+
+  const isCreator = Boolean(
+    session?.creatorUserId === user?.id || incomingSettings.isHost
+  );
+
   const workspaceProps = {
-    sessionId,
+    sessionId: sessionId || roomCode,
     roomCode,
     isCreator,
     onEndCall: handleOpenEndModal,
@@ -823,13 +589,13 @@ const ActiveCallWorkspace: React.FC<ActiveCallWorkspaceProps> = ({
 
     audioDevices,
     activeAudioDeviceId,
-    setActiveAudioDevice,
+    setActiveAudioDevice: setActiveAudioDeviceId,
     videoDevices,
     activeVideoDeviceId,
-    setActiveVideoDevice,
+    setActiveVideoDevice: setActiveVideoDeviceId,
     speakerDevices,
     activeSpeakerDeviceId,
-    setActiveSpeakerDevice,
+    setActiveSpeakerDevice: setActiveSpeakerDeviceId,
     showMicDevices,
     setShowMicDevices,
     showCameraDevices,
@@ -839,33 +605,38 @@ const ActiveCallWorkspace: React.FC<ActiveCallWorkspaceProps> = ({
     speakerVolume,
     setSpeakerVolume,
 
-    localTrack,
-    primaryRemoteTrack,
-    remoteScreenTrack,
-    remoteCameraTrack,
+    localTrack: localTrackObj,
+    primaryRemoteTrack: remoteTrackObj,
 
     finalTranscripts,
     interimTranscripts,
-    sttSupported,
-    formatSpeakerLabel,
+    sttSupported: true,
+    formatSpeakerLabel: (senderId: string, senderName: string) => {
+      if (senderId === user?.id || senderId === user?.email || senderId === 'self') return 'You';
+      return senderName || 'Peer';
+    },
     captionsEndRef,
 
-    controlsVisible,
-    activeSequence: sequenceQueue[0] || null,
-    onSequenceComplete: handleSequenceComplete,
-    recoveryState,
+    controlsVisible: true,
+    activeSequence: null,
+    onSequenceComplete: () => {},
+    recoveryState: 'READY' as const,
     onSendMessage: handleSendTextMessage,
   };
 
   return (
-    <div className="w-full h-full flex flex-col relative">
-      {user?.accountType === 'ACCESSIBILITY_USER' ? (
+    <div className="w-full h-full flex flex-col relative font-['Inter',sans-serif]">
+      {/* Remote Audio Playback Element */}
+      <audio ref={remoteAudioRef} autoPlay playsInline className="hidden" />
+
+      {/* Exact Native Workspaces Rendered based on User Role */}
+      {isDeafWorkspace ? (
         <DeafUserWorkspace {...workspaceProps} />
       ) : (
         <HearingUserWorkspace {...workspaceProps} />
       )}
 
-      {/* End Call Confirmation & Save Chat History Modal */}
+      {/* End Call Confirmation & Summary Breakdown Modal */}
       {showEndModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white dark:bg-[#1a202c] rounded-[28px] max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-[#e0e3e5] dark:border-[#2d3133] flex flex-col gap-5 animate-scaleUp text-[#181c1e] dark:text-[#f7fafc]">
@@ -898,12 +669,12 @@ const ActiveCallWorkspace: React.FC<ActiveCallWorkspaceProps> = ({
 
               {finalTranscripts.length === 0 ? (
                 <p className="text-[11px] text-[#45474c] dark:text-[#828796] italic py-2 text-center">
-                  No conversation during this call.
+                  No conversation recorded during this call.
                 </p>
               ) : (
                 <div className="space-y-2 pt-1">
                   {finalTranscripts.map((t) => {
-                    const isMe = t.senderId === user?.email || t.senderId === user?.id;
+                    const isMe = t.senderId === user?.email || t.senderId === user?.id || t.senderId === 'self';
                     return (
                       <div key={t.id} className="flex items-baseline justify-between text-[11px]">
                         <div className="flex items-center gap-1.5 truncate max-w-[85%]">
@@ -939,7 +710,7 @@ const ActiveCallWorkspace: React.FC<ActiveCallWorkspaceProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowEndModal(false)}
-                  className="w-full py-2.5 text-xs font-bold text-[#45474c] dark:text-[#828796] hover:text-[#030813] dark:hover:text-white rounded-xl hover:bg-[#f1f4f6] dark:hover:bg-[#2d3133] transition-colors"
+                  className="w-full py-2.5 text-xs font-bold text-[#45474c] dark:text-[#828796] hover:text-[#030813] dark:hover:text-white rounded-xl hover:bg-[#f1f4f6] dark:hover:bg-[#2d3133] transition-colors cursor-pointer"
                 >
                   Cancel & Resume Call
                 </button>

@@ -216,4 +216,130 @@
   100% { left: 200%; }
 }
 
+/* =========================================================================
+   UX4G GOVERNMENT ACCESSIBILITY SUITE TOKENS & FILTERS
+   ========================================================================= */
+
+/* 1. Color Filters */
+html.a11y-monochrome {
+  filter: grayscale(100%) !important;
+}
+
+html.a11y-high-saturate {
+  filter: saturate(200%) contrast(120%) !important;
+}
+
+html.a11y-low-saturate {
+  filter: saturate(40%) contrast(90%) !important;
+}
+
+html.a11y-invert {
+  filter: invert(100%) hue-rotate(180deg) !important;
+}
+
+html.a11y-invert img,
+html.a11y-invert video,
+html.a11y-invert canvas,
+html.a11y-invert [style*="background-image"] {
+  filter: invert(100%) hue-rotate(180deg) !important;
+}
+
+/* 2. Text Scaling */
+html.text-scale-0 {
+  font-size: 16px !important;
+}
+html.text-scale-1 {
+  font-size: 18px !important;
+}
+html.text-scale-2 {
+  font-size: 20px !important;
+}
+html.text-scale-3 {
+  font-size: 22px !important;
+}
+
+/* 3. Content Adjustments */
+html.a11y-line-height p,
+html.a11y-line-height span,
+html.a11y-line-height h1,
+html.a11y-line-height h2,
+html.a11y-line-height h3,
+html.a11y-line-height h4,
+html.a11y-line-height h5,
+html.a11y-line-height h6,
+html.a11y-line-height li,
+html.a11y-line-height button,
+html.a11y-line-height a {
+  line-height: 2 !important;
+}
+
+html.a11y-text-spacing p,
+html.a11y-text-spacing span,
+html.a11y-text-spacing h1,
+html.a11y-text-spacing h2,
+html.a11y-text-spacing h3,
+html.a11y-text-spacing h4,
+html.a11y-text-spacing h5,
+html.a11y-text-spacing h6,
+html.a11y-text-spacing li,
+html.a11y-text-spacing button,
+html.a11y-text-spacing a {
+  letter-spacing: 0.12em !important;
+  word-spacing: 0.22em !important;
+}
+
+/* 4. Highlight Interactive Links */
+html.a11y-highlight-links a,
+html.a11y-highlight-links button,
+html.a11y-highlight-links [role="button"],
+html.a11y-highlight-links input[type="submit"],
+html.a11y-highlight-links input[type="button"] {
+  outline: 3px solid #facc15 !important;
+  outline-offset: 3px !important;
+  background-color: rgba(250, 204, 21, 0.22) !important;
+  text-decoration: underline !important;
+  text-decoration-thickness: 2px !important;
+  text-underline-offset: 3px !important;
+}
+
+/* 5. Dyslexia Friendly Typography */
+html.a11y-dyslexia,
+html.a11y-dyslexia body,
+html.a11y-dyslexia * {
+  font-family: 'OpenDyslexic', 'Comic Sans MS', 'Trebuchet MS', sans-serif !important;
+  letter-spacing: 0.04em !important;
+}
+
+/* 6. Hide Images for Distraction-Free Reading */
+html.a11y-hide-images img,
+html.a11y-hide-images video,
+html.a11y-hide-images canvas {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* 7. High-Visibility Large Cursor */
+html.a11y-big-cursor,
+html.a11y-big-cursor * {
+  cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44"><polygon points="0,0 0,36 10,26 18,44 26,40 18,22 32,22" fill="%23fe9832" stroke="%23030813" stroke-width="2.5"/><polygon points="2,3 2,32 10,24 17,40 22,37 15,22 28,22" fill="%23ffffff"/></svg>'), auto !important;
+}
+
+/* 8. Screen Reader Active Mode Feedback */
+html.a11y-screen-reader-active p:hover,
+html.a11y-screen-reader-active h1:hover,
+html.a11y-screen-reader-active h2:hover,
+html.a11y-screen-reader-active h3:hover,
+html.a11y-screen-reader-active h4:hover,
+html.a11y-screen-reader-active h5:hover,
+html.a11y-screen-reader-active h6:hover,
+html.a11y-screen-reader-active li:hover,
+html.a11y-screen-reader-active button:hover,
+html.a11y-screen-reader-active a:hover {
+  cursor: help !important;
+  background-color: rgba(254, 152, 50, 0.15) !important;
+  outline: 2px dashed #fe9832 !important;
+}
+
+
 

@@ -49,16 +49,7 @@ class AttentionLayer(tf.keras.layers.Layer):
         config.update({"units": self.units})
         return config
 
-# Support candidate model filenames (prioritizing tuned Attention-BiLSTM)
-candidate_model_files = [
-    os.path.join(MODELS_DIR, 'saanket_bilstm.keras'),
-    os.path.join(MODELS_DIR, 'new_model.keras'),
-    os.path.join(MODELS_DIR, 'isl_model.keras'),
-    os.path.join(MODELS_DIR, 'model.keras'),
-    os.path.join(MODELS_DIR, 'model.h5')
-]
-
-MODEL_PATH = next((p for p in candidate_model_files if os.path.exists(p)), candidate_model_files[0])
+MODEL_PATH = os.path.join(MODELS_DIR, 'saanket_parquet_bilstm.keras')
 LABEL_PATH = os.path.join(MODELS_DIR, 'label_mapping.json')
 MEAN_PATH = os.path.join(MODELS_DIR, 'mean.npy')
 STD_PATH = os.path.join(MODELS_DIR, 'std.npy')
@@ -171,8 +162,27 @@ def extract_landmarks_from_cv2_frame(frame: np.ndarray):
 
     if detection_result.hand_landmarks:
         has_hand = True
-        for hand_idx, hand_lms in enumerate(detection_result.hand_landmarks[:2]):
-            for lm_idx, lm in enumerate(hand_lms):
+        num_hands = len(detection_result.hand_landmarks)
+        if num_hands >= 2:
+            h0 = detection_result.hand_landmarks[0]
+            h1 = detection_result.hand_landmarks[1]
+            x0 = h0[0].x if len(h0) > 0 else 0.5
+            x1 = h1[0].x if len(h1) > 0 else 0.5
+            right_h = h0 if x0 <= x1 else h1
+            left_h = h1 if x0 <= x1 else h0
+            for lm_idx, lm in enumerate(left_h):
+                landmarks[0, lm_idx, 0] = lm.x
+                landmarks[0, lm_idx, 1] = lm.y
+                landmarks[0, lm_idx, 2] = lm.z
+            for lm_idx, lm in enumerate(right_h):
+                landmarks[1, lm_idx, 0] = lm.x
+                landmarks[1, lm_idx, 1] = lm.y
+                landmarks[1, lm_idx, 2] = lm.z
+        elif num_hands == 1:
+            h = detection_result.hand_landmarks[0]
+            wrist_x = h[0].x if len(h) > 0 else 0.5
+            hand_idx = 1 if wrist_x < 0.45 else 0
+            for lm_idx, lm in enumerate(h):
                 landmarks[hand_idx, lm_idx, 0] = lm.x
                 landmarks[hand_idx, lm_idx, 1] = lm.y
                 landmarks[hand_idx, lm_idx, 2] = lm.z
@@ -322,6 +332,41 @@ async def predict_frame(req: ImageFrameRequest):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+class OCRScanRequest(BaseModel):
+    image_base64: str
+    language: Optional[str] = "en"
+    mode: Optional[str] = "handwriting" # "handwriting" | "prescription"
+
+@app.get('/api/ocr/status')
+async def ocr_status():
+    from ocr_service import MODEL_NAME, _trocr_load_attempted, _trocr_load_error, _trocr_model
+    return {
+        "status": "online",
+        "model": MODEL_NAME,
+        "is_loaded": _trocr_model is not None,
+        "load_attempted": _trocr_load_attempted,
+        "load_error": _trocr_load_error
+    }
+
+@app.post('/api/ocr/handwriting')
+@app.post('/api/ocr/prescription')
+async def scan_handwriting_prescription(req: OCRScanRequest):
+    try:
+        from ocr_service import process_handwritten_image
+        if not req.image_base64 or not req.image_base64.strip():
+            raise HTTPException(status_code=400, detail="Missing image_base64 payload")
+        
+        result = process_handwritten_image(req.image_base64, mode=req.mode or "auto")
+        if not result.get("success"):
+            raise HTTPException(status_code=422, detail=result.get("error", "OCR processing failed"))
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"OCR processing failed: {str(e)}")
+
 
 @app.websocket('/ws/stream')
 async def websocket_stream_endpoint(websocket: WebSocket):

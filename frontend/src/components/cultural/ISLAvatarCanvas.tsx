@@ -7,6 +7,7 @@ import * as alphabets from '../../services/avatar/Animations/alphabets';
 import * as words from '../../services/avatar/Animations/words';
 // @ts-ignore
 import { defaultPose } from '../../services/avatar/Animations/defaultPose';
+import { getSentencePattern } from '../../services/avatar/Services/sentencePatterns';
 
 export interface ISLAvatarCanvasRef {
   signText: (text: string) => void;
@@ -16,7 +17,7 @@ export interface ISLAvatarCanvasRef {
   resetPose: () => void;
 }
 
-interface Props {
+export interface ISLAvatarCanvasProps {
   modelPath?: string;
   speed?: number;
   pauseTimeMs?: number;
@@ -166,19 +167,16 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
               const stepSpeed = 0.08 * speedMultiplierRef.current;
 
               for (let i = 0; i < state.animations[0].length; ) {
-                const [boneName, action, axis, limit, sign] = state.animations[0][i];
+                const [boneName, action, axis, limit] = state.animations[0][i];
                 const bone = state.avatar?.getObjectByName(boneName);
-                if (bone) {
-                  if (sign === '+' && (bone as any)[action][axis] < limit) {
-                    (bone as any)[action][axis] += stepSpeed;
-                    (bone as any)[action][axis] = Math.min((bone as any)[action][axis], limit);
-                    i++;
-                  } else if (sign === '-' && (bone as any)[action][axis] > limit) {
-                    (bone as any)[action][axis] -= stepSpeed;
-                    (bone as any)[action][axis] = Math.max((bone as any)[action][axis], limit);
-                    i++;
-                  } else {
+                if (bone && (bone as any)[action] && typeof (bone as any)[action][axis] === 'number') {
+                  const current = (bone as any)[action][axis];
+                  if (Math.abs(current - limit) <= stepSpeed) {
+                    (bone as any)[action][axis] = limit;
                     state.animations[0].splice(i, 1);
+                  } else {
+                    (bone as any)[action][axis] += current < limit ? stepSpeed : -stepSpeed;
+                    i++;
                   }
                 } else {
                   state.animations[0].splice(i, 1);
@@ -262,23 +260,27 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
     const state = avatarStateRef.current;
     if (!state.avatar) return;
 
+    const pattern = getSentencePattern(textValue);
     const str = textValue.toUpperCase();
-    const strWords = str.split(/\s+/).filter(Boolean);
+    const rawWords = pattern ? pattern.map((p) => p.toUpperCase()) : str.split(/\s+/).filter(Boolean);
 
     pauseEndTimeRef.current = 0;
     state.animations = [];
     state.processedText = '';
 
-    for (let wIdx = 0; wIdx < strWords.length; wIdx++) {
-      const word = strWords[wIdx];
-      state.animations.push(['word-start', wIdx, word]);
+    for (let wIdx = 0; wIdx < rawWords.length; wIdx++) {
+      const rawWord = rawWords[wIdx];
+      const cleanWord = rawWord.replace(/[^A-Z0-9]/g, '').toUpperCase();
+      if (!cleanWord) continue;
 
-      if ((words as any)[word]) {
-        state.animations.push(['add-text', word + ' ']);
-        (words as any)[word](state);
+      state.animations.push(['word-start', wIdx, cleanWord]);
+
+      if ((words as any)[cleanWord]) {
+        state.animations.push(['add-text', cleanWord + ' ']);
+        (words as any)[cleanWord](state);
       } else {
-        for (const [index, ch] of word.split('').entries()) {
-          if (index === word.length - 1) {
+        for (const [index, ch] of cleanWord.split('').entries()) {
+          if (index === cleanWord.length - 1) {
             state.animations.push(['add-text', ch + ' ']);
           } else {
             state.animations.push(['add-text', ch]);

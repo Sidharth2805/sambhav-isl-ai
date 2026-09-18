@@ -166,7 +166,7 @@ export const AdminDashboardPage: React.FC = () => {
       </div>
 
       {generalError && (
-        <div className="p-4 bg-red-100 border border-red-300 text-red-700 rounded-lg text-sm font-bold" role="alert">
+        <div className="p-4 bg-red-100 dark:bg-red-950/40 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 rounded-lg text-sm font-bold" role="alert">
           ⚠️ {generalError}
         </div>
       )}

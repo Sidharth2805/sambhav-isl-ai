@@ -3,7 +3,8 @@ import { useTextToSpeech } from '../hooks/useTextToSpeech';
 import { ISLAvatarCanvas, type ISLAvatarCanvasRef } from '../components/cultural/ISLAvatarCanvas';
 import { useISLRecognition } from '../hooks/useISLRecognition';
 import { ISLMessageComposer } from '../components/communication/ISLMessageComposer';
-import { DraggableCameraWindow } from '../components/communication/DraggableCameraWindow';
+import { ScanModal } from '../components/translate/ScanModal';
+import { useAccessibility } from '../hooks/useAccessibility';
 
 interface SignAssetDto {
   assetId: string;
@@ -50,21 +51,22 @@ interface ChatMessage {
 }
 
 export const TranslatePage: React.FC = () => {
+  const { t } = useAccessibility();
   const { speak, speaking } = useTextToSpeech();
 
   // Communication Session Active State (Lobby vs Active)
   const [inSession, setInSession] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [showScanModal, setShowScanModal] = useState(false);
 
   // Active Mode (Unified Speech/Text <-> ISL and ISL <-> Text)
   const [activeMode, setActiveMode] = useState<'SPEECH_TEXT_TO_ISL' | 'ISL_TO_TEXT'>('SPEECH_TEXT_TO_ISL');
 
-  // Persistent Media Stream State (Camera & Mic stay active across all mode switches)
+  // Persistent Media Stream State (Camera active only for ISL recognition)
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const gestureVideoRef = useRef<HTMLVideoElement | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
-  const [micActive, setMicActive] = useState(false);
 
   // Real-Time ISL Neural Model Recognition Hook
   const {
@@ -173,7 +175,7 @@ export const TranslatePage: React.FC = () => {
         id: `signed-${Date.now()}`,
         sign: 'SENTENCE',
         phrase: trimmed,
-        confidence: 0.98,
+        confidence: signConfidence > 0 ? signConfidence : 1.0,
         timestamp,
       },
     ]);
@@ -204,7 +206,7 @@ export const TranslatePage: React.FC = () => {
 
     try {
       const words = text.trim().split(/\s+/);
-      const stepDuration = 450; // Base duration; SignSequencePlayer handles playbackSpeed scaling
+      const stepDuration = Math.round(450 / avatarSpeed);
 
       const steps: SignStepDto[] = words.map((word, index) => {
         const cleanWord = word.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
@@ -213,18 +215,8 @@ export const TranslatePage: React.FC = () => {
           conceptId: cleanWord,
           displayToken: cleanWord,
           durationMs: stepDuration,
-          confidence: 0.98,
-          asset: {
-            assetId: `asset-${cleanWord}`,
-            conceptId: cleanWord,
-            language: 'ISL',
-            assetType: 'VIDEO',
-            assetReference: `https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4`,
-            durationMs: stepDuration,
-            version: '1.0',
-            status: 'ACTIVE',
-            source: 'SAMBHAV_REPOSITORY',
-          },
+          confidence: 1.0,
+          asset: null,
           resolutionStatus: 'FOUND',
           sourceConcept: cleanWord,
         };
@@ -237,18 +229,56 @@ export const TranslatePage: React.FC = () => {
         language: 'ISL',
         createdAt: Date.now(),
         totalDurationMs: steps.length * stepDuration,
-        overallConfidence: 0.98,
+        overallConfidence: 1.0,
         status: 'READY',
         steps,
       };
 
       setCurrentSequence(sequence);
     } catch (err) {
-      console.error('Fast translation sequence error:', err);
+      console.error('Sign translation error:', err);
     } finally {
       setIsProcessing(false);
     }
   }, [avatarSpeed]);
+
+  // Handle Scanned Prescription / Note text submission directly into conversation & 3D avatar
+  const handleScannedTextSubmit = useCallback((scannedText: string) => {
+    if (!scannedText || !scannedText.trim()) return;
+
+    const trimmed = scannedText.trim();
+    const msgId = `scan-${Date.now()}`;
+    const words = trimmed.split(/\s+/);
+    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    if (!inSession) {
+      setInSession(true);
+      setShowSummaryModal(false);
+      setActiveMode('SPEECH_TEXT_TO_ISL');
+    }
+
+    const newMessage: ChatMessage = {
+      id: msgId,
+      sender: 'user',
+      mode: 'TEXT',
+      text: trimmed,
+      words: words,
+      timestamp,
+    };
+
+    setTextMessages((prev) => [...prev, newMessage]);
+    setSessionHistoryLogs((prev) => [...prev, { mode: 'SCAN_OCR', text: trimmed, time: timestamp }]);
+
+    // Trigger instant 3D Avatar letter-by-letter signing
+    setTimeout(() => {
+      translateTextToSign(trimmed, msgId);
+    }, 150);
+
+    // Speak aloud if auto-read is enabled
+    if (autoReadOutChat) {
+      speak(trimmed);
+    }
+  }, [inSession, autoReadOutChat, speak, translateTextToSign]);
 
   // Safe Continuous Speech Recognition Engine with Auto-Recovery
   const startContinuousListening = useCallback(() => {
@@ -440,7 +470,7 @@ export const TranslatePage: React.FC = () => {
     }
   }, [inSession, activeMode, startISLRecognition]);
 
-  // Start Communication Flow (Enables Camera & Mic)
+  // Start Communication Flow (Enables Camera for ISL mode, Mic for Speech mode)
   const handleStartCommunication = async () => {
     setInSession(true);
     setShowSummaryModal(false);
@@ -451,23 +481,10 @@ export const TranslatePage: React.FC = () => {
     setActiveStepIndex(-1);
     setMicError(null);
 
-    try {
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        let stream: MediaStream | null = null;
-        try {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-              width: { ideal: 640, max: 640 },
-              height: { ideal: 480, max: 480 },
-              frameRate: { ideal: 30, max: 30 },
-              facingMode: 'user'
-            },
-            audio: true,
-          });
-          setMicActive(true);
-        } catch {
-          // If audio request fails, acquire camera-only stream so gesture recognition works smoothly
-          stream = await navigator.mediaDevices.getUserMedia({
+    if (activeMode === 'ISL_TO_TEXT') {
+      try {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          const stream = await navigator.mediaDevices.getUserMedia({
             video: {
               width: { ideal: 640, max: 640 },
               height: { ideal: 480, max: 480 },
@@ -476,28 +493,20 @@ export const TranslatePage: React.FC = () => {
             },
             audio: false,
           });
-          setMicActive(false);
-        }
 
-        if (stream) {
-          mediaStreamRef.current = stream;
-          setCameraActive(true);
+          if (stream) {
+            mediaStreamRef.current = stream;
+            setCameraActive(true);
 
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-          }
-          if (gestureVideoRef.current) {
-            gestureVideoRef.current.srcObject = stream;
+            if (gestureVideoRef.current) {
+              gestureVideoRef.current.srcObject = stream;
+            }
           }
         }
+      } catch (err) {
+        console.warn('Camera hardware track access note:', err);
       }
-    } catch (err) {
-      console.warn('Camera/mic hardware track access note:', err);
-    }
 
-    if (activeMode === 'SPEECH_TEXT_TO_ISL') {
-      startContinuousListening();
-    } else if (activeMode === 'ISL_TO_TEXT') {
       setTimeout(() => {
         const vid = gestureVideoRef.current || videoRef.current;
         if (vid) {
@@ -508,13 +517,35 @@ export const TranslatePage: React.FC = () => {
           startISLRecognition(vid);
         }
       }, 200);
+    } else {
+      // SPEECH_TEXT_TO_ISL mode: no camera needed
+      setCameraActive(false);
+      startContinuousListening();
     }
   };
 
   // Auto-trigger ISL Recognition and attach video stream when session is active in ISL_TO_TEXT mode
   useEffect(() => {
     if (inSession && activeMode === 'ISL_TO_TEXT') {
-      const timer = setTimeout(() => {
+      const timer = setTimeout(async () => {
+        if (!mediaStreamRef.current && navigator.mediaDevices?.getUserMedia) {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+              video: {
+                width: { ideal: 640, max: 640 },
+                height: { ideal: 480, max: 480 },
+                frameRate: { ideal: 30, max: 30 },
+                facingMode: 'user'
+              },
+              audio: false,
+            });
+            mediaStreamRef.current = stream;
+            setCameraActive(true);
+          } catch (e) {
+            console.warn('Camera access error:', e);
+          }
+        }
+
         const vid = gestureVideoRef.current || videoRef.current;
         if (vid) {
           if (mediaStreamRef.current && vid.srcObject !== mediaStreamRef.current) {
@@ -530,8 +561,8 @@ export const TranslatePage: React.FC = () => {
     }
   }, [inSession, activeMode, isISLRecognizing, startISLRecognition]);
 
-  // Mode Switch Handler (Preserves Camera & Mic; logs mid-conversation mode switch)
-  const handleSwitchMode = (newMode: 'SPEECH_TEXT_TO_ISL' | 'ISL_TO_TEXT') => {
+  // Mode Switch Handler (Logs mid-conversation mode switch and manages camera/mic)
+  const handleSwitchMode = async (newMode: 'SPEECH_TEXT_TO_ISL' | 'ISL_TO_TEXT') => {
     if (newMode === activeMode) return;
 
     const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -561,12 +592,40 @@ export const TranslatePage: React.FC = () => {
     // Manage continuous speech recognition and ISL gesture tracking
     if (newMode === 'SPEECH_TEXT_TO_ISL') {
       stopISLRecognition();
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
+      }
+      setCameraActive(false);
       startContinuousListening();
     } else if (newMode === 'ISL_TO_TEXT') {
       stopContinuousListening();
+      try {
+        if (!mediaStreamRef.current && navigator.mediaDevices?.getUserMedia) {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              width: { ideal: 640, max: 640 },
+              height: { ideal: 480, max: 480 },
+              frameRate: { ideal: 30, max: 30 },
+              facingMode: 'user'
+            },
+            audio: false,
+          });
+          mediaStreamRef.current = stream;
+          setCameraActive(true);
+        }
+      } catch (err) {
+        console.warn('Camera access on mode switch:', err);
+      }
+
       setTimeout(() => {
         if (gestureVideoRef.current || videoRef.current) {
-          startISLRecognition(gestureVideoRef.current || videoRef.current);
+          const vid = gestureVideoRef.current || videoRef.current;
+          if (vid && mediaStreamRef.current && vid.srcObject !== mediaStreamRef.current) {
+            vid.srcObject = mediaStreamRef.current;
+            vid.play().catch(() => {});
+          }
+          if (vid) startISLRecognition(vid);
         }
       }, 100);
     }
@@ -580,7 +639,6 @@ export const TranslatePage: React.FC = () => {
       mediaStreamRef.current = null;
     }
     setCameraActive(false);
-    setMicActive(false);
   };
 
   const handleStopCommunication = () => {
@@ -642,222 +700,236 @@ export const TranslatePage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col w-full h-[calc(100vh-80px)] md:h-[calc(100vh-60px)] font-['Inter',sans-serif] overflow-hidden">
+    <div className="relative min-h-[calc(100vh-5rem)] -mt-20 md:-mt-6 -mx-4 sm:-mx-8 px-4 sm:px-8 pt-20 md:pt-6 pb-12 font-['Inter',sans-serif]">
       
-      {/* Top Header Bar */}
-      <header className="flex items-center justify-between border-b border-[#e0e3e5] dark:border-[#2d3133] pb-3 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#fe9832]/10 text-[#fe9832] flex items-center justify-center">
-            <span className="material-symbols-outlined text-[24px]">translate</span>
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-[#030813] dark:text-white tracking-tight">Real-Time Translation</h1>
-            <p className="text-xs text-[#45474c] dark:text-[#c1c6d7]">
-              Interactive ISL Avatar visualizer, Speech-to-Sign, and Text translation
-            </p>
-          </div>
-        </div>
-
-        {inSession && (
-          <div className="flex items-center gap-3">
-            <span className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-green-100 dark:bg-green-900/60 text-green-700 dark:text-green-300 text-xs font-bold rounded-full">
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              Live Active
-            </span>
-            <button
-              onClick={handleStopCommunication}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
-              aria-label="Stop communication"
-            >
-              <span className="material-symbols-outlined text-[18px]">stop_circle</span>
-              <span>Stop Communication</span>
-            </button>
-          </div>
-        )}
-      </header>
-
-      {/* ========================================================================= */}
-      {/* SCREEN 1: LOBBY (START COMMUNICATION) WITH AMBIENT BACKGROUND             */}
-      {/* ========================================================================= */}
-      {!inSession && !showSummaryModal && (
-        <div className="flex-1 flex flex-col justify-between py-4 relative overflow-hidden">
-          
-          {/* Ambient Lighting & Glow Background */}
-          <div className="absolute inset-0 -z-10 bg-gradient-to-br from-[#f1f4f6] via-[#f7fafc] to-[#ebeef0] dark:from-[#0d121d] dark:via-[#101726] dark:to-[#030813] rounded-[28px] border border-[#e0e3e5]/60 dark:border-[#2d3133] overflow-hidden">
-            <div className="absolute -top-32 -left-32 w-96 h-96 bg-[#ffdcc2]/40 dark:bg-[#fe9832]/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-[#8dfc75]/20 dark:bg-[#10b981]/10 rounded-full blur-3xl pointer-events-none" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#fe9832]/10 dark:bg-[#4f46e5]/10 rounded-full blur-3xl pointer-events-none" />
-          </div>
-
-          {/* Central Highlight CTA */}
-          <div className="flex flex-col items-center justify-center text-center my-auto px-4 z-10">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/90 dark:bg-[#1a202c]/90 border border-[#e0e3e5] dark:border-[#2d3133] text-xs font-bold text-[#8f4e00] dark:text-[#ffb77a] shadow-sm mb-4">
-              <span className="material-symbols-outlined text-[16px]">bolt</span>
-              <span>Hardware-Accelerated Real-Time Sign Synthesis</span>
-            </div>
-
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#030813] dark:text-white tracking-tight leading-tight max-w-2xl">
-              Break Barriers in <span className="text-[#fe9832]">Real-Time</span>
-            </h2>
-            <p className="text-sm sm:text-base text-[#45474c] dark:text-[#c1c6d7] mt-3 max-w-xl leading-relaxed">
-              Enable your camera and microphone for instant two-way translation between spoken voice, text, and Indian Sign Language.
-            </p>
-
-            {/* Main Action Button */}
-            <button
-              onClick={handleStartCommunication}
-              className="mt-6 px-8 py-4 bg-gradient-to-r from-[#fe9832] to-[#ffb77a] hover:scale-105 active:scale-95 text-[#683700] font-black text-base sm:text-lg rounded-2xl transition-all shadow-lg hover:shadow-[#fe9832]/30 flex items-center gap-3 group"
-            >
-              <span className="material-symbols-outlined text-[28px] group-hover:rotate-12 transition-transform">
-                videocam
-              </span>
-              <span>Start Communication</span>
-              <span className="material-symbols-outlined text-[22px] group-hover:translate-x-1 transition-transform">
-                arrow_forward
-              </span>
-            </button>
-          </div>
-
-          {/* Bottom Overview of the 2 Modes */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto w-full z-10 mt-auto">
-            
-            {/* Mode 1 */}
-            <div className="bg-white/90 dark:bg-[#1a202c]/90 backdrop-blur-sm p-4 rounded-2xl border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#fe9832]/15 text-[#8f4e00] dark:text-[#ffb77a] flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[22px]">mic</span>
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-[#181c1e] dark:text-white">Text/Speech &rarr; ISL</h3>
-                <p className="text-xs text-[#45474c] dark:text-[#c1c6d7] mt-0.5 leading-relaxed">
-                  Real-time microphone capture or typed text with live captions and avatar animation.
-                </p>
-              </div>
-            </div>
-
-            {/* Mode 2: Click to directly start ISL Sign Recognition */}
-            <div
-              onClick={() => {
-                setActiveMode('ISL_TO_TEXT');
-                handleStartCommunication();
-              }}
-              className="bg-white/90 dark:bg-[#1a202c]/90 backdrop-blur-sm p-4 rounded-2xl border border-[#e0e3e5] hover:border-[#fe9832] dark:border-[#2d3133] shadow-sm flex items-start gap-3 cursor-pointer hover:scale-[1.02] transition-all group"
-            >
-              <div className="w-10 h-10 rounded-xl bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 flex items-center justify-center shrink-0 group-hover:bg-[#fe9832]/20 group-hover:text-[#fe9832] transition-colors">
-                <span className="material-symbols-outlined text-[22px]">sign_language</span>
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-[#181c1e] dark:text-white flex items-center gap-1.5">
-                  <span>ISL &rarr; Speech/Text</span>
-                  <span className="text-[10px] bg-emerald-500/15 text-emerald-600 px-1.5 py-0.5 rounded font-black">START</span>
-                </h3>
-                <p className="text-xs text-[#45474c] dark:text-[#c1c6d7] mt-0.5 leading-relaxed">
-                  Camera-based gesture tracking synthesizes natural spoken audio and text in real time.
-                </p>
-              </div>
-            </div>
-
-          </div>
-
-          {/* Quick Settings & Preferences Bar in Lobby */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[#e0e3e5]/60 dark:border-[#2d3133] text-xs text-[#45474c] dark:text-[#c1c6d7] z-10">
-            <div className="flex items-center gap-4">
-              <span className="font-semibold text-[#030813] dark:text-white flex items-center gap-1">
-                <span className="material-symbols-outlined text-[16px]">tune</span>
-                Preferences:
-              </span>
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <span>Font Size:</span>
-                <select
-                  value={captionFontSize}
-                  onChange={(e: any) => setCaptionFontSize(e.target.value)}
-                  className="bg-white dark:bg-[#1a202c] border border-[#c6c6cc] dark:border-[#2d3133] text-[#181c1e] dark:text-white rounded px-2 py-1 text-xs font-semibold outline-none cursor-pointer"
-                >
-                  <option value="sm">Small</option>
-                  <option value="md">Medium</option>
-                  <option value="lg">Large</option>
-                </select>
-              </label>
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <span>Avatar Speed:</span>
-                <select
-                  value={avatarSpeed}
-                  onChange={(e: any) => setAvatarSpeed(parseFloat(e.target.value))}
-                  className="bg-white dark:bg-[#1a202c] border border-[#c6c6cc] dark:border-[#2d3133] text-[#181c1e] dark:text-white rounded px-2 py-1 text-xs font-semibold outline-none cursor-pointer"
-                >
-                  <option value={0.75}>0.75x (Relaxed)</option>
-                  <option value={1.0}>1.0x (Normal)</option>
-                  <option value={1.25}>1.25x (Fast)</option>
-                  <option value={1.5}>1.5x (Pro)</option>
-                  <option value={2.0}>2.0x (Hyper Fast)</option>
-                  <option value={2.5}>2.5x (Ultra Fast)</option>
-                  <option value={3.0}>3.0x (Extreme 3x)</option>
-                </select>
-              </label>
-            </div>
-            <span className="text-emerald-700 dark:text-emerald-400 font-bold flex items-center gap-1">
-              <span className="material-symbols-outlined text-[14px]">verified</span>
-              Zero Latency Parallel Pipeline
-            </span>
-          </div>
-
+      {/* Dynamic Photographic Background - Visible ONLY on Lobby Screen */}
+      {!inSession && (
+        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden select-none">
+          <img
+            src="/images/communicate-bg.jpg"
+            alt="Translate Background"
+            className="w-full h-full object-cover object-center scale-100 opacity-95 dark:opacity-85"
+          />
+          {/* Minimal Non-Blur Ambient Tint */}
+          <div className="absolute inset-0 bg-transparent dark:bg-black/20 pointer-events-none" />
         </div>
       )}
+
+      <div className="relative z-10 flex flex-col w-full h-[calc(100vh-80px)] md:h-[calc(100vh-60px)] font-['Inter',sans-serif] overflow-hidden">
+        
+        {/* Top Header Bar */}
+        <header className={`flex items-center justify-between p-3 sm:p-4 rounded-2xl border shrink-0 mb-3 transition-all ${
+          inSession
+            ? 'bg-white dark:bg-[#181c1e] border-gray-200 dark:border-[#2d3133] shadow-sm'
+            : 'bg-white/20 dark:bg-black/30 backdrop-blur-md border-white/40 dark:border-white/10 shadow-lg shadow-black/5'
+        }`}>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-100/90 text-emerald-600 dark:bg-[#fe9832]/10 dark:text-[#fe9832] flex items-center justify-center shadow-sm">
+              <span className="material-symbols-outlined text-[24px]">translate</span>
+            </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-black text-gray-950 dark:text-white tracking-tight drop-shadow-2xs">{t('translate.title', 'Real-Time Translation')}</h1>
+              <p className="text-xs text-gray-700 dark:text-[#c1c6d7] font-medium">
+                {t('translate.subtitle', 'Interactive ISL Avatar visualizer, Speech-to-Sign, and Text translation')}
+              </p>
+            </div>
+          </div>
+
+          {inSession && (
+            <div className="flex items-center gap-3">
+              <span className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-emerald-100/90 dark:bg-green-900/60 text-emerald-800 dark:text-green-300 text-xs font-black rounded-full border border-emerald-300 dark:border-green-700">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                {t('translate.liveActive', 'Live Active')}
+              </span>
+              <button
+                onClick={handleStopCommunication}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+                aria-label={t('translate.stopComm', 'Stop Communication')}
+              >
+                <span className="material-symbols-outlined text-[18px]">stop_circle</span>
+                <span>{t('translate.stopComm', 'Stop Communication')}</span>
+              </button>
+            </div>
+          )}
+        </header>
+
+        {/* ========================================================================= */}
+        {/* SCREEN 1: LOBBY (START COMMUNICATION) WITH AMBIENT BACKGROUND             */}
+        {/* ========================================================================= */}
+        {!inSession && !showSummaryModal && (
+          <div className="flex-1 flex flex-col justify-between py-6 px-5 sm:px-8 relative overflow-hidden bg-white/20 dark:bg-black/30 backdrop-blur-md rounded-3xl border border-white/40 dark:border-white/10 shadow-xl shadow-black/10">
+            
+            {/* Central Highlight CTA */}
+            <div className="flex flex-col items-center justify-center text-center my-auto px-4 z-10">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/60 dark:bg-black/50 border border-white/60 dark:border-white/20 text-xs font-bold text-emerald-800 dark:text-[#ffb77a] shadow-sm mb-4 backdrop-blur-sm">
+                <span className="material-symbols-outlined text-[16px] text-emerald-600 dark:text-[#fe9832]">bolt</span>
+                <span>{t('translate.lobbyBadge', 'Hardware-Accelerated Real-Time Sign Synthesis')}</span>
+              </div>
+
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-gray-950 dark:text-white tracking-tight leading-tight max-w-2xl drop-shadow-xs">
+                {t('translate.lobbyHeadingPrefix', 'Break Barriers in')}{' '}
+                <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-600 bg-clip-text text-transparent dark:text-[#fe9832]">
+                  {t('translate.lobbyHeadingHighlight', 'Real-Time')}
+                </span>
+              </h2>
+              <p className="text-sm sm:text-base text-gray-700 dark:text-[#c1c6d7] mt-3 max-w-xl leading-relaxed font-medium">
+                {t('translate.lobbyDesc', 'Enable your camera and microphone for instant two-way translation between spoken voice, text, and Indian Sign Language.')}
+              </p>
+
+              {/* Main Action Button */}
+              <div className="mt-6 flex items-center justify-center">
+                <button
+                  onClick={handleStartCommunication}
+                  className="px-8 py-4 bg-gradient-to-r from-emerald-500 via-teal-600 to-indigo-600 text-white dark:bg-none dark:bg-[#fe9832] dark:hover:bg-[#e8872b] dark:text-[#542900] hover:scale-105 active:scale-95 font-black text-base sm:text-lg rounded-2xl transition-all shadow-lg shadow-emerald-500/25 dark:shadow-[#fe9832]/30 flex items-center gap-3 group cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[28px] group-hover:rotate-12 transition-transform">
+                    videocam
+                  </span>
+                  <span>{t('translate.startComm', 'Start Communication')}</span>
+                  <span className="material-symbols-outlined text-[22px] group-hover:translate-x-1 transition-transform">
+                    arrow_forward
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Bottom Overview of the 2 Modes - Shifted upward */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto w-full z-10 mb-4 sm:mb-6 mt-4">
+              
+              {/* Mode 1 */}
+              <div className="bg-white/30 dark:bg-white/5 backdrop-blur-md p-4 rounded-2xl border border-white/40 hover:border-sky-400 dark:border-white/10 shadow-sm flex items-start gap-3 transition-all">
+                <div className="w-10 h-10 rounded-xl bg-sky-100/90 text-sky-700 dark:bg-[#fe9832]/15 dark:text-[#ffb77a] flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-[22px]">mic</span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-gray-950 dark:text-white">{t('translate.mode1Title', 'Text/Speech → ISL')}</h3>
+                  <p className="text-xs text-gray-700 dark:text-[#c1c6d7] mt-0.5 leading-relaxed font-medium">
+                    {t('translate.mode1Desc', 'Real-time microphone capture or typed text with live captions and avatar animation.')}
+                  </p>
+                </div>
+              </div>
+
+              {/* Mode 2: Click to directly start ISL Sign Recognition */}
+              <div
+                onClick={() => {
+                  setActiveMode('ISL_TO_TEXT');
+                  handleStartCommunication();
+                }}
+                className="bg-white/30 dark:bg-white/5 backdrop-blur-md p-4 rounded-2xl border border-white/40 hover:border-emerald-400 dark:border-white/10 shadow-sm flex items-start gap-3 cursor-pointer hover:scale-[1.02] transition-all group"
+              >
+                <div className="w-10 h-10 rounded-xl bg-emerald-100/90 text-emerald-700 dark:bg-indigo-500/15 dark:text-indigo-300 flex items-center justify-center shrink-0 group-hover:bg-emerald-200 dark:group-hover:bg-[#fe9832]/20 dark:group-hover:text-[#fe9832] transition-colors">
+                  <span className="material-symbols-outlined text-[22px]">sign_language</span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-gray-950 dark:text-white flex items-center gap-1.5">
+                    <span>{t('translate.mode2Title', 'ISL → Speech/Text')}</span>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400 px-1.5 py-0.5 rounded font-black">{t('translate.startBadge', 'START')}</span>
+                  </h3>
+                  <p className="text-xs text-gray-700 dark:text-[#c1c6d7] mt-0.5 leading-relaxed font-medium">
+                    {t('translate.mode2Desc', 'Camera-based gesture tracking synthesizes natural spoken audio and text in real time.')}
+                  </p>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Quick Settings & Preferences Bar in Lobby */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-white/60 dark:border-white/15 text-xs text-gray-800 dark:text-[#c1c6d7] z-10">
+              <div className="flex items-center gap-4">
+                <span className="font-bold text-gray-950 dark:text-white flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[16px]">tune</span>
+                  {t('translate.preferences', 'Preferences:')}
+                </span>
+                <label className="flex items-center gap-1.5 cursor-pointer font-medium">
+                  <span>{t('translate.fontSize', 'Font Size:')}</span>
+                  <select
+                    value={captionFontSize}
+                    onChange={(e: any) => setCaptionFontSize(e.target.value)}
+                    className="bg-white/80 dark:bg-[#1a202c] border border-white/80 dark:border-[#2d3133] text-gray-900 dark:text-white rounded px-2 py-1 text-xs font-semibold outline-none cursor-pointer"
+                  >
+                    <option value="sm">{t('translate.size.small', 'Small')}</option>
+                    <option value="md">{t('translate.size.medium', 'Medium')}</option>
+                    <option value="lg">{t('translate.size.large', 'Large')}</option>
+                  </select>
+                </label>
+                <label className="flex items-center gap-1.5 cursor-pointer font-medium">
+                  <span>{t('translate.avatarSpeed', 'Avatar Speed:')}</span>
+                  <select
+                    value={avatarSpeed}
+                    onChange={(e: any) => setAvatarSpeed(parseFloat(e.target.value))}
+                    className="bg-white/80 dark:bg-[#1a202c] border border-white/80 dark:border-[#2d3133] text-gray-900 dark:text-white rounded px-2 py-1 text-xs font-semibold outline-none cursor-pointer"
+                  >
+                    <option value={0.75}>0.75x</option>
+                    <option value={1.0}>1.0x</option>
+                    <option value={1.25}>1.25x</option>
+                    <option value={1.5}>1.5x</option>
+                    <option value={2.0}>2.0x</option>
+                    <option value={2.5}>2.5x</option>
+                    <option value={3.0}>3.0x</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+          </div>
+        )}
+
 
       {/* ========================================================================= */}
       {/* SCREEN 2: ACTIVE COMMUNICATION ARENA                                      */}
       {/* ========================================================================= */}
       {inSession && !showSummaryModal && (
-        <div className="flex-1 flex flex-col gap-3 py-3 overflow-hidden">
+        <div className="flex-1 flex flex-col gap-3 py-1 overflow-hidden">
           
           {/* Top Bar: Mode Tabs + Live Controls + Inline Preferences */}
-          <div className="flex flex-wrap items-center justify-between gap-2 bg-[#e0e3e5] p-1.5 rounded-xl shrink-0">
+          <div className="flex flex-wrap items-center justify-between gap-2 bg-white dark:bg-[#181c1e] border border-gray-200 dark:border-[#2d3133] p-1.5 rounded-2xl shrink-0 shadow-sm">
             <div className="flex items-center gap-1">
               <button
                 onClick={() => handleSwitchMode('SPEECH_TEXT_TO_ISL')}
-                className={`py-1.5 px-4 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`py-1.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   activeMode === 'SPEECH_TEXT_TO_ISL'
-                    ? 'bg-white text-[#030813] shadow-sm font-black'
-                    : 'text-[#45474c] hover:text-[#030813]'
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-sm font-black dark:bg-none dark:bg-white dark:text-[#030813]'
+                    : 'text-slate-700 dark:text-[#828796] hover:text-slate-950 dark:hover:text-white'
                 }`}
               >
                 <span className="material-symbols-outlined text-[16px]">mic</span>
-                <span>Text/Speech &rarr; ISL</span>
+                <span>{t('translate.mode1Title', 'Text/Speech → ISL')}</span>
               </button>
 
               <button
                 onClick={() => handleSwitchMode('ISL_TO_TEXT')}
-                className={`py-1.5 px-4 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`py-1.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                   activeMode === 'ISL_TO_TEXT'
-                    ? 'bg-white text-[#030813] shadow-sm font-black'
-                    : 'text-[#45474c] hover:text-[#030813]'
+                    ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-sm font-black dark:bg-none dark:bg-white dark:text-[#030813]'
+                    : 'text-slate-700 dark:text-[#828796] hover:text-slate-950 dark:hover:text-white'
                 }`}
               >
                 <span className="material-symbols-outlined text-[16px]">sign_language</span>
-                <span>ISL &rarr; Speech/Text</span>
+                <span>{t('translate.mode2Title', 'ISL → Speech/Text')}</span>
               </button>
             </div>
 
             {/* Inline Preferences (Accessible directly during communication) */}
             <div className="flex items-center gap-3 text-xs font-semibold text-[#45474c]">
               <label className="flex items-center gap-1">
-                <span>Font:</span>
+                <span className="text-gray-900 dark:text-gray-200 font-bold">{t('translate.fontLabel', 'Font:')}</span>
                 <select
                   value={captionFontSize}
                   onChange={(e: any) => setCaptionFontSize(e.target.value)}
-                  className="bg-white border border-[#c6c6cc] rounded px-1.5 py-0.5 text-xs font-bold text-[#030813] outline-none"
+                  className="bg-gray-100 dark:bg-[#111315] border border-gray-300 dark:border-[#2d3133] rounded px-1.5 py-0.5 text-xs font-bold text-gray-950 dark:text-white outline-none cursor-pointer"
                 >
-                  <option value="sm">Small</option>
-                  <option value="md">Medium</option>
-                  <option value="lg">Large</option>
+                  <option value="sm">{t('translate.size.small', 'Small')}</option>
+                  <option value="md">{t('translate.size.medium', 'Medium')}</option>
+                  <option value="lg">{t('translate.size.large', 'Large')}</option>
                 </select>
               </label>
 
               <label className="flex items-center gap-1">
-                <span>Speed:</span>
+                <span className="text-gray-900 dark:text-gray-200 font-bold">{t('translate.speedLabel', 'Speed:')}</span>
                 <select
                   value={avatarSpeed}
                   onChange={(e: any) => setAvatarSpeed(parseFloat(e.target.value))}
-                  className="bg-white border border-[#c6c6cc] rounded px-1.5 py-0.5 text-xs font-bold text-[#030813] outline-none"
+                  className="bg-gray-100 dark:bg-[#111315] border border-gray-300 dark:border-[#2d3133] rounded px-1.5 py-0.5 text-xs font-bold text-gray-950 dark:text-white outline-none cursor-pointer"
                 >
                   <option value={0.75}>0.75x</option>
                   <option value={1.0}>1.0x</option>
@@ -869,16 +941,19 @@ export const TranslatePage: React.FC = () => {
                 </select>
               </label>
 
-              {/* Status Badges (Always ON throughout communication) */}
-              <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-[#c6c6cc]">
-                <span className={`flex items-center gap-1 ${cameraActive ? 'text-green-700' : 'text-gray-500'}`}>
-                  <span className="material-symbols-outlined text-[16px]">videocam</span>
-                  <span>{cameraActive ? 'Camera Live' : 'Camera Off'}</span>
-                </span>
-                <span className={`flex items-center gap-1 ${micActive ? 'text-green-700' : 'text-gray-500'}`}>
-                  <span className="material-symbols-outlined text-[16px]">mic</span>
-                  <span>{micActive ? 'Audio Live' : 'Audio Off'}</span>
-                </span>
+              {/* Status Badges (Mode-specific) */}
+              <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-gray-200 dark:border-gray-700">
+                {activeMode === 'ISL_TO_TEXT' ? (
+                  <span className={`flex items-center gap-1 ${cameraActive ? 'text-emerald-700 dark:text-[#8dfc75] font-black' : 'text-gray-600 dark:text-[#828796]'}`}>
+                    <span className="material-symbols-outlined text-[16px]">videocam</span>
+                    <span>{cameraActive ? t('translate.cameraLive', 'Camera Live') : t('translate.cameraOff', 'Camera Off')}</span>
+                  </span>
+                ) : (
+                  <span className={`flex items-center gap-1 ${isListening ? 'text-emerald-700 dark:text-[#8dfc75] font-black' : 'text-gray-600 dark:text-[#828796]'}`}>
+                    <span className="material-symbols-outlined text-[16px]">mic</span>
+                    <span>{isListening ? t('translate.micActive', 'Mic Active') : t('translate.micPaused', 'Mic Paused')}</span>
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -887,21 +962,21 @@ export const TranslatePage: React.FC = () => {
           <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 min-h-0">
             
             {/* LEFT PANE: Full Recognition Camera in ISL_TO_TEXT mode, Avatar in other modes */}
-            <div className="lg:col-span-6 bg-[#1a202c] text-white rounded-2xl p-4 shadow-md flex flex-col justify-between relative overflow-hidden min-h-0 border border-[#e0e3e5] dark:border-[#2d3133]">
+            <div className="lg:col-span-6 bg-white dark:bg-[#181c1e] text-gray-900 dark:text-white rounded-3xl p-4 shadow-sm flex flex-col justify-between relative overflow-hidden min-h-0 border border-gray-200 dark:border-[#2d3133]">
               {activeMode === 'ISL_TO_TEXT' ? (
                 <>
                   {/* Full Camera Viewport Header */}
-                  <div className="flex flex-wrap items-center justify-between border-b border-white/10 pb-2 mb-2 shrink-0 z-10 gap-2">
+                  <div className="flex flex-wrap items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-2 mb-2 shrink-0 z-10 gap-2">
                     <div className="flex items-center gap-2">
                       <span className="material-symbols-outlined text-[#fe9832] text-[20px]">videocam</span>
-                      <h3 className="text-sm font-bold text-white">Full Sign Recognition Camera</h3>
+                      <h3 className="text-sm font-bold text-gray-950 dark:text-white drop-shadow-xs">{t('translate.cameraTitle', 'Full Sign Recognition Camera')}</h3>
                       <button
                         type="button"
                         onClick={() => setShowGuideModal(true)}
-                        className="px-2.5 py-1 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-400/30 rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-xs"
+                        className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-500/20 hover:bg-indigo-100 text-indigo-900 dark:text-indigo-300 border border-indigo-400/30 rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-xs"
                       >
                         <span className="material-symbols-outlined text-[14px]">menu_book</span>
-                        <span>ISL Guide</span>
+                        <span>{t('translate.islGuide', 'ISL Guide')}</span>
                       </button>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
@@ -919,7 +994,7 @@ export const TranslatePage: React.FC = () => {
                         <span className="material-symbols-outlined text-[16px]">
                           {captureCountdown !== null ? 'hourglass_top' : 'timer'}
                         </span>
-                        <span>{captureCountdown !== null ? `Capturing (${captureCountdown}s)` : 'Test 5s Sign'}</span>
+                        <span>{captureCountdown !== null ? `Capturing (${captureCountdown}s)` : t('translate.test5sSign', 'Test 5s Sign')}</span>
                       </button>
 
                       <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold flex items-center gap-1.5 ${
@@ -932,8 +1007,8 @@ export const TranslatePage: React.FC = () => {
                           {isModelOnline 
                             ? (activeEndpoint.includes('127.0.0.1') || activeEndpoint.includes('localhost') 
                                 ? `Local BiLSTM (${pingLatencyMs || 15}ms)` 
-                                : 'Cloud ML Live')
-                            : 'ML Reconnecting...'}
+                                : t('translate.cloudMLLive', 'Cloud ML Live'))
+                            : t('translate.mlReconnecting', 'ML Reconnecting...')}
                         </span>
                       </span>
                     </div>
@@ -970,10 +1045,10 @@ export const TranslatePage: React.FC = () => {
                         <span className={`w-2 h-2 rounded-full ${isISLRecognizing ? 'bg-emerald-400 animate-pulse' : 'bg-[#fe9832]'}`} />
                         <span>
                           {handsDetectedCount === 2 
-                            ? '2 Hands Detected (2-Handed ISL Active)' 
+                            ? t('translate.hud2Hands', '2 Hands Detected (2-Handed ISL Active)') 
                             : handsDetectedCount === 1 
-                            ? '1 Hand Detected' 
-                            : 'Waiting for Hands in Camera Frame...'}
+                            ? t('translate.hud1Hand', '1 Hand Detected') 
+                            : t('translate.hudWaitingHands', 'Waiting for Hands in Camera Frame...')}
                         </span>
                       </div>
                       {isISLRecognizing && (
@@ -1009,15 +1084,15 @@ export const TranslatePage: React.FC = () => {
                           className="px-2.5 py-1 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition shadow-xs"
                         >
                           <span className="material-symbols-outlined text-[14px]">volume_up</span>
-                          <span>Speak</span>
+                          <span>{t('translate.speak', 'Speak')}</span>
                         </button>
                       </div>
                     )}
                   </div>
 
                   {/* Bottom Camera Toolbar */}
-                  <div className="flex items-center justify-between pt-2 border-t border-white/10 mt-2 shrink-0 z-10">
-                    <div className="flex items-center gap-2 text-xs text-gray-300">
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-800 mt-2 shrink-0 z-10">
+                    <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300 font-medium">
                       <span className="material-symbols-outlined text-[16px] text-[#fe9832]">psychology</span>
                       <span>BiLSTM Neural Network (port 8000)</span>
                     </div>
@@ -1029,10 +1104,10 @@ export const TranslatePage: React.FC = () => {
                             startISLRecognition(gestureVideoRef.current);
                           }
                         }}
-                        className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition cursor-pointer"
+                        className="px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-white/10 dark:hover:bg-white/20 text-gray-950 dark:text-white rounded-lg text-xs font-bold flex items-center gap-1 transition cursor-pointer border border-gray-300 dark:border-transparent"
                       >
                         <span className="material-symbols-outlined text-[14px]">refresh</span>
-                        <span>Restart Camera</span>
+                        <span>{t('translate.restartCamera', 'Restart Camera')}</span>
                       </button>
                     </div>
                   </div>
@@ -1040,18 +1115,18 @@ export const TranslatePage: React.FC = () => {
               ) : (
                 <>
                   {/* 3D ISL Avatar Visualizer for Speech to ISL & Text to ISL modes */}
-                  <div className="flex items-center justify-between border-b border-white/10 pb-2 mb-2 shrink-0 z-10">
+                  <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-2 mb-2 shrink-0 z-10">
                     <div className="flex items-center gap-2">
                       <span className="material-symbols-outlined text-[#fe9832] text-[20px]">accessibility</span>
-                      <h3 className="text-sm font-bold text-white">3D ISL Avatar (Letter-by-Letter)</h3>
+                      <h3 className="text-sm font-bold text-gray-950 dark:text-white drop-shadow-xs">3D ISL Avatar (Letter-by-Letter)</h3>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1 bg-black/60 p-0.5 rounded-full border border-white/10 text-[10px]">
+                      <div className="flex items-center gap-1 bg-gray-100 dark:bg-black/60 p-0.5 rounded-full border border-gray-300 dark:border-white/10 text-[10px]">
                         <button
                           type="button"
                           onClick={() => setModelPath('/models/ybot.glb')}
                           className={`px-2 py-0.5 rounded-full font-bold transition-all ${
-                            modelPath.includes('ybot') ? 'bg-[#fe9832] text-[#542900]' : 'text-white/70'
+                            modelPath.includes('ybot') ? 'bg-[#fe9832] text-[#542900]' : 'text-gray-800 dark:text-white/70'
                           }`}
                         >
                           YBot
@@ -1060,27 +1135,27 @@ export const TranslatePage: React.FC = () => {
                           type="button"
                           onClick={() => setModelPath('/models/xbot.glb')}
                           className={`px-2 py-0.5 rounded-full font-bold transition-all ${
-                            modelPath.includes('xbot') ? 'bg-[#fe9832] text-[#542900]' : 'text-white/70'
+                            modelPath.includes('xbot') ? 'bg-[#fe9832] text-[#542900]' : 'text-gray-800 dark:text-white/70'
                           }`}
                         >
                           XBot
                         </button>
                       </div>
-                      <span className="text-[10px] bg-[#fe9832]/20 text-[#fe9832] px-2 py-0.5 rounded font-mono font-bold">
+                      <span className="text-[10px] bg-[#fe9832]/20 text-[#8f4e00] dark:text-[#fe9832] px-2 py-0.5 rounded font-mono font-bold">
                         {avatarSpeed}x Speed
                       </span>
                     </div>
                   </div>
 
                   {/* 3D Avatar Canvas Area */}
-                  <div className="flex-1 w-full h-full min-h-[320px] flex items-center justify-center relative overflow-hidden bg-gradient-to-b from-[#050b16] via-[#091325] to-[#040914] rounded-2xl border border-white/10">
+                  <div className="flex-1 w-full h-full min-h-[320px] flex items-center justify-center relative overflow-hidden bg-slate-900 dark:bg-black/60 rounded-2xl border border-gray-200 dark:border-[#2d3133]">
                     <ISLAvatarCanvas
                       ref={avatarCanvasRef}
                       modelPath={modelPath}
                       speed={avatarSpeed}
                       pauseTimeMs={Math.round(400 / avatarSpeed)}
-                      onProgressChar={(char) => setActiveAvatarChar(char)}
-                      onProgressWord={(wordIdx) => setActiveStepIndex(wordIdx)}
+                      onProgressChar={(char: string) => setActiveAvatarChar(char)}
+                      onProgressWord={(wordIdx: number) => setActiveStepIndex(wordIdx)}
                       onFinish={() => {
                         setActiveSigningMessageId(null);
                         setActiveStepIndex(-1);
@@ -1097,12 +1172,6 @@ export const TranslatePage: React.FC = () => {
                       </div>
                     )}
                   </div>
-
-                  {/* Repositionable Draggable Presenter Camera Window */}
-                  <DraggableCameraWindow
-                    videoRef={videoRef}
-                    cameraActive={cameraActive}
-                  />
                 </>
               )}
             </div>
@@ -1111,20 +1180,17 @@ export const TranslatePage: React.FC = () => {
             <div className="lg:col-span-6 flex flex-col gap-3 min-h-0">
               
               {/* ========================================================= */}
-              {/* MODE 1: SPEECH <-> ISL (With Live Captions Stream)         */}
-              {/* ========================================================= */}
-              {/* ========================================================= */}
               {/* UNIFIED MODE: SPEECH / TEXT ↔ ISL                         */}
               {/* ========================================================= */}
               {activeMode === 'SPEECH_TEXT_TO_ISL' && (
                 <>
                   {/* Stretched Speech / Text Conversation History with Live Green Word Sync */}
-                  <div className="relative flex-1 bg-white dark:bg-[#1a202c] rounded-2xl p-4 border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col justify-between min-h-0">
+                  <div className="relative flex-1 bg-white dark:bg-[#181c1e] rounded-2xl p-4 border border-gray-200 dark:border-[#2d3133] shadow-sm flex flex-col justify-between min-h-0">
                     {/* Header with Language Selector, Mic Status, & Auto-Read */}
-                    <div className="flex flex-wrap items-center justify-between border-b border-[#e0e3e5] dark:border-[#2d3133] pb-2 shrink-0 gap-2">
-                      <span className="text-xs font-bold uppercase tracking-wider text-[#012700] dark:text-[#8dfc75] flex items-center gap-1.5">
+                    <div className="flex flex-wrap items-center justify-between border-b border-gray-200 dark:border-[#2d3133] pb-2 shrink-0 gap-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-emerald-950 dark:text-[#8dfc75] flex items-center gap-1.5">
                         <span className="material-symbols-outlined text-[18px]">chat</span>
-                        Speech / Text &harr; ISL Conversation Feed
+                        {t('translate.feedTitle', 'Speech / Text ↔ ISL Conversation Feed')}
                       </span>
                       
                       <div className="flex items-center gap-2">
@@ -1137,7 +1203,7 @@ export const TranslatePage: React.FC = () => {
                               setTimeout(() => startContinuousListening(), 50);
                             }
                           }}
-                          className="bg-[#f1f4f6] dark:bg-[#0d121d] border border-[#e0e3e5] dark:border-[#2d3133] text-[11px] font-bold text-[#181c1e] dark:text-white rounded-lg px-2 py-0.5 outline-none cursor-pointer"
+                          className="bg-gray-100 dark:bg-[#111315] border border-gray-300 dark:border-[#2d3133] text-[11px] font-bold text-gray-950 dark:text-white rounded-lg px-2 py-0.5 outline-none cursor-pointer"
                         >
                           <option value="en-IN">🇮🇳 English (India)</option>
                           <option value="en-US">🇺🇸 English (US)</option>
@@ -1145,7 +1211,7 @@ export const TranslatePage: React.FC = () => {
                         </select>
 
                         {/* Auto-Read Out Toggle */}
-                        <label className="flex items-center gap-1 cursor-pointer select-none bg-[#f1f4f6] dark:bg-[#0d121d] px-2 py-0.5 rounded-lg border border-[#e0e3e5] dark:border-[#2d3133]">
+                        <label className="flex items-center gap-1 cursor-pointer select-none bg-gray-100 dark:bg-[#111315] px-2 py-0.5 rounded-lg border border-gray-300 dark:border-[#2d3133]">
                           <input
                             type="checkbox"
                             checked={autoReadOutChat}
@@ -1156,7 +1222,7 @@ export const TranslatePage: React.FC = () => {
                             <span className="material-symbols-outlined text-[13px]">
                               {autoReadOutChat ? 'volume_up' : 'volume_off'}
                             </span>
-                            Auto-Read
+                            {t('translate.autoRead', 'Auto-Read')}
                           </span>
                         </label>
 
@@ -1166,97 +1232,90 @@ export const TranslatePage: React.FC = () => {
                           onClick={toggleListening}
                           className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 shadow-xs cursor-pointer ${
                             isListening
-                              ? 'bg-red-600 hover:bg-red-700 text-white'
-                              : 'bg-[#fe9832] hover:bg-[#e8872b] text-[#683700]'
+                              ? 'bg-rose-600 hover:bg-rose-700 text-white'
+                              : 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white dark:bg-none dark:bg-[#fe9832] dark:text-[#683700] hover:opacity-95'
                           }`}
                         >
                           <span className="material-symbols-outlined text-[14px]">
                             {isListening ? 'mic_off' : 'mic'}
                           </span>
-                          <span>{isListening ? 'Pause Mic' : 'Resume Mic'}</span>
+                          <span>{isListening ? t('translate.pauseMic', 'Pause Mic') : t('translate.resumeMic', 'Resume Mic')}</span>
                         </button>
 
-                        <span className="text-[10px] text-[#45474c] dark:text-[#828796] font-semibold hidden sm:inline">
-                          {textMessages.filter((m) => m.sender !== 'system').length} Msgs
+                        <span className="text-[10px] text-gray-700 dark:text-[#828796] font-semibold hidden sm:inline">
+                          {textMessages.filter((m) => m.sender !== 'system').length} {t('translate.msgsCount', 'Msgs')}
                         </span>
                       </div>
                     </div>
 
-                    {/* Microphone Support / Permission Error Notice */}
-                    {(micError || !isMicSupported) && (
-                      <div className="my-1.5 p-2 bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-700 rounded-xl text-xs text-amber-900 dark:text-amber-200 flex items-center justify-between gap-2 shrink-0">
-                        <div className="flex items-center gap-2">
-                          <span className="material-symbols-outlined text-amber-600 text-[16px]">warning</span>
-                          <span className="text-[11px]">{micError || 'Speech recognition is not supported.'}</span>
-                        </div>
-                        {isMicSupported && (
-                          <button
-                            type="button"
-                            onClick={() => startContinuousListening()}
-                            className="px-2 py-0.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[10px] font-bold shrink-0 cursor-pointer"
-                          >
-                            Retry Mic
-                          </button>
-                        )}
+                    {/* Speech Error Banner if any */}
+                    {(!isMicSupported || micError) && (
+                      <div className="px-3 py-2 my-1 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-950 dark:text-amber-200 text-xs font-bold flex items-center gap-2">
+                        <span className="material-symbols-outlined text-sm text-amber-600">warning</span>
+                        <span>{micError || t('translate.micUnsupported', 'Microphone recognition is not supported in this browser.')}</span>
                       </div>
                     )}
-
-                    {/* Live Listening Caption Streaming Banner (active while speaking) */}
-                    {liveCaption && (
-                      <div className="my-1.5 p-2.5 bg-[#fe9832]/10 border border-[#fe9832]/30 rounded-xl text-xs font-bold text-[#fe9832] flex items-center gap-2 shrink-0 shadow-xs">
-                        <span className="material-symbols-outlined text-[18px] animate-pulse text-[#fe9832]">graphic_eq</span>
-                        <span className="text-[#181c1e] dark:text-white font-semibold">Speaking:</span>
-                        <span className="italic">"{liveCaption}"</span>
-                      </div>
-                    )}
-
-                    {/* Messages Scroll View (Displays ALL past chats throughout the conversation) */}
+                    {/* Messages Scroll View */}
                     <div
                       ref={chatScrollContainerRef}
                       onScroll={handleChatScroll}
-                      className="relative flex-1 overflow-y-auto my-2 p-3 bg-[#f7fafc] dark:bg-[#0d121d] rounded-xl border border-[#e0e3e5] dark:border-[#2d3133] flex flex-col gap-3"
+                      className="relative flex-1 overflow-y-auto my-2 p-2 sm:p-3 bg-gray-50 dark:bg-[#111315] rounded-xl border border-gray-200 dark:border-[#2d3133] flex flex-col gap-3"
                     >
-                      {textMessages.length === 0 ? (
-                        <div className="my-auto text-center p-6 text-[#45474c]/60 dark:text-[#828796] flex flex-col items-center gap-2">
-                          <span className="material-symbols-outlined text-3xl text-[#fe9832]">graphic_eq</span>
-                          <p className="text-xs font-bold text-[#181c1e] dark:text-white">Start Speaking or Type a Sentence</p>
-                          <p className="text-[11px] max-w-xs">Speak into your mic or type text below. The 3D Avatar will sign each letter/word live with GREEN text highlighting!</p>
+                      {textMessages.length === 0 && !liveCaption ? (
+                        <div className="my-auto text-center p-6 text-gray-700 dark:text-gray-300 flex flex-col items-center gap-2">
+                          <div className="w-12 h-12 rounded-full bg-emerald-100/90 text-emerald-700 dark:bg-[#fe9832]/10 dark:text-[#fe9832] flex items-center justify-center">
+                            <span className="material-symbols-outlined text-2xl">mic</span>
+                          </div>
+                          <p className="text-sm font-black text-gray-950 dark:text-white">{t('translate.readyToTranscribeHeading', 'Ready to Transcribe & Sign')}</p>
+                          <p className="text-xs max-w-xs text-center font-medium">
+                            {t('translate.readyToTranscribeDesc', 'Speak into your microphone in English or Hindi, or type a sentence below. The 3D Avatar will instantly begin continuous gesture signing.')}
+                          </p>
                         </div>
                       ) : (
                         textMessages.map((msg) => {
+                          const isSigningThisMsg = activeSigningMessageId === msg.id;
+
                           if (msg.sender === 'system') {
                             return (
-                              <div key={msg.id} className="self-center my-1 px-3 py-1 bg-[#e0e3e5]/80 dark:bg-slate-800 rounded-full text-[10px] font-bold text-[#45474c] dark:text-[#828796] flex items-center gap-1">
-                                <span className="material-symbols-outlined text-[12px]">swap_horiz</span>
-                                <span>{msg.text} &bull; {msg.timestamp}</span>
+                              <div key={msg.id} className="self-center my-1 px-3 py-1 bg-gray-200 dark:bg-white/10 text-gray-800 dark:text-gray-300 text-[10px] font-bold rounded-full border border-gray-300 dark:border-white/15">
+                                {msg.text} • {msg.timestamp}
                               </div>
                             );
                           }
 
-                          const isSigningThisMsg = activeSigningMessageId === msg.id && activeStepIndex >= 0;
-
                           return (
                             <div
                               key={msg.id}
-                              className="self-end max-w-[92%] bg-white dark:bg-[#1a202c] p-3.5 rounded-2xl rounded-tr-sm border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col gap-2"
+                              className={`self-start max-w-[95%] p-3 rounded-2xl rounded-tl-sm border transition-all ${
+                                isSigningThisMsg
+                                  ? 'bg-emerald-50 dark:bg-emerald-950/70 border-emerald-400 dark:border-emerald-500 shadow-md ring-2 ring-emerald-400/40'
+                                  : 'bg-white dark:bg-[#1e2327] border-gray-200 dark:border-[#2d3133] shadow-xs'
+                              }`}
                             >
-                              {/* Word by word rendering with synchronized GREEN highlight */}
-                              <div className={`flex flex-wrap items-center gap-1.5 ${
-                                captionFontSize === 'lg' ? 'text-lg' : captionFontSize === 'md' ? 'text-base' : 'text-sm'
+                              <div className="flex items-center justify-between gap-3 text-[10px] text-gray-600 dark:text-[#828796] border-b border-gray-100 dark:border-gray-800 pb-1 mb-1.5">
+                                <span className="font-bold uppercase tracking-wider flex items-center gap-1">
+                                  <span className="material-symbols-outlined text-[13px] text-emerald-600">
+                                    {msg.mode === 'SPEECH' ? 'mic' : 'keyboard'}
+                                  </span>
+                                  {msg.mode === 'SPEECH' ? t('translate.voiceBadge', 'Voice') : t('translate.textBadge', 'Text')}
+                                </span>
+                                <span>{msg.timestamp}</span>
+                              </div>
+
+                              {/* Synchronized Word Highlighting Container */}
+                              <div className={`leading-relaxed text-gray-950 dark:text-white font-medium flex flex-wrap gap-x-1.5 gap-y-1 ${
+                                captionFontSize === 'sm' ? 'text-xs' : captionFontSize === 'lg' ? 'text-base sm:text-lg' : 'text-sm'
                               }`}>
-                                {msg.words.map((word, wordIdx) => {
-                                  const isCurrentlyActive = isSigningThisMsg && wordIdx === activeStepIndex;
-                                  const isCompleted = isSigningThisMsg && wordIdx < activeStepIndex;
+                                {msg.words.map((word, wIdx) => {
+                                  const isCurrentActiveWord = isSigningThisMsg && activeStepIndex === wIdx;
 
                                   return (
                                     <span
-                                      key={wordIdx}
-                                      className={`transition-all duration-200 rounded px-1.5 py-0.5 ${
-                                        isCurrentlyActive
-                                          ? 'bg-green-500 text-white font-black scale-110 shadow-md ring-2 ring-green-400'
-                                          : isCompleted
-                                          ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 font-bold border border-emerald-300 dark:border-emerald-700'
-                                          : 'text-[#181c1e] dark:text-white font-medium'
+                                      key={wIdx}
+                                      className={`transition-all duration-150 rounded px-1 ${
+                                        isCurrentActiveWord
+                                          ? 'bg-emerald-500 text-white font-black shadow-sm scale-105 inline-block'
+                                          : 'text-gray-950 dark:text-white'
                                       }`}
                                     >
                                       {word}
@@ -1265,43 +1324,28 @@ export const TranslatePage: React.FC = () => {
                                 })}
                               </div>
 
-                              {/* Message Footer with Timestamp, Sign on Avatar, and Read Aloud */}
-                              <div className="flex items-center justify-between text-[10px] text-[#45474c] dark:text-[#828796] pt-1.5 border-t border-[#e0e3e5]/60 dark:border-[#2d3133]">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-bold text-[#012700] dark:text-[#8dfc75] uppercase text-[9px] bg-[#dde2f3] dark:bg-slate-800 px-1.5 py-0.2 rounded">
-                                    {msg.mode}
-                                  </span>
-                                  <span>{msg.timestamp}</span>
-                                </div>
-
-                                <div className="flex items-center gap-2">
-                                  {isSigningThisMsg ? (
-                                    <span className="text-green-600 dark:text-green-400 font-bold flex items-center gap-1 animate-pulse">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                                      Signing {activeStepIndex + 1}/{msg.words.length}
-                                    </span>
-                                  ) : null}
-
-                                  {/* Dedicated Per-Message Sign on Avatar Button */}
+                              {/* Action Bar per message */}
+                              <div className="flex items-center justify-between pt-2 mt-2 border-t border-gray-100 dark:border-gray-800">
+                                <span className="text-[10px] text-gray-500 dark:text-gray-400 font-mono">
+                                  {msg.words.length} {t('translate.wordsCount', 'words')}
+                                </span>
+                                <div className="flex items-center gap-1">
                                   <button
                                     type="button"
                                     onClick={() => translateTextToSign(msg.text, msg.id)}
-                                    title="Sign message again on 3D Avatar"
-                                    className="px-2 py-0.5 bg-[#fe9832]/10 hover:bg-[#fe9832]/30 text-[#8f4e00] dark:text-[#fe9832] rounded-md text-[10px] font-bold transition flex items-center gap-1 cursor-pointer border border-[#fe9832]/30"
+                                    className="px-2 py-0.5 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-[#fe9832]/30 text-slate-800 dark:text-white rounded-md text-[10px] font-bold transition flex items-center gap-1 cursor-pointer border border-gray-200 dark:border-[#2d3133]"
                                   >
-                                    <span className="material-symbols-outlined text-[13px]">play_arrow</span>
-                                    <span>Sign on Avatar</span>
+                                    <span className="material-symbols-outlined text-[13px] text-emerald-600 dark:text-[#fe9832]">replay</span>
+                                    <span>{t('translate.replaySign', 'Replay Sign')}</span>
                                   </button>
-
-                                  {/* Dedicated Per-Message Speak / Read Aloud Button */}
                                   <button
                                     type="button"
                                     onClick={() => speak(msg.text)}
-                                    title="Read message aloud"
-                                    className="px-2 py-0.5 bg-[#f1f4f6] dark:bg-slate-800 hover:bg-[#fe9832]/20 dark:hover:bg-[#fe9832]/30 text-[#0C1322] dark:text-white rounded-md text-[10px] font-bold transition flex items-center gap-1 cursor-pointer border border-[#e0e3e5] dark:border-[#2d3133]"
+                                    disabled={speaking}
+                                    className="px-2 py-0.5 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-[#fe9832]/30 text-slate-800 dark:text-white rounded-md text-[10px] font-bold transition flex items-center gap-1 cursor-pointer border border-gray-200 dark:border-[#2d3133]"
                                   >
-                                    <span className="material-symbols-outlined text-[13px] text-[#4046A8] dark:text-[#fe9832]">volume_up</span>
-                                    <span>Read Aloud</span>
+                                    <span className="material-symbols-outlined text-[13px] text-indigo-600 dark:text-[#fe9832]">volume_up</span>
+                                    <span>{t('translate.readAloud', 'Read Aloud')}</span>
                                   </button>
                                 </div>
                               </div>
@@ -1317,33 +1361,43 @@ export const TranslatePage: React.FC = () => {
                       <button
                         type="button"
                         onClick={scrollToBottom}
-                        className="absolute bottom-20 right-8 px-3 py-1.5 bg-[#4046A8] hover:bg-[#353A8F] text-white text-xs font-bold rounded-full shadow-xl flex items-center gap-1.5 transition-all animate-bounce cursor-pointer z-30"
+                        className="absolute bottom-20 right-8 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-full shadow-xl flex items-center gap-1.5 transition-all animate-bounce cursor-pointer z-30"
                       >
                         <span className="material-symbols-outlined text-[16px]">arrow_downward</span>
-                        <span>Jump to Latest</span>
+                        <span>{t('translate.jumpLatest', 'Jump to Latest')}</span>
                       </button>
                     )}
 
                     {/* Instant Status */}
                     {activeSigningMessageId && activeStepIndex >= 0 && (
-                      <div className="flex items-center justify-between pt-1 shrink-0 text-xs text-green-700 dark:text-green-400 font-bold">
+                      <div className="flex items-center justify-between pt-1 shrink-0 text-xs text-emerald-800 dark:text-green-400 font-bold">
                         <span className="flex items-center gap-1">
                           <span className="material-symbols-outlined text-[14px] animate-spin">sync</span>
-                          Synchronized Green Text Highlighting Active ({avatarSpeed}x speed)
+                          {t('translate.syncActive', 'Synchronized Green Text Highlighting Active')} ({avatarSpeed}x {t('translate.speedSuffix', 'speed')})
                         </span>
                       </div>
                     )}
                   </div>
 
                   {/* Text & Speech Input Panel */}
-                  <form onSubmit={handleSendTextMessage} className="bg-white dark:bg-[#1a202c] rounded-2xl p-3 border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm shrink-0 flex items-center gap-2">
+                  <form onSubmit={handleSendTextMessage} className="bg-white dark:bg-[#181c1e] rounded-2xl p-3 border border-gray-200 dark:border-[#2d3133] shadow-sm shrink-0 flex items-center gap-2">
                     <input
                       type="text"
-                      placeholder="Type a sentence to sign & translate (e.g. 'Hello welcome to our accessible office')..."
+                      placeholder={t('translate.inputPlaceholder', "Type a sentence to sign & translate (e.g. 'Hello welcome to our accessible office')...")}
                       value={inputText}
                       onChange={(e) => setInputText(e.target.value)}
-                      className="flex-1 px-4 py-2.5 bg-[#f7fafc] dark:bg-[#0d121d] border border-[#c6c6cc] dark:border-[#2d3133] rounded-xl text-xs sm:text-sm text-[#181c1e] dark:text-white focus:border-[#fe9832] outline-none"
+                      className="flex-1 px-4 py-2.5 bg-gray-50 dark:bg-[#111315] border border-gray-200 dark:border-[#2d3133] rounded-xl text-xs sm:text-sm text-gray-950 dark:text-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:focus:ring-0 outline-none font-medium"
                     />
+
+                    <button
+                      type="button"
+                      onClick={() => setShowScanModal(true)}
+                      title={t('translate.scanRxTitle', 'Scan handwritten note or prescription')}
+                      className="px-3.5 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-[#fe9832]/10 dark:hover:bg-[#fe9832]/25 dark:text-[#fe9832] border border-emerald-300 dark:border-[#fe9832]/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 shadow-xs"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">document_scanner</span>
+                      <span className="hidden sm:inline">{t('translate.scanRx', 'Scan Rx')}</span>
+                    </button>
 
                     <button
                       type="button"
@@ -1351,8 +1405,8 @@ export const TranslatePage: React.FC = () => {
                       title={autoReadOutChat ? 'Auto-Read Out is ON' : 'Auto-Read Out is OFF'}
                       className={`p-2.5 rounded-xl border transition-all flex items-center justify-center cursor-pointer ${
                         autoReadOutChat
-                          ? 'bg-[#4046A8]/10 text-[#4046A8] dark:bg-[#fe9832]/20 dark:text-[#fe9832] border-[#4046A8]/30 dark:border-[#fe9832]/40'
-                          : 'bg-gray-100 dark:bg-gray-800 text-gray-400 border-gray-300 dark:border-gray-700'
+                          ? 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-[#fe9832]/20 dark:text-[#fe9832] dark:border-[#fe9832]/40'
+                          : 'bg-gray-100 dark:bg-gray-800 text-slate-500 border-gray-200 dark:border-gray-700'
                       }`}
                     >
                       <span className="material-symbols-outlined text-[18px]">
@@ -1363,9 +1417,9 @@ export const TranslatePage: React.FC = () => {
                     <button
                       type="submit"
                       disabled={isProcessing || !inputText.trim()}
-                      className="px-5 py-2.5 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-40"
+                      className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 via-teal-600 to-indigo-600 text-white dark:bg-none dark:bg-[#fe9832] dark:text-[#683700] hover:opacity-95 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-40"
                     >
-                      <span>Sign Text</span>
+                      <span>{t('translate.signText', 'Sign Text')}</span>
                       <span className="material-symbols-outlined text-[16px]">send</span>
                     </button>
                   </form>
@@ -1377,16 +1431,16 @@ export const TranslatePage: React.FC = () => {
               {/* ========================================================= */}
               {activeMode === 'ISL_TO_TEXT' && (
                 <>
-                  <div className="flex-1 bg-white dark:bg-[#1a202c] rounded-2xl p-4 border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col justify-between min-h-0 gap-2">
+                  <div className="flex-1 bg-white dark:bg-[#181c1e] rounded-2xl p-4 border border-gray-200 dark:border-[#2d3133] shadow-sm flex flex-col justify-between min-h-0 gap-2">
                     {/* Header */}
-                    <div className="flex items-center justify-between border-b border-[#e0e3e5] dark:border-[#2d3133] pb-2 shrink-0">
+                    <div className="flex items-center justify-between border-b border-gray-200 dark:border-[#2d3133] pb-2 shrink-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold uppercase tracking-wider text-[#030813] dark:text-white flex items-center gap-1.5">
+                        <span className="text-xs font-bold uppercase tracking-wider text-gray-950 dark:text-white flex items-center gap-1.5 drop-shadow-xs">
                           <span className="material-symbols-outlined text-[18px] text-[#fe9832]">chat</span>
-                          Signed Conversation Feed
+                          {t('translate.signedFeedTitle', 'Signed Conversation Feed')}
                         </span>
-                        <span className="text-[10px] bg-[#fe9832]/10 text-[#8f4e00] dark:text-[#fe9832] px-2 py-0.5 rounded-full font-bold border border-[#fe9832]/20">
-                          {signedMessages.length} Sent
+                        <span className="text-[10px] bg-[#fe9832]/20 text-[#8f4e00] dark:text-[#fe9832] px-2 py-0.5 rounded-full font-bold border border-[#fe9832]/30">
+                          {signedMessages.length} {t('translate.sentCount', 'Sent')}
                         </span>
                       </div>
                       
@@ -1395,46 +1449,46 @@ export const TranslatePage: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => setSignedMessages([])}
-                            className="text-[11px] text-gray-500 hover:text-red-500 font-bold transition flex items-center gap-1 cursor-pointer px-2 py-0.5 rounded hover:bg-red-50 dark:hover:bg-red-950/40"
+                            className="text-[11px] text-gray-700 dark:text-gray-300 hover:text-red-500 font-bold transition flex items-center gap-1 cursor-pointer px-2 py-0.5 rounded hover:bg-red-50 dark:hover:bg-red-950/40"
                           >
                             <span className="material-symbols-outlined text-[13px]">delete_sweep</span>
-                            <span>Clear Feed</span>
+                            <span>{t('translate.clearFeed', 'Clear Feed')}</span>
                           </button>
                         )}
                       </div>
                     </div>
 
                     {/* Sent Signed Messages Scroll View */}
-                    <div className="relative flex-1 overflow-y-auto my-1 p-3 bg-[#f7fafc] dark:bg-[#0d121d] rounded-xl border border-[#e0e3e5] dark:border-[#2d3133] flex flex-col gap-2.5">
+                    <div className="relative flex-1 overflow-y-auto my-1 p-3 bg-gray-50 dark:bg-[#111315] rounded-xl border border-gray-200 dark:border-[#2d3133] flex flex-col gap-2.5">
                       {signedMessages.length === 0 ? (
-                        <div className="my-auto text-center p-6 text-[#45474c]/60 dark:text-[#828796] flex flex-col items-center gap-2">
-                          <div className="w-12 h-12 rounded-full bg-[#fe9832]/10 text-[#fe9832] flex items-center justify-center">
+                        <div className="my-auto text-center p-6 text-gray-700 dark:text-gray-300 flex flex-col items-center gap-2">
+                          <div className="w-12 h-12 rounded-full bg-[#fe9832]/20 text-[#fe9832] flex items-center justify-center border border-[#fe9832]/30 shadow-sm">
                             <span className="material-symbols-outlined text-2xl">sign_language</span>
                           </div>
-                          <p className="text-sm font-bold text-[#181c1e] dark:text-white">Waiting for Signs</p>
-                          <p className="text-xs max-w-xs text-center">
-                            Perform signs in front of the camera. Words will continuously accumulate in the editable message composition box below. Review, edit, and click Send!
+                          <p className="text-sm font-black text-gray-950 dark:text-white drop-shadow-xs">{t('translate.waitingForSignsHeading', 'Waiting for Signs')}</p>
+                          <p className="text-xs max-w-xs text-center text-gray-700 dark:text-gray-300 font-medium leading-relaxed">
+                            {t('translate.waitingForSignsDesc', 'Perform signs in front of the camera. Words will continuously accumulate in the editable message composition box below. Review, edit, and click Send!')}
                           </p>
                         </div>
                       ) : (
                         signedMessages.map((msg) => (
                           <div
                             key={msg.id}
-                            className="self-start max-w-[95%] bg-white dark:bg-[#1a202c] p-3 rounded-2xl rounded-tl-sm border border-[#e0e3e5] dark:border-[#2d3133] shadow-xs flex flex-col gap-1.5 animate-fadeIn"
+                            className="self-start max-w-[95%] bg-white dark:bg-[#1e2327] p-3 rounded-2xl rounded-tl-sm border border-gray-200 dark:border-[#2d3133] shadow-xs flex flex-col gap-1.5 animate-fadeIn"
                           >
-                            <div className="flex items-center justify-between gap-3 text-[10px] text-[#45474c] dark:text-[#828796] border-b border-[#e0e3e5]/60 dark:border-[#2d3133] pb-1">
+                            <div className="flex items-center justify-between gap-3 text-[10px] text-gray-600 dark:text-gray-400 border-b border-gray-100 dark:border-gray-800 pb-1">
                               <div className="flex items-center gap-1.5">
-                                <span className="px-1.5 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold uppercase text-[9px] border border-emerald-300/40">
-                                  ISL Message
+                                <span className="px-1.5 py-0.2 rounded bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 font-black uppercase text-[9px] border border-emerald-300/60">
+                                  {t('translate.islMessageBadge', 'ISL Message')}
                                 </span>
-                                <span className="font-mono text-gray-400">
-                                  {msg.phrase.split(/\s+/).length} words
+                                <span className="font-mono text-gray-500 font-medium">
+                                  {msg.phrase.split(/\s+/).length} {t('translate.wordsCount', 'words')}
                                 </span>
                               </div>
-                              <span>{msg.timestamp}</span>
+                              <span className="font-medium text-gray-500 dark:text-gray-400">{msg.timestamp}</span>
                             </div>
 
-                            <p className="text-base font-bold text-[#030813] dark:text-white leading-relaxed">
+                            <p className="text-base font-black text-gray-950 dark:text-white leading-relaxed">
                               "{msg.phrase}"
                             </p>
 
@@ -1443,10 +1497,10 @@ export const TranslatePage: React.FC = () => {
                                 type="button"
                                 onClick={() => speak(msg.phrase)}
                                 disabled={speaking}
-                                className="px-2 py-0.5 bg-[#f1f4f6] dark:bg-[#0d121d] hover:bg-[#fe9832]/20 text-[#030813] dark:text-white rounded-md text-[10px] font-bold transition flex items-center gap-1 border border-[#e0e3e5] dark:border-[#2d3133] cursor-pointer"
+                                className="px-2 py-0.5 bg-gray-100 dark:bg-black/50 hover:bg-[#fe9832]/30 text-gray-950 dark:text-white rounded-md text-[10px] font-bold transition flex items-center gap-1 border border-gray-200 dark:border-[#2d3133] shadow-xs cursor-pointer"
                               >
                                 <span className="material-symbols-outlined text-[13px] text-[#fe9832]">volume_up</span>
-                                <span>Speak Aloud</span>
+                                <span>{t('translate.speakAloud', 'Speak Aloud')}</span>
                               </button>
                             </div>
                           </div>
@@ -1464,17 +1518,19 @@ export const TranslatePage: React.FC = () => {
                         isModelActive={isISLRecognizing}
                         onSendMessage={handleSendSignedMessage}
                         onSpeakDraft={(draft) => speak(draft)}
-                        placeholder="Validated signs appear here. Edit or type before sending..."
+                        placeholder={t('translate.composerPlaceholder', 'Validated signs appear here. Edit or type before sending...')}
                       />
                     </div>
                   </div>
                 </>
               )}
-
+              {/* Close Right Pane */}
             </div>
 
+            {/* Close Stretched Arena Grid */}
           </div>
 
+          {/* Close Active Communication Arena */}
         </div>
       )}
 
@@ -1483,47 +1539,47 @@ export const TranslatePage: React.FC = () => {
       {/* ========================================================================= */}
       {showSummaryModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-[28px] max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-[#e0e3e5] flex flex-col gap-5 animate-scaleUp">
+          <div className="bg-white dark:bg-[#151c28] rounded-[28px] max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-[#243044] flex flex-col gap-5 animate-scaleUp text-gray-900 dark:text-white">
             
             {/* Modal Header */}
-            <div className="flex items-center gap-3 border-b border-[#e0e3e5] pb-4">
-              <div className="w-12 h-12 rounded-2xl bg-green-100 text-green-700 flex items-center justify-center">
+            <div className="flex items-center gap-3 border-b border-slate-200 dark:border-[#243044] pb-4">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-[#8dfc75] flex items-center justify-center">
                 <span className="material-symbols-outlined text-[28px]">check_circle</span>
               </div>
               <div>
-                <h2 className="text-xl font-bold text-[#030813]">Communication Ended</h2>
-                <p className="text-xs text-[#45474c]">Session summary complete</p>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t('translate.summaryTitle', 'Communication Ended')}</h2>
+                <p className="text-xs text-gray-500 dark:text-[#828796]">{t('translate.summarySubtitle', 'Session summary complete')}</p>
               </div>
             </div>
 
             {/* Detailed Mode Breakdown in Summary */}
-            <div className="bg-[#f7fafc] rounded-2xl p-4 border border-[#e0e3e5] flex flex-col gap-2 max-h-48 overflow-y-auto">
-              <div className="flex justify-between text-xs border-b border-[#e0e3e5]/60 pb-1.5 font-bold">
-                <span className="text-[#45474c]">Conversation:</span>
-                <span className="font-bold text-[#030813]">{sessionHistoryLogs.length} events</span>
+            <div className="bg-slate-50 dark:bg-[#0c121e] rounded-2xl p-4 border border-slate-200 dark:border-[#243044] flex flex-col gap-2 max-h-48 overflow-y-auto">
+              <div className="flex justify-between text-xs border-b border-slate-200 dark:border-[#243044] pb-1.5 font-bold">
+                <span className="text-gray-600 dark:text-[#828796]">{t('translate.conversationLabel', 'Conversation:')}</span>
+                <span className="font-bold text-gray-900 dark:text-white">{sessionHistoryLogs.length} {t('translate.eventsCount', 'events')}</span>
               </div>
 
               {sessionHistoryLogs.length === 0 ? (
-                <p className="text-[11px] text-[#45474c]/70 italic py-2">No conversation in this session.</p>
+                <p className="text-[11px] text-gray-500 dark:text-[#828796] italic py-2">{t('translate.noConversation', 'No conversation in this session.')}</p>
               ) : (
                 <div className="space-y-1.5 pt-1">
                   {sessionHistoryLogs.map((log, idx) => (
                     <div key={idx} className="flex items-center justify-between text-[11px]">
                       <div className="flex items-center gap-1.5 truncate max-w-[80%]">
-                        <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
                           log.mode === 'SPEECH'
-                            ? 'bg-amber-100 text-amber-800'
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300'
                             : log.mode === 'TEXT'
-                            ? 'bg-blue-100 text-blue-800'
+                            ? 'bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300'
                             : log.mode === 'GESTURE'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : 'bg-gray-200 text-gray-700'
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
+                            : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
                         }`}>
                           {log.mode}
                         </span>
-                        <span className="text-[#181c1e] truncate">{log.text}</span>
+                        <span className="text-gray-900 dark:text-white truncate">{log.text}</span>
                       </div>
-                      <span className="text-[10px] text-[#45474c]">{log.time}</span>
+                      <span className="text-[10px] text-gray-500 dark:text-[#828796]">{log.time}</span>
                     </div>
                   ))}
                 </div>
@@ -1534,9 +1590,9 @@ export const TranslatePage: React.FC = () => {
             <div className="flex pt-2">
               <button
                 onClick={handleDoneSummary}
-                className="w-full py-3 px-4 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                className="w-full py-3 px-4 bg-gradient-to-r from-emerald-500 via-teal-600 to-indigo-600 text-white dark:bg-none dark:bg-[#fe9832] dark:text-[#683700] hover:opacity-95 font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm cursor-pointer"
               >
-                <span>Done (Close Session)</span>
+                <span>{t('translate.doneCloseSession', 'Done (Close Session)')}</span>
                 <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
               </button>
             </div>
@@ -1559,8 +1615,8 @@ export const TranslatePage: React.FC = () => {
                   <span className="material-symbols-outlined text-[22px]">school</span>
                 </div>
                 <div>
-                  <h2 className="text-lg font-black tracking-tight">Indian Sign Language (ISL) Recognition Guide</h2>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Tips for 90%+ recognition accuracy with Sambhav BiLSTM AI</p>
+                  <h2 className="text-lg font-black tracking-tight">{t('translate.guideModalTitle', 'Indian Sign Language (ISL) Recognition Guide')}</h2>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{t('translate.guideModalSubtitle', 'Tips for 90%+ recognition accuracy with Sambhav BiLSTM AI')}</p>
                 </div>
               </div>
               <button
@@ -1579,16 +1635,16 @@ export const TranslatePage: React.FC = () => {
               <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl p-3.5">
                 <div className="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-300 text-sm mb-1.5">
                   <span className="material-symbols-outlined text-[18px]">front_hand</span>
-                  <span>1. Alphabets A–Z are 2-Handed in ISL</span>
+                  <span>1. {t('translate.guideTip1Title', 'Alphabets A–Z are 2-Handed in ISL')}</span>
                 </div>
                 <p className="text-amber-800 dark:text-amber-200 leading-relaxed">
-                  Unlike American Sign Language (ASL) which uses one hand, <strong>Indian Sign Language (ISL) uses two hands</strong> for alphabets:
+                  {t('translate.guideTip1Desc', 'Unlike American Sign Language (ASL) which uses one hand, Indian Sign Language (ISL) uses two hands for alphabets:')}
                 </p>
                 <ul className="list-disc list-inside mt-2 space-y-1 text-amber-900 dark:text-amber-100 font-medium">
-                  <li><strong>Letter A:</strong> Touch the tip of your left thumb with your right index finger.</li>
-                  <li><strong>Letter B:</strong> Form circles with both hands touching each other at finger tips.</li>
-                  <li><strong>Letter C:</strong> Curve both hands in facing arcs.</li>
-                  <li><strong>Letter D:</strong> Place right index finger against left upright index finger.</li>
+                  <li><strong>Letter A:</strong> {t('translate.guideTip1A', 'Touch the tip of your left thumb with your right index finger.')}</li>
+                  <li><strong>Letter B:</strong> {t('translate.guideTip1B', 'Form circles with both hands touching each other at finger tips.')}</li>
+                  <li><strong>Letter C:</strong> {t('translate.guideTip1C', 'Curve both hands in facing arcs.')}</li>
+                  <li><strong>Letter D:</strong> {t('translate.guideTip1D', 'Place right index finger against left upright index finger.')}</li>
                 </ul>
               </div>
 
@@ -1596,13 +1652,13 @@ export const TranslatePage: React.FC = () => {
               <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-xl p-3.5">
                 <div className="flex items-center gap-2 font-bold text-blue-900 dark:text-blue-300 text-sm mb-1.5">
                   <span className="material-symbols-outlined text-[18px]">motion_photos_on</span>
-                  <span>2. Dynamic Moving Words (1.5s – 3.0s Motion)</span>
+                  <span>2. {t('translate.guideTip2Title', 'Dynamic Moving Words (1.5s – 3.0s Motion)')}</span>
                 </div>
                 <p className="text-blue-800 dark:text-blue-200 leading-relaxed">
-                  Dynamic vocabulary signs (such as <em>hello</em>, <em>thank you</em>, <em>father</em>, <em>school</em>, <em>money</em>, <em>happy</em>) need a continuous movement stroke across 1.5 to 3 seconds.
+                  {t('translate.guideTip2Desc', 'Dynamic vocabulary signs (such as hello, thank you, father, school, money, happy) need a continuous movement stroke across 1.5 to 3 seconds.')}
                 </p>
                 <p className="text-blue-800 dark:text-blue-200 mt-1">
-                  Start your sign clearly in front of the camera, perform the motion, and then return hands to resting position.
+                  {t('translate.guideTip2Footer', 'Start your sign clearly in front of the camera, perform the motion, and then return hands to resting position.')}
                 </p>
               </div>
 
@@ -1610,10 +1666,10 @@ export const TranslatePage: React.FC = () => {
               <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl p-3.5">
                 <div className="flex items-center gap-2 font-bold text-emerald-900 dark:text-emerald-300 text-sm mb-1.5">
                   <span className="material-symbols-outlined text-[18px]">lightbulb</span>
-                  <span>3. Lighting & Camera Distance</span>
+                  <span>3. {t('translate.guideTip3Title', 'Lighting & Camera Distance')}</span>
                 </div>
                 <p className="text-emerald-800 dark:text-emerald-200 leading-relaxed">
-                  Sit roughly <strong>1.5 to 2.5 feet (0.5m – 0.8m)</strong> from your webcam so your torso and both hands are clearly framed. Ensure front-facing lighting so MediaPipe tracks all 21 joints on each hand without shadow distortion.
+                  {t('translate.guideTip3Desc', 'Sit roughly 1.5 to 2.5 feet (0.5m – 0.8m) from your webcam so your torso and both hands are clearly framed. Ensure front-facing lighting so MediaPipe tracks all 21 joints on each hand without shadow distortion.')}
                 </p>
               </div>
 
@@ -1621,10 +1677,10 @@ export const TranslatePage: React.FC = () => {
               <div className="bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-750 rounded-xl p-3.5">
                 <h4 className="font-bold text-gray-900 dark:text-white mb-1.5 flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-[16px] text-[#fe9832]">category</span>
-                  <span>Trained Vocabulary (169 Classes)</span>
+                  <span>{t('translate.guideVocabTitle', 'Trained Vocabulary (262 ISL Classes)')}</span>
                 </h4>
                 <p className="text-gray-600 dark:text-gray-300 text-[11px] leading-relaxed">
-                  Includes full ISL Alphabet (A–Z), Days of Week (Monday–Sunday), Months (January–December), Family Relations (Father, Mother, Brother, Sister, Son, Daughter...), Common Greetings & Actions (Hello, Thank You, Please, Help, Hospital, School, Water, Food...).
+                  {t('translate.guideVocabDesc', 'Trained on 262 whole-word Indian Sign Language concepts from the Saanket Parquet dataset, including Days of Week, Months, Family Relations, Common Actions, Emergency, Medical, and Daily Life Vocabulary.')}
                 </p>
               </div>
 
@@ -1637,7 +1693,7 @@ export const TranslatePage: React.FC = () => {
                 onClick={() => setShowGuideModal(false)}
                 className="w-full py-2.5 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] font-black text-xs rounded-xl transition cursor-pointer shadow-sm"
               >
-                Got It, Let's Sign!
+                {t('translate.guideGotIt', "Got It, Let's Sign!")}
               </button>
             </div>
 
@@ -1645,6 +1701,14 @@ export const TranslatePage: React.FC = () => {
         </div>
       )}
 
+      {/* Handwritten Note / Prescription Scanner Modal */}
+      <ScanModal
+        isOpen={showScanModal}
+        onClose={() => setShowScanModal(false)}
+        onSendToTranslate={handleScannedTextSubmit}
+      />
+
+      </div>
     </div>
   );
 };

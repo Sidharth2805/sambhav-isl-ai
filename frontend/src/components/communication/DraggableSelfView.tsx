@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { VideoTrack } from '@livekit/components-react';
+import { VideoTrack } from './VideoTrack';
 
 interface DraggableSelfViewProps {
   parentRef: React.RefObject<HTMLDivElement | null>;
@@ -101,7 +101,7 @@ export const DraggableSelfView: React.FC<DraggableSelfViewProps> = ({
           />
           <canvas
             data-gesture-canvas="true"
-            className="absolute inset-0 w-full h-full pointer-events-none z-20"
+            className="absolute inset-0 w-full h-full pointer-events-none z-20 transform -scale-x-100"
           />
         </>
       ) : (

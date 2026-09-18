@@ -160,7 +160,8 @@ export class WebSpeechSTTAdapter implements SpeechToTextAdapter {
         if (!text) return;
 
         const isFinal = Boolean(finalTranscript);
-        const confidence = event.results[event.results.length - 1]?.[0]?.confidence || 0.95;
+        const rawConf = event.results[event.results.length - 1]?.[0]?.confidence;
+        const confidence = typeof rawConf === 'number' && rawConf > 0 ? rawConf : 1.0;
         const eventId = `${this.sessionId}-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
 
         const transcriptEvent: TranscriptEvent = {

@@ -11,7 +11,6 @@ import { AppLayout } from './components/layout/AppLayout';
 import { Dashboard } from './pages/Dashboard';
 import { CommunicatePage } from './pages/CommunicatePage';
 import { OfflineSessionPage } from './pages/OfflineSessionPage';
-import { HistoryPage } from './pages/HistoryPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { SignAssetCatalog } from './components/accessibility/SignAssetCatalog';
@@ -20,7 +19,6 @@ import { AdminLoginPage } from './pages/AdminLoginPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { TranslatePage } from './pages/TranslatePage';
 import { LearnISLPage } from './pages/LearnISLPage';
-import { ExplorePage } from './pages/ExplorePage';
 import { HelpPage } from './pages/HelpPage';
 import { NewsPage } from './pages/NewsPage';
 import { CulturalISLPage } from './pages/CulturalISLPage';
@@ -82,13 +80,15 @@ const App: React.FC = () => {
                 <Route path="/translate" element={<TranslatePage />} />
                 <Route path="/learn-isl" element={<LearnISLPage />} />
                 <Route path="/cultural-isl" element={<CulturalISLPage />} />
+                <Route path="/cultural" element={<Navigate to="/cultural-isl" replace />} />
+                <Route path="/anthem" element={<Navigate to="/cultural-isl" replace />} />
                 <Route path="/learn" element={<Navigate to="/learn-isl" replace />} />
                 <Route path="/learning" element={<Navigate to="/learn-isl" replace />} />
                 <Route path="/isl-learn" element={<Navigate to="/learn-isl" replace />} />
-                <Route path="/explore" element={<ExplorePage />} />
+                <Route path="/explore" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/help" element={<HelpPage />} />
                 <Route path="/news" element={<NewsPage />} />
-                <Route path="/history" element={<HistoryPage />} />
+                <Route path="/history" element={<Navigate to="/communicate?tab=history" replace />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/settings" element={<ProfilePage />} />
                 <Route path="/dev/model-test" element={<ISLModelTestPage />} />

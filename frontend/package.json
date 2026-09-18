@@ -23,6 +23,7 @@
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.2",
+    "tesseract.js": "^7.0.0",
     "three": "^0.185.1"
   },
   "devDependencies": {

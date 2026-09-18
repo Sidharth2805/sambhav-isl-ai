@@ -1,4 +1,5 @@
 import React from 'react';
+import type { StanzaGroup } from '../../data/culturalCatalogData';
 
 export interface LetterToken {
   char: string;
@@ -22,6 +23,10 @@ export interface ParagraphStanza {
 }
 
 export interface JanaGanaManaContentProps {
+  title?: string;
+  subtitle?: string;
+  category?: string;
+  icon?: string;
   stanzas: ParagraphStanza[];
   activeLetterIndex: number;
   totalLetters: number;
@@ -46,20 +51,28 @@ export const JANA_GANA_MANA_APPROVED_TEXT: string[] = [
 ];
 
 /**
- * Builds word-grouped letter-by-letter tokens and paragraph stanzas from approved anthem text.
+ * Builds word-grouped letter-by-letter tokens and paragraph stanzas from approved text or stanza groups.
  */
-export function buildParagraphLetterTokens(linesText: string[] = JANA_GANA_MANA_APPROVED_TEXT): {
+export function buildParagraphLetterTokens(input: string[] | StanzaGroup[] = JANA_GANA_MANA_APPROVED_TEXT): {
   stanzas: ParagraphStanza[];
   allLetters: string[];
 } {
   let letterCounter = 0;
   const allLetters: string[] = [];
 
-  const stanzaGroupings = [
-    { number: 1, title: 'Invocation of Destiny', lines: linesText.slice(0, 4) },
-    { number: 2, title: 'Sacred Rivers & Mountains', lines: linesText.slice(4, 9) },
-    { number: 3, title: 'Eternal Victory & Triumph', lines: linesText.slice(9, 13) },
-  ];
+  // Normalize input into stanza groupings
+  let stanzaGroupings: StanzaGroup[] = [];
+
+  if (input.length > 0 && typeof input[0] === 'object' && 'lines' in input[0]) {
+    stanzaGroupings = input as StanzaGroup[];
+  } else {
+    const linesText = input as string[];
+    stanzaGroupings = [
+      { number: 1, title: 'Invocation of Destiny', lines: linesText.slice(0, 4) },
+      { number: 2, title: 'Sacred Rivers & Mountains', lines: linesText.slice(4, 9) },
+      { number: 3, title: 'Eternal Victory & Triumph', lines: linesText.slice(9, 13) },
+    ];
+  }
 
   let currentLineIndex = 0;
 
@@ -118,6 +131,10 @@ export function buildParagraphLetterTokens(linesText: string[] = JANA_GANA_MANA_
 }
 
 export const JanaGanaManaContent: React.FC<JanaGanaManaContentProps> = ({
+  title = 'Jana Gana Mana',
+  subtitle = 'English Transliteration • Interactive Stanza Playback',
+  category = 'National Anthem',
+  icon = '🇮🇳',
   stanzas,
   activeLetterIndex,
   totalLetters,
@@ -152,24 +169,24 @@ export const JanaGanaManaContent: React.FC<JanaGanaManaContentProps> = ({
   }, [activeStanzaNumber]);
 
   return (
-    <div className="bg-[#0b1324]/80 backdrop-blur-xl rounded-[28px] border border-white/15 p-5 sm:p-7 flex flex-col gap-5 shadow-2xl relative overflow-hidden">
+    <div className="bg-[#0b1324]/85 backdrop-blur-xl rounded-[28px] border border-white/15 p-5 sm:p-7 flex flex-col gap-5 shadow-2xl relative overflow-hidden">
       {/* Header Bar */}
-      <div className="flex items-center justify-between border-b border-white/10 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#fe9832] via-[#ffffff] to-[#138808] p-0.5 shadow-md">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#fe9832] via-[#ffffff] to-[#138808] p-0.5 shadow-md shrink-0">
             <div className="w-full h-full bg-[#030813] rounded-[14px] flex items-center justify-center text-[20px]">
-              🇮🇳
+              {icon}
             </div>
           </div>
           <div>
-            <h2 className="text-lg font-black text-white tracking-tight">Jana Gana Mana</h2>
-            <p className="text-xs text-white/60">English Transliteration • Interactive Stanza Playback</p>
+            <h2 className="text-lg font-black text-white tracking-tight">{title}</h2>
+            <p className="text-xs text-white/60">{subtitle}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           <span className="px-3 py-1 bg-white/10 backdrop-blur-md border border-white/20 rounded-full text-xs font-bold text-white shadow-sm">
-            National Anthem
+            {category}
           </span>
           <span className="px-2.5 py-1 bg-[#fe9832]/20 border border-[#fe9832]/30 rounded-full text-[11px] font-mono font-bold text-[#fe9832]">
             {totalLetters} Letters
