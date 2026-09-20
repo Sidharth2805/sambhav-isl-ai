@@ -4,6 +4,7 @@ import { ISLAvatarCanvas, type ISLAvatarCanvasRef } from '../components/cultural
 import { useISLRecognition } from '../hooks/useISLRecognition';
 import { ISLMessageComposer } from '../components/communication/ISLMessageComposer';
 import { useAccessibility } from '../hooks/useAccessibility';
+import { ScanModal } from '../components/translate/ScanModal';
 
 interface SignAssetDto {
   assetId: string;
@@ -56,6 +57,7 @@ export const TranslatePage: React.FC = () => {
   // Communication Session Active State (Lobby vs Active)
   const [inSession, setInSession] = useState(false);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [showScanModal, setShowScanModal] = useState(false);
 
   // Active Mode (Unified Speech/Text <-> ISL and ISL <-> Text)
   const [activeMode, setActiveMode] = useState<'SPEECH_TEXT_TO_ISL' | 'ISL_TO_TEXT'>('SPEECH_TEXT_TO_ISL');
@@ -65,6 +67,16 @@ export const TranslatePage: React.FC = () => {
   const gestureVideoRef = useRef<HTMLVideoElement | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
+
+  // Auto-open Scan Modal if requested via URL query params (?scan=true, ?notes=true, ?rx=true)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('scan') === 'true' || params.get('notes') === 'true' || params.get('rx') === 'true' || params.get('prescription') === 'true') {
+        setShowScanModal(true);
+      }
+    }
+  }, []);
 
   // Real-Time ISL Neural Model Recognition Hook
   const {
@@ -659,6 +671,43 @@ export const TranslatePage: React.FC = () => {
     }
   };
 
+  // Handle text extracted from Notes / Prescription OCR Scanner
+  const handleScannedTextToTranslate = (scannedText: string) => {
+    if (!scannedText || !scannedText.trim()) return;
+    const trimmed = scannedText.trim();
+    setShowScanModal(false);
+
+    if (!inSession) {
+      setInSession(true);
+    }
+
+    setActiveMode('SPEECH_TEXT_TO_ISL');
+    setInputText(trimmed);
+
+    const msgId = `msg-scan-${Date.now()}`;
+    const words = trimmed.split(/\s+/);
+    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const newMessage: ChatMessage = {
+      id: msgId,
+      sender: 'user',
+      mode: 'TEXT',
+      text: trimmed,
+      words: words,
+      timestamp,
+    };
+
+    setTextMessages((prev) => [...prev, newMessage]);
+    setSessionHistoryLogs((prev) => [...prev, { mode: 'TEXT', text: `[Scan] ${trimmed}`, time: timestamp }]);
+
+    // Trigger instant avatar sign translation
+    translateTextToSign(trimmed, msgId);
+
+    if (autoReadOutChat) {
+      speak(trimmed);
+    }
+  };
+
   return (
     <div className="relative min-h-[calc(100vh-5rem)] -mt-20 md:-mt-6 -mx-4 sm:-mx-8 px-4 sm:px-8 pt-20 md:pt-6 pb-12 font-['Inter',sans-serif]">
       
@@ -695,22 +744,36 @@ export const TranslatePage: React.FC = () => {
             </div>
           </div>
 
-          {inSession && (
-            <div className="flex items-center gap-3">
-              <span className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-emerald-100/90 dark:bg-green-900/60 text-emerald-800 dark:text-green-300 text-xs font-black rounded-full border border-emerald-300 dark:border-green-700">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                {t('translate.liveActive', 'Live Active')}
-              </span>
-              <button
-                onClick={handleStopCommunication}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
-                aria-label={t('translate.stopComm', 'Stop Communication')}
-              >
-                <span className="material-symbols-outlined text-[18px]">stop_circle</span>
-                <span>{t('translate.stopComm', 'Stop Communication')}</span>
-              </button>
-            </div>
-          )}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Quick Scan Notes / Rx Button */}
+            <button
+              type="button"
+              onClick={() => setShowScanModal(true)}
+              className="px-3 py-1.5 bg-white/80 dark:bg-[#1a202c]/80 hover:bg-emerald-50 text-slate-800 dark:text-emerald-300 border border-slate-300 dark:border-emerald-800/60 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer backdrop-blur-sm"
+              title="Scan handwritten notes, letters, or doctor prescriptions"
+            >
+              <span className="material-symbols-outlined text-[16px] text-emerald-600 dark:text-emerald-400">document_scanner</span>
+              <span className="hidden sm:inline">{t('translate.scanNotesPrescription', 'Scan Notes & Rx')}</span>
+              <span className="sm:hidden">{t('translate.scanDoc', 'Scan')}</span>
+            </button>
+
+            {inSession && (
+              <>
+                <span className="hidden sm:flex items-center gap-1.5 px-3 py-1 bg-emerald-100/90 dark:bg-green-900/60 text-emerald-800 dark:text-green-300 text-xs font-black rounded-full border border-emerald-300 dark:border-green-700">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  {t('translate.liveActive', 'Live Active')}
+                </span>
+                <button
+                  onClick={handleStopCommunication}
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+                  aria-label={t('translate.stopComm', 'Stop Communication')}
+                >
+                  <span className="material-symbols-outlined text-[18px]">stop_circle</span>
+                  <span>{t('translate.stopComm', 'Stop Communication')}</span>
+                </button>
+              </>
+            )}
+          </div>
         </header>
 
         {/* ========================================================================= */}
@@ -736,8 +799,8 @@ export const TranslatePage: React.FC = () => {
                 {t('translate.lobbyDesc', 'Enable your camera and microphone for instant two-way translation between spoken voice, text, and Indian Sign Language.')}
               </p>
 
-              {/* Main Action Button */}
-              <div className="mt-6 flex items-center justify-center">
+              {/* Main Action Buttons */}
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3.5">
                 <button
                   onClick={handleStartCommunication}
                   className="px-8 py-4 bg-gradient-to-r from-emerald-500 via-teal-600 to-indigo-600 text-white dark:bg-none dark:bg-[#fe9832] dark:hover:bg-[#e8872b] dark:text-[#542900] hover:scale-105 active:scale-95 font-black text-base sm:text-lg rounded-2xl transition-all shadow-lg shadow-emerald-500/25 dark:shadow-[#fe9832]/30 flex items-center gap-3 group cursor-pointer"
@@ -750,21 +813,32 @@ export const TranslatePage: React.FC = () => {
                     arrow_forward
                   </span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowScanModal(true)}
+                  className="px-7 py-4 bg-white/90 dark:bg-[#1a202c]/90 hover:bg-white dark:hover:bg-[#242b38] text-slate-900 dark:text-white border-2 border-slate-300/80 dark:border-[#2d3133] hover:border-emerald-500 dark:hover:border-[#fe9832] font-black text-base sm:text-lg rounded-2xl transition-all shadow-lg shadow-slate-900/5 hover:scale-105 active:scale-95 flex items-center gap-3 cursor-pointer backdrop-blur-md"
+                >
+                  <span className="material-symbols-outlined text-[26px] text-emerald-600 dark:text-[#fe9832]">
+                    document_scanner
+                  </span>
+                  <span>{t('translate.scanNotesPrescription', 'Scan Notes & Rx')}</span>
+                </button>
               </div>
             </div>
 
-            {/* Bottom Overview of the 2 Modes - Shifted upward */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto w-full z-10 mb-4 sm:mb-6 mt-4">
+            {/* Bottom Overview of the 3 Modes */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 max-w-5xl mx-auto w-full z-10 mb-4 sm:mb-6 mt-4">
               
               {/* Mode 1 */}
-              <div className="bg-white/30 dark:bg-white/5 backdrop-blur-md p-4 rounded-2xl border border-white/40 hover:border-sky-400 dark:border-white/10 shadow-sm flex items-start gap-3 transition-all">
+              <div className="bg-white/30 dark:bg-white/5 backdrop-blur-md p-3.5 sm:p-4 rounded-2xl border border-white/40 hover:border-sky-400 dark:border-white/10 shadow-sm flex items-start gap-3 transition-all">
                 <div className="w-10 h-10 rounded-xl bg-sky-100/90 text-sky-700 dark:bg-[#fe9832]/15 dark:text-[#ffb77a] flex items-center justify-center shrink-0">
                   <span className="material-symbols-outlined text-[22px]">mic</span>
                 </div>
                 <div>
                   <h3 className="text-sm font-black text-gray-950 dark:text-white">{t('translate.mode1Title', 'Text/Speech → ISL')}</h3>
                   <p className="text-xs text-gray-700 dark:text-[#c1c6d7] mt-0.5 leading-relaxed font-medium">
-                    {t('translate.mode1Desc', 'Real-time microphone capture or typed text with live captions and avatar animation.')}
+                    {t('translate.mode1Desc', 'Microphone capture or typed text with live captions and 3D avatar animation.')}
                   </p>
                 </div>
               </div>
@@ -775,7 +849,7 @@ export const TranslatePage: React.FC = () => {
                   setActiveMode('ISL_TO_TEXT');
                   handleStartCommunication();
                 }}
-                className="bg-white/30 dark:bg-white/5 backdrop-blur-md p-4 rounded-2xl border border-white/40 hover:border-emerald-400 dark:border-white/10 shadow-sm flex items-start gap-3 cursor-pointer hover:scale-[1.02] transition-all group"
+                className="bg-white/30 dark:bg-white/5 backdrop-blur-md p-3.5 sm:p-4 rounded-2xl border border-white/40 hover:border-emerald-400 dark:border-white/10 shadow-sm flex items-start gap-3 cursor-pointer hover:scale-[1.02] transition-all group"
               >
                 <div className="w-10 h-10 rounded-xl bg-emerald-100/90 text-emerald-700 dark:bg-indigo-500/15 dark:text-indigo-300 flex items-center justify-center shrink-0 group-hover:bg-emerald-200 dark:group-hover:bg-[#fe9832]/20 dark:group-hover:text-[#fe9832] transition-colors">
                   <span className="material-symbols-outlined text-[22px]">sign_language</span>
@@ -786,7 +860,26 @@ export const TranslatePage: React.FC = () => {
                     <span className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400 px-1.5 py-0.5 rounded font-black">{t('translate.startBadge', 'START')}</span>
                   </h3>
                   <p className="text-xs text-gray-700 dark:text-[#c1c6d7] mt-0.5 leading-relaxed font-medium">
-                    {t('translate.mode2Desc', 'Camera-based gesture tracking synthesizes natural spoken audio and text in real time.')}
+                    {t('translate.mode2Desc', 'Camera-based gesture tracking synthesizes natural spoken audio in real time.')}
+                  </p>
+                </div>
+              </div>
+
+              {/* Mode 3: Notes & Prescription Scanner */}
+              <div
+                onClick={() => setShowScanModal(true)}
+                className="bg-white/30 dark:bg-white/5 backdrop-blur-md p-3.5 sm:p-4 rounded-2xl border border-white/40 hover:border-teal-400 dark:border-white/10 shadow-sm flex items-start gap-3 cursor-pointer hover:scale-[1.02] transition-all group sm:col-span-2 lg:col-span-1"
+              >
+                <div className="w-10 h-10 rounded-xl bg-teal-100/90 text-teal-800 dark:bg-[#fe9832]/15 dark:text-[#ffb77a] flex items-center justify-center shrink-0 group-hover:bg-teal-200 dark:group-hover:bg-[#fe9832]/20 dark:group-hover:text-[#fe9832] transition-colors">
+                  <span className="material-symbols-outlined text-[22px]">document_scanner</span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-gray-950 dark:text-white flex items-center gap-1.5">
+                    <span>{t('translate.scanNotesPrescription', 'Notes & Prescription')}</span>
+                    <span className="text-[10px] bg-teal-100 text-teal-800 dark:bg-teal-500/15 dark:text-teal-400 px-1.5 py-0.5 rounded font-black">SCAN</span>
+                  </h3>
+                  <p className="text-xs text-gray-700 dark:text-[#c1c6d7] mt-0.5 leading-relaxed font-medium">
+                    Scan handwritten notes, letters, applications, and doctor prescriptions (Rx) into ISL.
                   </p>
                 </div>
               </div>
@@ -1364,6 +1457,18 @@ export const TranslatePage: React.FC = () => {
                       </span>
                     </button>
 
+                    {/* Notes & Prescription OCR Quick Trigger Button */}
+                    <button
+                      type="button"
+                      onClick={() => setShowScanModal(true)}
+                      title={t('translate.scanNotesPrescription', 'Scan Notes & Prescription (OCR)')}
+                      className="p-2.5 rounded-xl border border-teal-200 dark:border-teal-700/50 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 hover:bg-teal-100 dark:hover:bg-teal-900/50 transition-all flex items-center justify-center cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">
+                        document_scanner
+                      </span>
+                    </button>
+
                     <button
                       type="submit"
                       disabled={isProcessing || !inputText.trim()}
@@ -1649,6 +1754,13 @@ export const TranslatePage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* OCR Notes & Prescription Scan Modal */}
+      <ScanModal
+        isOpen={showScanModal}
+        onClose={() => setShowScanModal(false)}
+        onSendToTranslate={handleScannedTextToTranslate}
+      />
 
       </div>
     </div>

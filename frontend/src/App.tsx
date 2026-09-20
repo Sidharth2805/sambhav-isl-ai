@@ -78,6 +78,12 @@ const App: React.FC = () => {
                 
                 {/* Core Navigation Routes */}
                 <Route path="/translate" element={<TranslatePage />} />
+                <Route path="/scan" element={<Navigate to="/translate?scan=true" replace />} />
+                <Route path="/prescription" element={<Navigate to="/translate?scan=true" replace />} />
+                <Route path="/prescription-reader" element={<Navigate to="/translate?scan=true" replace />} />
+                <Route path="/notes" element={<Navigate to="/translate?scan=true" replace />} />
+                <Route path="/notes-reader" element={<Navigate to="/translate?scan=true" replace />} />
+                <Route path="/ocr" element={<Navigate to="/translate?scan=true" replace />} />
                 <Route path="/learn-isl" element={<LearnISLPage />} />
                 <Route path="/cultural-isl" element={<CulturalISLPage />} />
                 <Route path="/cultural" element={<Navigate to="/cultural-isl" replace />} />
