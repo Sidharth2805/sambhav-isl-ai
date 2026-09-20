@@ -322,26 +322,50 @@ async function runTesseract(
   psm: number,
   language: string = 'eng'
 ): Promise<TesseractRunResult> {
-  const result = await Tesseract.recognize(imageSrc, language, {
-    workerPath: '/tesseract/worker.min.js',
-    corePath: '/tesseract/core/tesseract-core.wasm.js',
-    langPath: '/tesseract/lang-data',
-    logger: () => {}, // suppress per-iteration console noise
-    // @ts-ignore — Tesseract.js passes raw config strings to the WASM engine
-    tessedit_pageseg_mode: psm,
-    // OEM 1 = LSTM neural net only — best accuracy for handwriting
-    // @ts-ignore
-    tessedit_ocr_engine_mode: 1,
-    // Preserve inter-word spacing so words don't merge
-    // @ts-ignore
-    preserve_interword_spaces: '1',
-  });
+  try {
+    const worker = await Tesseract.createWorker(language, 1, {
+      workerPath: '/tesseract/worker.min.js',
+      corePath: '/tesseract/core/tesseract-core.wasm.js',
+      langPath: '/tesseract/lang-data',
+      logger: () => {},
+    });
 
-  return {
-    text: result.data.text || '',
-    confidence: result.data.confidence || 0,
-    lines: extractLinesFromPage(result.data),
-  };
+    await worker.setParameters({
+      // @ts-ignore
+      tessedit_pageseg_mode: psm,
+      // @ts-ignore
+      preserve_interword_spaces: '1',
+    });
+
+    const result = await worker.recognize(imageSrc);
+    await worker.terminate();
+
+    return {
+      text: result.data.text || '',
+      confidence: result.data.confidence || 0,
+      lines: extractLinesFromPage(result.data),
+    };
+  } catch (err) {
+    console.warn('[Sambhav OCR] Local worker initialization note, using recognize fallback:', err);
+    const result = await Tesseract.recognize(imageSrc, language, {
+      workerPath: '/tesseract/worker.min.js',
+      corePath: '/tesseract/core/tesseract-core.wasm.js',
+      langPath: '/tesseract/lang-data',
+      logger: () => {},
+      // @ts-ignore
+      tessedit_pageseg_mode: psm,
+      // @ts-ignore
+      tessedit_ocr_engine_mode: 1,
+      // @ts-ignore
+      preserve_interword_spaces: '1',
+    });
+
+    return {
+      text: result.data.text || '',
+      confidence: result.data.confidence || 0,
+      lines: extractLinesFromPage(result.data),
+    };
+  }
 }
 
 /**
