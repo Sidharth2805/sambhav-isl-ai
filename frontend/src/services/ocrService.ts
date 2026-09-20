@@ -317,8 +317,15 @@ function extractLinesFromPage(data: Tesseract.Page): Tesseract.Line[] {
  *  4 = Assume single column of variable-size text → handwriting with varied line heights
  *  3 = Fully automatic page segmentation (fallback)
  */
-async function runTesseract(imageSrc: string, psm: number): Promise<TesseractRunResult> {
-  const result = await Tesseract.recognize(imageSrc, 'eng', {
+async function runTesseract(
+  imageSrc: string,
+  psm: number,
+  language: string = 'eng'
+): Promise<TesseractRunResult> {
+  const result = await Tesseract.recognize(imageSrc, language, {
+    workerPath: '/tesseract/worker.min.js',
+    corePath: '/tesseract/core/tesseract-core.wasm.js',
+    langPath: '/tesseract/lang-data',
     logger: () => {}, // suppress per-iteration console noise
     // @ts-ignore — Tesseract.js passes raw config strings to the WASM engine
     tessedit_pageseg_mode: psm,
@@ -423,9 +430,16 @@ export async function scanHandwrittenImage(
     console.info('[Sambhav OCR] Preprocessing image for handwriting enhancement...');
     const enhancedSrc = await preprocessImageForOCR(imageBase64);
 
+    const langMap: Record<string, string> = {
+      en: 'eng',
+      hi: 'hin',
+      or: 'ori',
+    };
+    const langCode = langMap[language] || 'eng';
+
     // Pass 1 — PSM 6: best for dense uniform handwritten blocks
     console.info('[Sambhav OCR] Pass 1 — PSM 6 (uniform block)...');
-    const pass1 = await runTesseract(enhancedSrc, 6);
+    const pass1 = await runTesseract(enhancedSrc, 6, langCode);
     let finalResult = pass1;
 
     // Pass 2 — PSM 4: single column, variable character sizes
@@ -433,7 +447,7 @@ export async function scanHandwrittenImage(
       console.info(
         `[Sambhav OCR] Low confidence (${pass1.confidence.toFixed(1)}%), trying PSM 4 (single column)...`
       );
-      const pass2 = await runTesseract(enhancedSrc, 4);
+      const pass2 = await runTesseract(enhancedSrc, 4, langCode);
       if (pass2.confidence > finalResult.confidence) {
         finalResult = pass2;
         console.info(`[Sambhav OCR] PSM 4 improved → ${pass2.confidence.toFixed(1)}%`);
@@ -445,7 +459,7 @@ export async function scanHandwrittenImage(
       console.info(
         `[Sambhav OCR] Still low (${finalResult.confidence.toFixed(1)}%), trying original + PSM 3...`
       );
-      const pass3 = await runTesseract(imageBase64, 3);
+      const pass3 = await runTesseract(imageBase64, 3, langCode);
       if (pass3.confidence > finalResult.confidence) {
         finalResult = pass3;
         console.info(`[Sambhav OCR] Original + PSM 3 → ${pass3.confidence.toFixed(1)}%`);

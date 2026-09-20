@@ -156,7 +156,7 @@ export const RegisterPage: React.FC = () => {
               <img
                 alt="SAMBHAV Logo"
                 className="h-11 w-11 object-contain rounded-full shadow-md"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBTg0HBcA_4tr0W91LDkwqOnVSfSNqNLfncEA1PPwyGzu5JLTBXpp_wsXkZjo9tzLvf4KFNyaXk060fIQSGUovqRqh34LlLcrxxAUa5VojHfDfu4jRQJGk6QxnzQbHigwRz16MDMj2DwoCRu_i77QAzKuRLVJ8e2mLUwC7-UvMJ_JB5sui2SpIRfZM5c9yAP4gD3yTYgJBzlXm_PtIyr70gHi3MkHGC95pbUZ_Mid5Kj_my4OpeXflK15WPybnDecsYaov545CM4kLxeQ"
+                src="/logo.png"
               />
               <span className="text-2xl font-bold tracking-tight text-white">
                 SAM<span className="text-[#fe9832] font-extrabold">BHAV</span>

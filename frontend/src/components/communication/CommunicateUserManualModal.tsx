@@ -47,7 +47,7 @@ export const CommunicateUserManualCard: React.FC<CommunicateUserManualCardProps>
       badge: t('manual.step1.badge', '0.5m – 1.5m'),
       icon: 'straighten',
       image: '/assets/manual_camera_framing.jpg',
-      fallback: 'https://images.unsplash.com/photo-1588196749597-9ff075ee6b5b?auto=format&fit=crop&w=600&q=80',
+      fallback: '/images/dashboard/video-call.jpg',
       // Mint / Sage Green (like UX/UI Design)
       cardBg: 'bg-[#d2ece5] dark:bg-[#122822]',
       cardHover: 'hover:bg-[#bfe2d8] dark:hover:bg-[#17332b] hover:border-[#9ed3c6] dark:hover:border-[#244c41]',
@@ -68,7 +68,7 @@ export const CommunicateUserManualCard: React.FC<CommunicateUserManualCardProps>
       badge: t('manual.step2.badge', 'Direct Light'),
       icon: 'wb_sunny',
       image: '/assets/manual_lighting_setup.jpg',
-      fallback: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80',
+      fallback: '/images/communication/remote-user.jpg',
       // Butter Warm Yellow (like Interface Motion / Score)
       cardBg: 'bg-[#fee5b6] dark:bg-[#2b2010]',
       cardHover: 'hover:bg-[#fcd795] dark:hover:bg-[#382b16] hover:border-[#fbc674] dark:hover:border-[#4d3b1f]',
@@ -110,7 +110,7 @@ export const CommunicateUserManualCard: React.FC<CommunicateUserManualCardProps>
       badge: t('manual.step4.badge', 'Speech ↔ Sign'),
       icon: 'record_voice_over',
       image: '/assets/manual_twoway_sync.jpg',
-      fallback: 'https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04?auto=format&fit=crop&w=600&q=80',
+      fallback: '/images/communication/typing-caption.jpg',
       // Soft Lavender / Lilac (like Active 11)
       cardBg: 'bg-[#e4dbf7] dark:bg-[#1d162f]',
       cardHover: 'hover:bg-[#d5c7f2] dark:hover:bg-[#271d3e] hover:border-[#bcabeb] dark:hover:border-[#3c2d60]',

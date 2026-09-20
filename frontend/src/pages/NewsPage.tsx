@@ -31,7 +31,7 @@ const NEWS_ARTICLES: NewsArticle[] = [
     date: 'August 14, 2026',
     readTime: '4 min read',
     summary: 'New guidelines aim to standardize 10,000+ technical and higher-education terms in Indian Sign Language across universities.',
-    imageUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800&auto=format&fit=crop&q=80',
+    imageUrl: '/images/news/news-education.jpg',
     content: [
       'The Ministry of Education, in partnership with the Indian Sign Language Research and Training Centre (ISLRTC), has officially unveiled a nationwide framework to standardize technical terms in Indian Sign Language (ISL).',
       'The initiative introduces over 10,000 standardized signs covering computer science, STEM fields, legal jurisprudence, and medical sciences, allowing Deaf students to pursue specialized collegiate degrees with full linguistic support.',
@@ -52,7 +52,7 @@ const NEWS_ARTICLES: NewsArticle[] = [
     date: 'August 10, 2026',
     readTime: '3 min read',
     summary: 'Pilot programs deploying real-time sign language synthesis and live classroom captioning report a 40% increase in student engagement.',
-    imageUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&auto=format&fit=crop&q=80',
+    imageUrl: '/images/news/news-tech.jpg',
     content: [
       'A multi-state pilot program implementing real-time AI sign language translation devices has shown remarkable success in rural schools across Karnataka and Maharashtra.',
       'Teachers equipped with lightweight edge-computing tablets can speak naturally in Kannada, Marathi, or English, while an on-screen ISL avatar renders accurate grammatical sign sequences for Deaf pupils.',
@@ -73,7 +73,7 @@ const NEWS_ARTICLES: NewsArticle[] = [
     date: 'July 28, 2026',
     readTime: '5 min read',
     summary: 'Delegates from 20+ countries gathered to share open-source accessibility software and advocacy strategies.',
-    imageUrl: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?w=800&auto=format&fit=crop&q=80',
+    imageUrl: '/images/news/news-community.jpg',
     content: [
       'The Global Deaf Youth Leadership Summit concluded this week with over 300 young leaders from 20 nations sharing innovations in assistive technology and human rights advocacy.',
       'Keynote presentations emphasized the growing impact of web-first WebRTC video calling with integrated sign synthesis, enabling cross-border collaboration without expensive specialized hardware.',

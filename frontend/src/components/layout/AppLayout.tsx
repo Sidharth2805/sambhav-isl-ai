@@ -102,7 +102,7 @@ export const AppLayout: React.FC = () => {
           title={t('sidebar.dashboard', 'Dashboard')}
         >
           <img
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBTg0HBcA_4tr0W91LDkwqOnVSfSNqNLfncEA1PPwyGzu5JLTBXpp_wsXkZjo9tzLvf4KFNyaXk060fIQSGUovqRqh34LlLcrxxAUa5VojHfDfu4jRQJGk6QxnzQbHigwRz16MDMj2DwoCRu_i77QAzKuRLVJ8e2mLUwC7-UvMJ_JB5sui2SpIRfZM5c9yAP4gD3yTYgJBzlXm_PtIyr70gHi3MkHGC95pbUZ_Mid5Kj_my4OpeXflK15WPybnDecsYaov545CM4kLxeQ"
+            src="/logo.png"
             alt="SAMBHAV Logo"
             className="h-8 w-8 rounded-full object-cover"
           />
@@ -210,7 +210,7 @@ export const AppLayout: React.FC = () => {
             title={t('sidebar.dashboard', 'Dashboard')}
           >
             <img
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBTg0HBcA_4tr0W91LDkwqOnVSfSNqNLfncEA1PPwyGzu5JLTBXpp_wsXkZjo9tzLvf4KFNyaXk060fIQSGUovqRqh34LlLcrxxAUa5VojHfDfu4jRQJGk6QxnzQbHigwRz16MDMj2DwoCRu_i77QAzKuRLVJ8e2mLUwC7-UvMJ_JB5sui2SpIRfZM5c9yAP4gD3yTYgJBzlXm_PtIyr70gHi3MkHGC95pbUZ_Mid5Kj_my4OpeXflK15WPybnDecsYaov545CM4kLxeQ"
+              src="/logo.png"
               alt="SAMBHAV Logo"
               className="h-9 w-9 rounded-full object-cover shadow-sm shrink-0"
             />

@@ -78,7 +78,7 @@ const SAMBHAV_USE_CASES = [
     title: 'Banking',
     description: 'Enabling Accessible Teller Counters, Customer Support, and Banking Services with Real-time Indian Sign Language Support',
     image: '/images/banking.jpg',
-    fallback: 'https://r.mobirisesite.com/3189180/images/BANKS.jpg',
+    fallback: '/images/landing/banks.jpg',
     tag: 'Banking & Finance',
     icon: 'account_balance'
   },
@@ -87,7 +87,7 @@ const SAMBHAV_USE_CASES = [
     title: 'Public Services',
     description: 'Making Government Service Centers, Citizen Helpdesks, and Public Utility Offices Accessible to Indian Sign Language Users.',
     image: '/images/public-services.jpg',
-    fallback: 'https://r.mobirisesite.com/3189180/images/public32services.jpg',
+    fallback: '/images/landing/public-services.jpg',
     tag: 'Government & Civic',
     icon: 'account_balance'
   },
@@ -123,7 +123,7 @@ const SAMBHAV_USE_CASES = [
     title: 'News',
     description: 'Delivering Accessible Media and Television Broadcasts with Synchronized Indian Sign Language Interpretation for Deaf Viewers.',
     image: '/images/news.jpg',
-    fallback: 'https://r.mobirisesite.com/3189180/assets/images/photo-1739387896856-3ba1de53e-h_mth4b2yu.jpg',
+    fallback: '/images/landing/isl-hero-showcase.jpg',
     tag: 'Media & Broadcast',
     icon: 'live_tv'
   }
@@ -355,7 +355,7 @@ export const LandingPage: React.FC = () => {
                 <img
                   alt="Sambhav Logo"
                   className="h-9 w-9 rounded-full object-cover shadow-xs border border-[#e2e8f0] dark:border-[#2d3133] group-hover:scale-105 transition-transform"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuBTg0HBcA_4tr0W91LDkwqOnVSfSNqNLfncEA1PPwyGzu5JLTBXpp_wsXkZjo9tzLvf4KFNyaXk060fIQSGUovqRqh34LlLcrxxAUa5VojHfDfu4jRQJGk6QxnzQbHigwRz16MDMj2DwoCRu_i77QAzKuRLVJ8e2mLUwC7-UvMJ_JB5sui2SpIRfZM5c9yAP4gD3yTYgJBzlXm_PtIyr70gHi3MkHGC95pbUZ_Mid5Kj_my4OpeXflK15WPybnDecsYaov545CM4kLxeQ"
+                  src="/logo.png"
                 />
                 <span className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white font-headline">
                   SAM<span className="text-indigo-600 dark:text-[#fe9832] font-black">BHAV</span>
@@ -808,20 +808,20 @@ export const LandingPage: React.FC = () => {
                 {/* Column 1 */}
                 <div className="space-y-4 sm:space-y-5 transform translate-y-3 sm:translate-y-4">
                   <div className="group relative bg-[#f8fafc] dark:bg-[#1a202c] p-2.5 sm:p-3 rounded-2xl border border-[#e2e8f0] dark:border-[#2d3133] hover:border-indigo-400 dark:hover:border-[#fe9832]/60 shadow-xs hover:shadow-sm transition-all duration-200">
-                    <img alt={t('about.sign.school', 'ISL Sign for School')} className="w-full h-auto rounded-xl object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB1IcuoSACwI4jLwg5ueh1IRcEnYPJ9hL-_WOYW3xxZ_aSu5j7uXg8E83JXK-ucoCcYtFjZAFtyw4aoQEl92qFC00LButAPA2tTxOK7u3j50wJs2327MOc0Bxxoq-7mwvY-I6Hsefs28YpImFo2WzVVkJri53VFomxBuw0fACOZ-6UNCZ2F5W6IzBnW855EVYs7ZCx7M3-WymBja7oTiFonw9OFYyi9cTbk-PZgwG7J1TlNP-MK4pI5Tt8lyQbTMYfTwQ" />
+                    <img alt={t('about.sign.school', 'ISL Sign for School')} className="w-full h-auto rounded-xl object-cover" src="/images/landing/sign-school.jpg" />
                   </div>
                   <div className="group relative bg-[#f8fafc] dark:bg-[#1a202c] p-2.5 sm:p-3 rounded-2xl border border-[#e2e8f0] dark:border-[#2d3133] hover:border-indigo-400 dark:hover:border-[#fe9832]/60 shadow-xs hover:shadow-sm transition-all duration-200">
-                    <img alt={t('about.sign.rain', 'ISL Sign for Rain')} className="w-full h-auto rounded-xl object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBtkIhmMBsu_7H0TjvzfJobxk2ep83U12cA7AambsZvc8DzEesef49vBBlQv8CNTcyNMt08nYqSbqsB-c62u0DuYAY28ObttmRpZbWPpSM8IfouAMBfmHvMok7KE_ksMqSS4ORio25uvrAfXPjpAkTMFgclUWzbHQEmH25tUIyySS568buNZLZ40wKHHj8ZkUgJDAyOFlGrEcEB6bi4mGg8sAFpM6Zibs-AXBJhRrOUk1eQtDYJFwsfrpt9cLWNRf4nMg" />
+                    <img alt={t('about.sign.rain', 'ISL Sign for Rain')} className="w-full h-auto rounded-xl object-cover" src="/images/landing/sign-rain.jpg" />
                   </div>
                 </div>
 
                 {/* Column 2 */}
                 <div className="space-y-4 sm:space-y-5 transform -translate-y-3 sm:-translate-y-4">
                   <div className="group relative bg-[#f8fafc] dark:bg-[#1a202c] p-2.5 sm:p-3 rounded-2xl border border-[#e2e8f0] dark:border-[#2d3133] hover:border-indigo-400 dark:hover:border-[#fe9832]/60 shadow-xs hover:shadow-sm transition-all duration-200">
-                    <img alt={t('about.sign.yes', 'ISL Sign for Yes')} className="w-full h-auto rounded-xl object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBxpn70XLRKG_xL1NH6Vg89QATa-gu3kc1hp5C5BxTumnInxuKVWCC2LLoklqqCt5PPGTlt6qQCmyilDYPaKvlnKlkHxYEZ1Q9rUaAJMKj7L-VIeorTCdMeVGbWRxX0qlJG6LE_IrsZV9hIaK-h7tnBAg-JcIVN0WjsEcDsYH00ZO2B36I_K210p9zXym1QML5UzSO6PkXcq_pHcoaOWQs1swxQ4rI-BfnJSQBN0MfD7QP2szCmltTf1bDUNXNCJuAstg" />
+                    <img alt={t('about.sign.yes', 'ISL Sign for Yes')} className="w-full h-auto rounded-xl object-cover" src="/images/landing/sign-yes.jpg" />
                   </div>
                   <div className="group relative bg-[#f8fafc] dark:bg-[#1a202c] p-2.5 sm:p-3 rounded-2xl border border-[#e2e8f0] dark:border-[#2d3133] hover:border-indigo-400 dark:hover:border-[#fe9832]/60 shadow-xs hover:shadow-sm transition-all duration-200">
-                    <img alt={t('about.sign.hello', 'ISL Sign for Hello')} className="w-full h-auto rounded-xl object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDK3L7OCQX9pJpt8UwNZLEKILyEQ4hOJ5NZIiDpbYNRjIjYPVnP-Yb61h8KYXQlIpPNxessVa_PwRdsWM7MjamdXt4sEOzggLqaZkGawnlppGeRlB4Is0Yh8sKjUkzgLj0-iMlf2FFXXiVkuQJMfGllkdkXAE5AtFkMiTMsqjR0ODNJVGxiK-ZC7Jj91yzUZ67Df7gr-FnEMLuqulRb29c6cudvdTTpcON6z1niRTlhFuu9Cgke02M5Kru1dv2r7F84fU4MpQPGb1sO4g" />
+                    <img alt={t('about.sign.hello', 'ISL Sign for Hello')} className="w-full h-auto rounded-xl object-cover" src="/images/landing/sign-hello.jpg" />
                   </div>
                 </div>
               </div>
@@ -1127,7 +1127,7 @@ export const LandingPage: React.FC = () => {
                     <img
                       alt="Anubhav Mohanty"
                       className="w-16 h-16 rounded-full border-3 border-white dark:border-[#0d121d] object-cover shadow-sm"
-                      src="https://r.mobirisesite.com/3189180/assets/images/gc4f811ae8669f44688a2c0b044ee-h_mthqxsmc.jpg"
+                      src="/images/landing/product-feature-1.jpg"
                     />
                   </div>
                   <div className="bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 dark:bg-none dark:bg-[#fe9832] pt-10 pb-5 text-center text-white dark:text-[#3d1e00] relative">
@@ -1152,7 +1152,7 @@ export const LandingPage: React.FC = () => {
                     <img
                       alt="Prachi Mohapatra"
                       className="w-16 h-16 rounded-full border-3 border-white dark:border-[#0d121d] object-cover shadow-sm"
-                      src="https://r.mobirisesite.com/3189180/assets/images/gb5292c91c0837a47d680af6360ca-h_mthqwd8l.jpg"
+                      src="/images/landing/product-feature-2.jpg"
                     />
                   </div>
                   <div className="bg-emerald-600 dark:bg-[#059669] pt-10 pb-5 text-center text-white relative">
@@ -1177,7 +1177,7 @@ export const LandingPage: React.FC = () => {
                     <img
                       alt="Subrat Joshi"
                       className="w-16 h-16 rounded-full border-3 border-white dark:border-[#0d121d] object-cover shadow-sm"
-                      src="https://r.mobirisesite.com/3189180/assets/images/g784e78d191e0fe3962c7db76cc06-h_mthqxgfq.jpg"
+                      src="/images/landing/product-feature-3.jpg"
                     />
                   </div>
                   <div className="bg-[#1e293b] dark:bg-[#1a202c] pt-10 pb-5 text-center text-white relative">
@@ -1217,7 +1217,7 @@ export const LandingPage: React.FC = () => {
                 <img
                   alt="Subham Nayak"
                   className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-indigo-100 dark:border-[#fe9832]/20 group-hover:scale-105 transition-transform mb-4 shadow-md"
-                  src="https://r.mobirisesite.com/3189180/assets/images/team1-h_mths0kza.jpg"
+                  src="/images/landing/team-1.jpg"
                 />
                 <h3 className="text-xl font-bold text-[#0f172a] dark:text-white font-headline mb-1.5">Subham Nayak</h3>
                 <p className="text-[#334155] dark:text-[#cbd5e1] text-sm sm:text-base italic leading-relaxed">
@@ -1230,7 +1230,7 @@ export const LandingPage: React.FC = () => {
                 <img
                   alt="Mohapatra S.H Gargi"
                   className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-sky-100 dark:border-[#fe9832]/20 group-hover:scale-105 transition-transform mb-4 shadow-md"
-                  src="https://r.mobirisesite.com/3189180/assets/images/team6-h_mths5r90.jpg"
+                  src="/images/landing/team-6.jpg"
                 />
                 <h3 className="text-xl font-bold text-[#0f172a] dark:text-white font-headline mb-1.5">Mohapatra S.H Gargi</h3>
                 <p className="text-[#334155] dark:text-[#cbd5e1] text-sm sm:text-base italic leading-relaxed">
@@ -1243,7 +1243,7 @@ export const LandingPage: React.FC = () => {
                 <img
                   alt="B Vineet Patro"
                   className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-emerald-100 dark:border-[#fe9832]/20 group-hover:scale-105 transition-transform mb-4 shadow-md"
-                  src="https://r.mobirisesite.com/3189180/assets/images/team3-h_mths6br8.jpg"
+                  src="/images/landing/team-3.jpg"
                 />
                 <h3 className="text-xl font-bold text-[#0f172a] dark:text-white font-headline mb-1.5">B Vineet Patro</h3>
                 <p className="text-[#334155] dark:text-[#cbd5e1] text-sm sm:text-base italic leading-relaxed">
@@ -1256,7 +1256,7 @@ export const LandingPage: React.FC = () => {
                 <img
                   alt="Sidharth Kumar"
                   className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-purple-100 dark:border-[#fe9832]/20 group-hover:scale-105 transition-transform mb-4 shadow-md"
-                  src="https://r.mobirisesite.com/3189180/assets/images/team4-h_mthrnb56.jpg"
+                  src="/images/landing/team-4.jpg"
                 />
                 <h3 className="text-xl font-bold text-[#0f172a] dark:text-white font-headline mb-1.5">Sidharth Kumar</h3>
                 <p className="text-[#334155] dark:text-[#cbd5e1] text-sm sm:text-base italic leading-relaxed">
@@ -1269,7 +1269,7 @@ export const LandingPage: React.FC = () => {
                 <img
                   alt="Shreya Kashyap"
                   className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-rose-100 dark:border-[#fe9832]/20 group-hover:scale-105 transition-transform mb-4 shadow-md"
-                  src="https://r.mobirisesite.com/3189180/assets/images/team5-h_mthrfmge.jpg"
+                  src="/images/landing/team-5.jpg"
                 />
                 <h3 className="text-xl font-bold text-[#0f172a] dark:text-white font-headline mb-1.5">Shreya Kashyap</h3>
                 <p className="text-[#334155] dark:text-[#cbd5e1] text-sm sm:text-base italic leading-relaxed">
@@ -1282,7 +1282,7 @@ export const LandingPage: React.FC = () => {
                 <img
                   alt="Avishek Raul"
                   className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-4 border-amber-100 dark:border-[#fe9832]/20 group-hover:scale-105 transition-transform mb-4 shadow-md"
-                  src="https://r.mobirisesite.com/3189180/assets/images/team2-h_mthsbdlh.jpg"
+                  src="/images/landing/team-2.jpg"
                 />
                 <h3 className="text-xl font-bold text-[#0f172a] dark:text-white font-headline mb-1.5">Avishek Raul</h3>
                 <p className="text-[#334155] dark:text-[#cbd5e1] text-sm sm:text-base italic leading-relaxed">
@@ -1506,7 +1506,7 @@ export const LandingPage: React.FC = () => {
                 <img
                   alt="SAMBHAV Circular Logo Icon"
                   className="h-10 w-10 rounded-full object-contain border border-[#e2e8f0] dark:border-[#2d3133] group-hover:scale-105 transition-transform"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuBTg0HBcA_4tr0W91LDkwqOnVSfSNqNLfncEA1PPwyGzu5JLTBXpp_wsXkZjo9tzLvf4KFNyaXk060fIQSGUovqRqh34LlLcrxxAUa5VojHfDfu4jRQJGk6QxnzQbHigwRz16MDMj2DwoCRu_i77QAzKuRLVJ8e2mLUwC7-UvMJ_JB5sui2SpIRfZM5c9yAP4gD3yTYgJBzlXm_PtIyr70gHi3MkHGC95pbUZ_Mid5Kj_my4OpeXflK15WPybnDecsYaov545CM4kLxeQ"
+                  src="/logo.png"
                 />
                 <span className="text-2xl font-bold tracking-tight text-[#0f172a] dark:text-white font-headline">
                   SAM<span className="text-indigo-600 dark:text-[#fe9832] font-extrabold">BHAV</span>

@@ -23,7 +23,7 @@ export const LearnISLPage: React.FC = () => {
       duration: 'Series',
       creator: 'Pragya Gupta',
       youtubeLink: 'https://youtube.com/playlist?list=PLxYMaKXKMMcMgg4f47WkG7AM0bb3AyjTi&si=15iv2Nxfv-M-mFvi',
-      thumbnail: 'https://i.ytimg.com/vi/JPV-vboWfhY/hqdefault.jpg',
+      thumbnail: '/images/lessons/lesson-basics.jpg',
       watched: true,
     },
     {
@@ -33,7 +33,7 @@ export const LearnISLPage: React.FC = () => {
       duration: 'Full Course',
       creator: 'ISLRTC / Deaf Education',
       youtubeLink: 'https://youtube.com/playlist?list=PLFjydPMg4DapfRTBMokl09Ht-fhMOAYf6&si=1WF2zJ8OWbsZZOMY',
-      thumbnail: 'https://i.ytimg.com/vi/5PF6JXzYyUI/hqdefault.jpg',
+      thumbnail: '/images/lessons/lesson-family.jpg',
       watched: true,
     },
     {
@@ -43,7 +43,7 @@ export const LearnISLPage: React.FC = () => {
       duration: '11 mins',
       creator: 'BUMPER CLAP',
       youtubeLink: 'https://youtu.be/OK7ppVdau8M?si=YVxi9LuzJG1m9b1D',
-      thumbnail: 'https://i.ytimg.com/vi/OK7ppVdau8M/hqdefault.jpg',
+      thumbnail: '/images/lessons/lesson-daily.jpg',
       watched: false,
     },
     {
@@ -53,7 +53,7 @@ export const LearnISLPage: React.FC = () => {
       duration: '8 mins',
       creator: 'Pragya Gupta',
       youtubeLink: 'https://youtu.be/aOL-yBRQHmM?si=hVazCvcZGMT5cCCw',
-      thumbnail: 'https://i.ytimg.com/vi/aOL-yBRQHmM/hqdefault.jpg',
+      thumbnail: '/images/lessons/lesson-grammar.jpg',
       watched: false,
     },
     {
@@ -63,7 +63,7 @@ export const LearnISLPage: React.FC = () => {
       duration: '10 mins',
       creator: 'Pragya Gupta',
       youtubeLink: 'https://youtu.be/LpLM-8Uj1Bc?si=14K2bk8zuYM7Nzgv',
-      thumbnail: 'https://i.ytimg.com/vi/LpLM-8Uj1Bc/hqdefault.jpg',
+      thumbnail: '/images/lessons/lesson-advanced.jpg',
       watched: false,
     },
     {
@@ -73,7 +73,7 @@ export const LearnISLPage: React.FC = () => {
       duration: '8 mins',
       creator: 'Pragya Gupta',
       youtubeLink: 'https://youtu.be/aOL-yBRQHmM?si=XgR9KaBrwWy572DO',
-      thumbnail: 'https://i.ytimg.com/vi/aOL-yBRQHmM/hqdefault.jpg',
+      thumbnail: '/images/lessons/lesson-grammar.jpg',
       watched: false,
     },
   ]);

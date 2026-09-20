@@ -15,7 +15,7 @@ export const ChatbotHeader: React.FC<ChatbotHeaderProps> = ({ onClose, onReset }
         <div className="relative">
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#fe9832] to-[#e8872b] p-0.5 shadow-md flex items-center justify-center">
             <img
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBTg0HBcA_4tr0W91LDkwqOnVSfSNqNLfncEA1PPwyGzu5JLTBXpp_wsXkZjo9tzLvf4KFNyaXk060fIQSGUovqRqh34LlLcrxxAUa5VojHfDfu4jRQJGk6QxnzQbHigwRz16MDMj2DwoCRu_i77QAzKuRLVJ8e2mLUwC7-UvMJ_JB5sui2SpIRfZM5c9yAP4gD3yTYgJBzlXm_PtIyr70gHi3MkHGC95pbUZ_Mid5Kj_my4OpeXflK15WPybnDecsYaov545CM4kLxeQ"
+              src="/logo.png"
               alt="SAMBHAV AI Logo"
               className="w-full h-full rounded-[10px] object-cover"
             />

@@ -31,7 +31,7 @@ export const CULTURAL_CATALOG: CulturalItem[] = [
     icon: '🇮🇳',
     tagline: 'Composed by Rabindranath Tagore (1911)',
     description: "India's National Anthem celebrating unity, sovereignty, and rich geographic diversity in Indian Sign Language.",
-    image: 'https://images.unsplash.com/photo-1532375810709-75b1da00537c?auto=format&fit=crop&w=800&q=80',
+    image: '/images/cultural/anthem-flag.jpg',
     status: 'ready',
     estimatedDuration: '52s',
     stanzas: [
@@ -78,7 +78,7 @@ export const CULTURAL_CATALOG: CulturalItem[] = [
     icon: '🪷',
     tagline: 'Composed by Bankim Chandra Chatterjee (1875)',
     description: 'Revered national song honoring the sacred beauty, fertile waters, and strength of the motherland.',
-    image: 'https://images.unsplash.com/photo-1587474260584-136574528ed5?auto=format&fit=crop&w=800&q=80',
+    image: '/images/cultural/vande-mataram.jpg',
     status: 'ready',
     estimatedDuration: '65s',
     stanzas: [
@@ -126,7 +126,7 @@ export const CULTURAL_CATALOG: CulturalItem[] = [
     icon: '⚖️',
     tagline: 'Constitution of India (1949)',
     description: 'Foundational constitutional values securing Justice, Liberty, Equality, and Fraternity for all citizens.',
-    image: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=800&q=80',
+    image: '/images/cultural/constitution-preamble.jpg',
     status: 'ready',
     estimatedDuration: '75s',
     stanzas: [
@@ -172,7 +172,7 @@ export const CULTURAL_CATALOG: CulturalItem[] = [
     icon: '🕊️',
     tagline: 'Composed by Muhammad Iqbal (1904)',
     description: 'Timeless patriotic poem celebrating communal brotherhood, sacred mountains, and eternal harmony.',
-    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80',
+    image: '/images/cultural/sare-jahan-se-acha.jpg',
     status: 'ready',
     estimatedDuration: '60s',
     stanzas: [
@@ -214,7 +214,7 @@ export const CULTURAL_CATALOG: CulturalItem[] = [
     icon: '✋',
     tagline: 'Pydimarri Venkata Subba Rao (1962)',
     description: 'Daily national oath of allegiance, devotion to the motherland, and brotherhood among all Indians.',
-    image: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=800&q=80',
+    image: '/images/cultural/pledge-india.jpg',
     status: 'ready',
     estimatedDuration: '45s',
     stanzas: [
