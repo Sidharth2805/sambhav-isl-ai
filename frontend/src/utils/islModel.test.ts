@@ -11,12 +11,12 @@ describe('ISL AI Recognition Pipeline Unit Tests', () => {
 
   describe('Gesture-to-Text Vocabulary Mapping', () => {
     it('should map ISL alphabet and words accurately in vocabulary', () => {
-      expect(ISL_VOCABULARY['A']).toBe('A');
-      expect(ISL_VOCABULARY['Z']).toBe('Z');
+      expect(ISL_VOCABULARY['actor']).toBe('Actor');
+      expect(ISL_VOCABULARY['bank']).toBe('Bank');
+      expect(ISL_VOCABULARY['doctor']).toBe('Doctor');
       expect(ISL_VOCABULARY['hello']).toBe('Hello');
-      expect(ISL_VOCABULARY['thank_you']).toBe('Thank You');
-      expect(ISL_VOCABULARY['help']).toBe('Help');
-      expect(ISL_VOCABULARY['water']).toBe('Water');
+      expect(ISL_VOCABULARY['hospital']).toBe('Hospital');
+      expect(ISL_VOCABULARY['school']).toBe('School');
     });
 
     it('should format raw labels into clean title-cased English', () => {
