@@ -162,6 +162,23 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
                 onProgressChar(addedChar.trim(), state.processedText);
               }
               state.animations.shift();
+            } else if (state.animations[0][0] === 'circle') {
+              const [, boneName, , , centerX, centerY, radiusX, radiusY, centerZ, radiusZ] = state.animations[0];
+              if ((state as any).circleStep === undefined) (state as any).circleStep = 0;
+              const totalSteps = 90;
+              const bone = state.avatar?.getObjectByName(boneName);
+              if (bone) {
+                const angle = (2 * Math.PI * (state as any).circleStep) / totalSteps;
+                bone.rotation.x = centerX + radiusX * Math.sin(angle);
+                bone.rotation.y = centerY + radiusY * Math.cos(angle);
+                bone.rotation.z = (centerZ ?? Math.PI / 3) + (radiusZ ?? 0) * Math.sin(angle);
+              }
+              (state as any).circleStep++;
+              if ((state as any).circleStep >= totalSteps) {
+                (state as any).circleStep = undefined;
+                state.animations.shift();
+                defaultPose(state);
+              }
             } else {
               // Dynamic step speed based on current multiplier
               const stepSpeed = 0.08 * speedMultiplierRef.current;

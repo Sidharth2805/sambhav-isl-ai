@@ -1,4 +1,4 @@
-// Exact sentence patterns that should be reordered before signing.
+// Exact sentence patterns that should be reordered before signing in ISL.
 // Inputs are normalized for case, punctuation, and repeated whitespace.
 const SENTENCE_PATTERNS: Record<string, string[]> = {
   'do people understand your signs': ['PEOPLE', 'YOUR', 'SIGNS', 'UNDERSTAND'],
@@ -15,13 +15,30 @@ const SENTENCE_PATTERNS: Record<string, string[]> = {
   'do you like this idea': ['YOU', 'THIS', 'IDEA', 'LIKE'],
   'can you show us a sign': ['YOU', 'US', 'A', 'SIGN', 'USE'],
   'which sign do you use most': ['YOU', 'WHICH', 'SIGN', 'MOST', 'USE'],
+  'can you try sambhav': ['YOU', 'SAMBHAV', 'TRY'],
+  'how are you': ['YOU', 'HOW'],
+  'how are you doing': ['YOU', 'HOW'],
+  'what do you want': ['YOU', 'WHAT', 'WANT'],
+  'what is your name': ['YOUR', 'NAME', 'WHAT', 'IS'],
+  'what is name': ['YOUR', 'NAME', 'WHAT'],
+  'my name': ['NAME'],
+  'i am fine': ['I', 'FINE'],
+  'i am good': ['I', 'FINE'],
+  'fine': ['FINE'],
   'which place is this': ['THIS', 'WHICH', 'PLACE'],
   'which place is that': ['THAT', 'WHICH', 'PLACE'],
   'which is this': ['THIS', 'WHICH'],
   'which place': ['WHICH', 'PLACE'],
   'which one': ['WHICH'],
   'which': ['WHICH'],
-  'can you try sambhav': ['YOU', 'SAMBHAV', 'TRY'],
+  'what is time': ['TIME', 'WHAT'],
+  'what is the time': ['TIME', 'WHAT'],
+  'what time is it': ['TIME', 'WHAT'],
+  'where is home': ['HOME', 'WHERE'],
+  'this is beautiful': ['THIS', 'BEAUTIFUL'],
+  'very beautiful': ['BEAUTIFUL'],
+  'bright light': ['BRIGHT'],
+  'good person': ['PERSON', 'GOOD'],
 };
 
 export function normalizeSentence(value: string): string {

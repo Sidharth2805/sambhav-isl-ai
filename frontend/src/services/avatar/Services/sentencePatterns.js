@@ -15,13 +15,11 @@ const SENTENCE_PATTERNS = {
   'do you like this idea': ['YOU', 'THIS', 'IDEA', 'LIKE'],
   'can you show us a sign': ['YOU', 'US', 'A', 'SIGN', 'USE'],
   'which sign do you use most': ['YOU', 'WHICH', 'SIGN', 'MOST', 'USE'],
-  'which place is this': ['THIS', 'WHICH', 'PLACE'],
-  'which place is that': ['THAT', 'WHICH', 'PLACE'],
-  'which is this': ['THIS', 'WHICH'],
-  'which place': ['WHICH', 'PLACE'],
-  'which one': ['WHICH'],
-  'which': ['WHICH'],
   'can you try sambhav': ['YOU', 'SAMBHAV', 'TRY'],
+  'how are you': ['YOU', 'HOW'],
+  'what do you want': ['YOU', 'WHAT', 'WANT'],
+  'what is your name': ['YOUR', 'NAME', 'WHAT', 'IS'],
+  'I am fine': ['I', 'FINE']
 };
 
 export function normalizeSentence(value) {

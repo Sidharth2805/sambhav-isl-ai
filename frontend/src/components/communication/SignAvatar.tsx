@@ -713,7 +713,7 @@ function signValue(value: string, state: any, speed?: number, pause?: number) {
         state.animations.push([
           "add-text",
           index ===
-          word.length - 1
+          cleanWord.length - 1
             ? ch + " "
             : ch,
         ]);
