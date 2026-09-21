@@ -149,7 +149,30 @@ export const HearingUserWorkspace: React.FC<HearingUserWorkspaceProps> = ({
   const [ttsEnabled, setTtsEnabled] = useState(true);
   const spokenTranscriptIdsRef = useRef<Set<string>>(new Set());
 
-  // Trigger Natural Human Speech synthesis ONLY for the hearing-issue / remote participant's messages
+  // Text Selection tracking for Read Selected Text feature
+  const [selectedText, setSelectedText] = useState<string>('');
+
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const sel = window.getSelection()?.toString().trim();
+      setSelectedText(sel || '');
+    };
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionChange);
+    };
+  }, []);
+
+  const handleSpeakSelectedText = () => {
+    if (selectedText) {
+      naturalSpeech.speak(selectedText, {
+        rate: 0.96,
+        pitch: 1.02,
+      });
+    }
+  };
+
+  // Trigger Natural Human Speech synthesis for incoming remote participant messages when Auto Speak Aloud is ON
   useEffect(() => {
     if (!ttsEnabled || typeof window === 'undefined') {
       return;
@@ -555,8 +578,8 @@ export const HearingUserWorkspace: React.FC<HearingUserWorkspaceProps> = ({
         {/* ========================================================= */}
         <section className="order-2 lg:order-1 lg:col-span-6 bg-white dark:bg-[#151c28] rounded-[24px] border border-[#e0e3e5] dark:border-[#243044] shadow-sm flex flex-col flex-1 lg:h-full min-h-[280px] lg:min-h-0 overflow-hidden">
           
-          {/* Header with TTS Speech Audio Controls */}
-          <div className="p-3.5 sm:p-4 border-b border-[#e0e3e5] dark:border-[#243044] flex items-center justify-between bg-[#f8fafc] dark:bg-[#0c121e] flex-shrink-0">
+          {/* Header with TTS Speech Audio Controls & Read Selected Text */}
+          <div className="p-3 sm:p-3.5 border-b border-[#e0e3e5] dark:border-[#243044] flex flex-wrap items-center justify-between gap-2 bg-[#f8fafc] dark:bg-[#0c121e] flex-shrink-0">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-[#fe9832] text-[20px]">forum</span>
               <div>
@@ -565,27 +588,54 @@ export const HearingUserWorkspace: React.FC<HearingUserWorkspaceProps> = ({
               </div>
             </div>
 
-            {/* Mute/Unmute Speech Synthesis */}
-            <button
-              type="button"
-              onClick={() => {
-                const nextVal = !ttsEnabled;
-                setTtsEnabled(nextVal);
-                if (!nextVal) {
-                  naturalSpeech.stop();
-                }
-              }}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
-                ttsEnabled
-                  ? 'bg-[#fe9832]/10 border-[#fe9832] text-[#8f4e00] dark:text-[#fe9832]'
-                  : 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[16px]">
-                {ttsEnabled ? 'volume_up' : 'volume_off'}
-              </span>
-              <span className="hidden sm:inline">{ttsEnabled ? 'Voice Output: ON' : 'Voice: MUTED'}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Read Selected Text Button */}
+              {selectedText ? (
+                <button
+                  type="button"
+                  onClick={handleSpeakSelectedText}
+                  className="px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm cursor-pointer animate-pulse"
+                  title={`Read aloud selected text: "${selectedText.substring(0, 30)}..."`}
+                >
+                  <span className="material-symbols-outlined text-[15px]">record_voice_over</span>
+                  <span>Read Selected Text</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleSpeakSelectedText}
+                  disabled={!selectedText}
+                  className="hidden sm:flex px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all items-center gap-1.5 bg-gray-100 dark:bg-white/5 text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-white/10 opacity-60 cursor-not-allowed"
+                  title="Highlight any text on the screen to read it aloud"
+                >
+                  <span className="material-symbols-outlined text-[15px]">record_voice_over</span>
+                  <span>Read Selected</span>
+                </button>
+              )}
+
+              {/* Auto Speak Aloud On/Off Toggle */}
+              <button
+                type="button"
+                onClick={() => {
+                  const nextVal = !ttsEnabled;
+                  setTtsEnabled(nextVal);
+                  if (!nextVal) {
+                    naturalSpeech.stop();
+                  }
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border cursor-pointer ${
+                  ttsEnabled
+                    ? 'bg-emerald-500/15 border-emerald-500 text-emerald-800 dark:text-emerald-300 ring-1 ring-emerald-500/30'
+                    : 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800 text-red-600 dark:text-red-400'
+                }`}
+                title={ttsEnabled ? 'Auto Speak Aloud is ON (All incoming signs/texts will be read aloud)' : 'Auto Speak Aloud is MUTED'}
+              >
+                <span className="material-symbols-outlined text-[16px]">
+                  {ttsEnabled ? 'volume_up' : 'volume_off'}
+                </span>
+                <span>{ttsEnabled ? 'Speak Aloud: ON' : 'Speak Aloud: OFF'}</span>
+              </button>
+            </div>
           </div>
 
           {/* Scrolling Conversation Stream (Movable & Clean UI) */}
@@ -626,7 +676,23 @@ export const HearingUserWorkspace: React.FC<HearingUserWorkspaceProps> = ({
                         <span>ISL Sign Translated</span>
                       </div>
                     )}
-                    <p>{t.text}</p>
+                    <p className="select-text">{t.text}</p>
+
+                    {/* Action Bar with explicit Speak Aloud button */}
+                    <div className="flex items-center justify-between pt-1.5 mt-1.5 border-t border-black/5 dark:border-white/10 gap-2">
+                      <span className="text-[9px] text-gray-500 dark:text-gray-400 font-mono">
+                        {new Date(t.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => naturalSpeech.speak(t.text, { rate: 0.96, pitch: 1.02 })}
+                        className="p-1 px-2 hover:bg-emerald-200 dark:hover:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 rounded-lg transition-all active:scale-95 cursor-pointer flex items-center gap-1 text-[10px] font-bold bg-white/70 dark:bg-black/30 border border-emerald-300 dark:border-emerald-700/60 shadow-xs"
+                        title="Read this message aloud"
+                      >
+                        <span className="material-symbols-outlined text-[13px]">volume_up</span>
+                        <span>Speak Aloud</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               );

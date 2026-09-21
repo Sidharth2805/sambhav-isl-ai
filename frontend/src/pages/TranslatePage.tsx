@@ -176,6 +176,26 @@ export const TranslatePage: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
+  // Text Selection tracking for Read Selected Text
+  const [selectedText, setSelectedText] = useState<string>('');
+
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const sel = window.getSelection()?.toString().trim();
+      setSelectedText(sel || '');
+    };
+    document.addEventListener('selectionchange', handleSelectionChange);
+    return () => {
+      document.removeEventListener('selectionchange', handleSelectionChange);
+    };
+  }, []);
+
+  const handleSpeakSelectedText = useCallback(() => {
+    if (selectedText) {
+      speak(selectedText);
+    }
+  }, [selectedText, speak]);
+
   // Handle WhatsApp-Style Consolidated Message Dispatch
   const handleSendSignedMessage = useCallback((finalSentence: string) => {
     if (!finalSentence || !finalSentence.trim()) return;
@@ -1282,6 +1302,19 @@ export const TranslatePage: React.FC = () => {
                             {t('translate.autoRead', 'Auto-Read')}
                           </span>
                         </label>
+
+                        {/* Read Selected Text Button */}
+                        {selectedText && (
+                          <button
+                            type="button"
+                            onClick={handleSpeakSelectedText}
+                            className="px-2 py-1 rounded-lg text-[10px] font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs cursor-pointer flex items-center gap-1 animate-pulse"
+                            title={`Read aloud selected text: "${selectedText.substring(0, 25)}..."`}
+                          >
+                            <span className="material-symbols-outlined text-[13px]">record_voice_over</span>
+                            <span>Read Selected</span>
+                          </button>
+                        )}
 
                         {/* Mic Pause / Resume Button */}
                         <button
