@@ -411,6 +411,30 @@ export const OnlineSessionPage: React.FC = () => {
     const pc = new RTCPeerConnection(ICE_SERVERS);
     peerConnectionRef.current = pc;
 
+    // Pre-create transceivers for two-way audio & video
+    try {
+      pc.addTransceiver('audio', { direction: 'sendrecv' });
+      pc.addTransceiver('video', { direction: 'sendrecv' });
+    } catch (e) {
+      console.warn('[WebRTC] Transceiver setup note:', e);
+    }
+
+    // Attach any already captured local tracks
+    if (localStreamRef.current) {
+      const audioTrack = localStreamRef.current.getAudioTracks()[0];
+      const videoTrack = localStreamRef.current.getVideoTracks()[0];
+      const senders = pc.getSenders();
+      const audioSender = senders.find((s) => s.track?.kind === 'audio' || (s as any).kind === 'audio');
+      const videoSender = senders.find((s) => s.track?.kind === 'video' || (s as any).kind === 'video');
+
+      if (audioTrack && audioSender) {
+        audioSender.replaceTrack(audioTrack).catch(console.warn);
+      }
+      if (videoTrack && videoSender) {
+        videoSender.replaceTrack(videoTrack).catch(console.warn);
+      }
+    }
+
     // Send ICE candidates through WebSocket signaling
     pc.onicecandidate = (event) => {
       if (event.candidate && signalWsRef.current?.readyState === WebSocket.OPEN) {
@@ -429,7 +453,7 @@ export const OnlineSessionPage: React.FC = () => {
 
     // Receive Remote Media Stream
     pc.ontrack = (event) => {
-      console.log('[WebRTC] Remote track received:', event.track.kind);
+      console.log('[WebRTC] Remote track received:', event.track.kind, event.track.id);
       if (!remoteMediaStreamRef.current) {
         remoteMediaStreamRef.current = new MediaStream();
       }
@@ -444,7 +468,13 @@ export const OnlineSessionPage: React.FC = () => {
           remoteMediaStreamRef.current.addTrack(event.track);
         }
       }
-      setRemoteTrackObj(new MediaStream(remoteMediaStreamRef.current.getTracks()));
+      const newStream = new MediaStream(remoteMediaStreamRef.current.getTracks());
+      setRemoteTrackObj(newStream);
+
+      if (remoteAudioRef.current) {
+        remoteAudioRef.current.srcObject = newStream;
+        remoteAudioRef.current.play().catch(() => {});
+      }
     };
 
     // Handle incoming DataChannel
@@ -732,17 +762,29 @@ export const OnlineSessionPage: React.FC = () => {
 
         setLocalTrackObj(localStream);
 
-        // Attach tracks to PeerConnection
+        // Attach tracks to PeerConnection transceivers
         const pc = createPeerConnection();
+        const audioTrack = localStream.getAudioTracks()[0];
+        const videoTrack = localStream.getVideoTracks()[0];
         const senders = pc.getSenders();
-        localStream.getTracks().forEach((track) => {
-          const existingSender = senders.find((s) => s.track?.kind === track.kind || (s as any).kind === track.kind);
-          if (existingSender) {
-            existingSender.replaceTrack(track).catch(console.warn);
+
+        const audioSender = senders.find((s) => s.track?.kind === 'audio' || (s as any).kind === 'audio');
+        const videoSender = senders.find((s) => s.track?.kind === 'video' || (s as any).kind === 'video');
+
+        if (audioTrack) {
+          if (audioSender) {
+            audioSender.replaceTrack(audioTrack).catch(console.warn);
           } else {
-            pc.addTrack(track, localStream!);
+            pc.addTrack(audioTrack, localStream);
           }
-        });
+        }
+        if (videoTrack) {
+          if (videoSender) {
+            videoSender.replaceTrack(videoTrack).catch(console.warn);
+          } else {
+            pc.addTrack(videoTrack, localStream);
+          }
+        }
       } catch (err) {
         console.warn('Media capture warning (call continues with text/ISL):', err);
       }

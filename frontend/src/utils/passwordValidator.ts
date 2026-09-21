@@ -1,6 +1,6 @@
 export interface PasswordValidationResult {
   isValid: boolean;
-  score: number; // 0 to 4
+  score: number; // 0 to 5
   strengthLabel: 'Weak' | 'Fair' | 'Good' | 'Strong';
   strengthColor: string;
   hasMinLength: boolean;
@@ -22,34 +22,31 @@ export function validatePassword(password: string): PasswordValidationResult {
   const passedCount = checks.filter(Boolean).length;
 
   const errors: string[] = [];
-  if (!hasMinLength) errors.push('At least 8 characters');
-  if (!hasUppercase) errors.push('At least 1 uppercase letter (A-Z)');
-  if (!hasLowercase) errors.push('At least 1 lowercase letter (a-z)');
-  if (!hasNumber) errors.push('At least 1 number (0-9)');
-  if (!hasSpecial) errors.push('At least 1 special character (!@#$%...)');
+  if (!hasMinLength) errors.push('At least 8 characters (letters, digits, or special characters)');
 
   let strengthLabel: 'Weak' | 'Fair' | 'Good' | 'Strong' = 'Weak';
   let strengthColor = 'bg-red-500 text-red-500';
 
-  if (passedCount <= 2) {
+  if (!hasMinLength) {
     strengthLabel = 'Weak';
     strengthColor = 'bg-red-500 text-red-500';
-  } else if (passedCount === 3) {
+  } else if (passedCount <= 2) {
     strengthLabel = 'Fair';
     strengthColor = 'bg-amber-500 text-amber-500';
-  } else if (passedCount === 4) {
+  } else if (passedCount <= 4) {
     strengthLabel = 'Good';
     strengthColor = 'bg-blue-500 text-blue-500';
-  } else if (passedCount === 5) {
+  } else {
     strengthLabel = 'Strong';
     strengthColor = 'bg-emerald-500 text-emerald-500';
   }
 
-  const isValid = passedCount === 5;
+  // Password requirement: just 8 characters (can be letters, digits, or special characters)
+  const isValid = hasMinLength;
 
   return {
     isValid,
-    score: passedCount,
+    score: hasMinLength ? Math.max(1, passedCount) : 0,
     strengthLabel,
     strengthColor,
     hasMinLength,
@@ -60,3 +57,4 @@ export function validatePassword(password: string): PasswordValidationResult {
     errors,
   };
 }
+

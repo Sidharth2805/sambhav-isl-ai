@@ -48,11 +48,31 @@ export const VideoTrack: React.FC<VideoTrackProps> = ({
       targetSrc = new MediaStream([mediaTrack]);
     }
 
-    if (video.srcObject !== targetSrc) {
-      video.srcObject = targetSrc;
-      if (targetSrc) {
-        video.play().catch(() => {});
+    if (targetSrc) {
+      if (video.srcObject !== targetSrc) {
+        video.srcObject = targetSrc;
       }
+      video.play().catch((err) => {
+        console.log('[VideoTrack] Autoplay catch (will retry on interaction):', err);
+      });
+
+      // Handle async track addition and unmute
+      targetSrc.onaddtrack = () => {
+        if (video) {
+          video.srcObject = targetSrc;
+          video.play().catch(() => {});
+        }
+      };
+
+      targetSrc.getVideoTracks().forEach((vt) => {
+        vt.onunmute = () => {
+          if (video && video.paused) {
+            video.play().catch(() => {});
+          }
+        };
+      });
+    } else {
+      video.srcObject = null;
     }
 
     const handleUserInteraction = () => {
@@ -78,7 +98,7 @@ export const VideoTrack: React.FC<VideoTrackProps> = ({
       ref={videoRef}
       autoPlay
       playsInline
-      muted={isSelfView}
+      muted={true}
       data-self-view={isSelfView ? 'true' : undefined}
       data-remote={props['data-remote'] ? 'true' : undefined}
       className={`${className} ${isSelfView ? 'scale-x-[-1]' : ''}`}

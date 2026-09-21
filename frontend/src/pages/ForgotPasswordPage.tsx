@@ -188,9 +188,9 @@ export const ForgotPasswordPage: React.FC = () => {
       return;
     }
 
-    // Enforce strong password validation
+    // Enforce password validation (at least 8 characters)
     if (!passwordValidation.isValid) {
-      setError('Please ensure your password meets all strong security requirements below.');
+      setError('Password must be at least 8 characters long (can contain letters, digits, or special characters).');
       return;
     }
 
@@ -512,9 +512,9 @@ export const ForgotPasswordPage: React.FC = () => {
                   {newPassword && (
                     <div className="p-3 bg-slate-50 dark:bg-[#0c121e] border border-slate-200 dark:border-[#243044] rounded-xl flex flex-col gap-2 animate-fadeIn text-xs">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300">Password Strength:</span>
+                        <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300">Password Requirement:</span>
                         <span className={`text-[11px] font-black ${passwordValidation.strengthColor.split(' ')[1]}`}>
-                          {passwordValidation.strengthLabel}
+                          {passwordValidation.hasMinLength ? 'Ready (Valid)' : 'Too Short'}
                         </span>
                       </div>
 
@@ -533,21 +533,9 @@ export const ForgotPasswordPage: React.FC = () => {
                       </div>
 
                       {/* Requirement Checklist */}
-                      <div className="grid grid-cols-2 gap-1 text-[10px] text-gray-500 dark:text-gray-400 pt-1">
-                        <span className={passwordValidation.hasMinLength ? 'text-emerald-600 dark:text-emerald-500 font-bold' : ''}>
-                          {passwordValidation.hasMinLength ? '✓' : '•'} 8+ characters
-                        </span>
-                        <span className={passwordValidation.hasUppercase ? 'text-emerald-600 dark:text-emerald-500 font-bold' : ''}>
-                          {passwordValidation.hasUppercase ? '✓' : '•'} Uppercase (A-Z)
-                        </span>
-                        <span className={passwordValidation.hasLowercase ? 'text-emerald-600 dark:text-emerald-500 font-bold' : ''}>
-                          {passwordValidation.hasLowercase ? '✓' : '•'} Lowercase (a-z)
-                        </span>
-                        <span className={passwordValidation.hasNumber ? 'text-emerald-600 dark:text-emerald-500 font-bold' : ''}>
-                          {passwordValidation.hasNumber ? '✓' : '•'} Number (0-9)
-                        </span>
-                        <span className={`col-span-2 ${passwordValidation.hasSpecial ? 'text-emerald-600 dark:text-emerald-500 font-bold' : ''}`}>
-                          {passwordValidation.hasSpecial ? '✓' : '•'} Special Symbol (!@#$%...)
+                      <div className="flex flex-col gap-1 text-[10px] text-gray-500 dark:text-gray-400 pt-1">
+                        <span className={passwordValidation.hasMinLength ? 'text-emerald-600 dark:text-emerald-500 font-bold' : 'text-rose-500 font-semibold'}>
+                          {passwordValidation.hasMinLength ? '✓' : '•'} At least 8 characters (letters, numbers, or special characters)
                         </span>
                       </div>
                     </div>
