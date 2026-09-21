@@ -246,6 +246,12 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
     }
   }, [interimTranscripts, finalTranscripts, isSenderMe]);
 
+  useEffect(() => {
+    if (avatarTriggerText && avatarTriggerText.trim()) {
+      avatarCanvasRef.current?.signText(avatarTriggerText.trim());
+    }
+  }, [avatarTriggerText]);
+
   const handleSpeakMessageAloud = (text: string) => {
     if (!text || !text.trim()) return;
     naturalSpeech.speak(text);

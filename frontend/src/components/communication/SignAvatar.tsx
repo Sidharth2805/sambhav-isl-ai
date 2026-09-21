@@ -29,6 +29,20 @@ export interface SignAvatarRef {
   sign: (value: string) => void;
 }
 
+function getBone(avatar: THREE.Object3D | undefined | null, name: string): THREE.Object3D | undefined {
+  if (!avatar || !name) return undefined;
+  let b = avatar.getObjectByName(name);
+  if (b) return b;
+  if (name.startsWith('mixamorig:')) {
+    b = avatar.getObjectByName(name.replace('mixamorig:', 'mixamorig'));
+    if (b) return b;
+  } else if (name.startsWith('mixamorig')) {
+    b = avatar.getObjectByName(name.replace('mixamorig', 'mixamorig:'));
+    if (b) return b;
+  }
+  return undefined;
+}
+
 const SignAvatar = forwardRef<SignAvatarRef, SignAvatarProps>(function SignAvatar(
   {
     avatar = "ybot",
@@ -176,6 +190,9 @@ useImperativeHandle(
         gltf.scene.traverse((child) => {
           if (child.type === "SkinnedMesh") {
             child.frustumCulled = false;
+          }
+          if (child.name && child.name.startsWith('mixamorig:')) {
+            child.name = child.name.replace('mixamorig:', 'mixamorig');
           }
         });
 
@@ -341,10 +358,7 @@ useImperativeHandle(
 
               const totalSteps = 90;
 
-              const bone =
-                state.avatar.getObjectByName(
-                  boneName
-                );
+              const bone = getBone(state.avatar, boneName);
 
               if (bone) {
                 const angle =
@@ -412,10 +426,7 @@ useImperativeHandle(
                 ] =
                   currentAnimation[i];
 
-                const targetBone =
-                  state.avatar.getObjectByName(
-                    boneName
-                  );
+                const targetBone = getBone(state.avatar, boneName);
 
                 /*
                  * If bone/action is invalid,

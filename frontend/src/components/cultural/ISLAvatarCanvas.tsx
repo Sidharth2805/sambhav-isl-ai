@@ -28,6 +28,24 @@ export interface ISLAvatarCanvasProps {
 }
 
 /**
+ * Resilient Bone Lookup Helper
+ * Supports both normalized names (e.g. "mixamorigNeck") and colon-names (e.g. "mixamorig:Neck").
+ */
+function getBone(avatar: THREE.Object3D | undefined, name: string): THREE.Object3D | undefined {
+  if (!avatar || !name) return undefined;
+  let b = avatar.getObjectByName(name);
+  if (b) return b;
+  if (name.startsWith('mixamorig:')) {
+    b = avatar.getObjectByName(name.replace('mixamorig:', 'mixamorig'));
+    if (b) return b;
+  } else if (name.startsWith('mixamorig')) {
+    b = avatar.getObjectByName(name.replace('mixamorig', 'mixamorig:'));
+    if (b) return b;
+  }
+  return undefined;
+}
+
+/**
  * 3D ISL Avatar Canvas Renderer (Avatar-Realtime Engine)
  *
  * Continuous 60fps WebGL render loop ensuring the avatar is 100% visible on screen at all times,
@@ -166,7 +184,7 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
               const [, boneName, , , centerX, centerY, radiusX, radiusY, centerZ, radiusZ] = state.animations[0];
               if ((state as any).circleStep === undefined) (state as any).circleStep = 0;
               const totalSteps = 90;
-              const bone = state.avatar?.getObjectByName(boneName);
+              const bone = getBone(state.avatar, boneName);
               if (bone) {
                 const angle = (2 * Math.PI * (state as any).circleStep) / totalSteps;
                 bone.rotation.x = centerX + radiusX * Math.sin(angle);
@@ -185,7 +203,7 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
 
               for (let i = 0; i < state.animations[0].length; ) {
                 const [boneName, action, axis, limit] = state.animations[0][i];
-                const bone = state.avatar?.getObjectByName(boneName);
+                const bone = getBone(state.avatar, boneName);
                 if (bone && (bone as any)[action] && typeof (bone as any)[action][axis] === 'number') {
                   const current = (bone as any)[action][axis];
                   if (Math.abs(current - limit) <= stepSpeed) {
@@ -231,6 +249,11 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
         gltf.scene.traverse((child) => {
           if ((child as THREE.SkinnedMesh).isSkinnedMesh) {
             child.frustumCulled = false;
+          }
+          if (child.name) {
+            if (child.name.startsWith('mixamorig:')) {
+              child.name = child.name.replace('mixamorig:', 'mixamorig');
+            }
           }
         });
 
