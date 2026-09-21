@@ -46,8 +46,8 @@ function getBone(avatar: THREE.Object3D | undefined | null, name: string): THREE
 const SignAvatar = forwardRef<SignAvatarRef, SignAvatarProps>(function SignAvatar(
   {
     avatar = "ybot",
-    speed = 0.16,
-    pause = 120,
+    speed = 0.055,
+    pause = 350,
   },
   ref
 ) {

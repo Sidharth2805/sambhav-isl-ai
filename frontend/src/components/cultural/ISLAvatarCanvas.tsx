@@ -183,7 +183,7 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
             } else if (state.animations[0][0] === 'circle') {
               const [, boneName, , , centerX, centerY, radiusX, radiusY, centerZ, radiusZ] = state.animations[0];
               if ((state as any).circleStep === undefined) (state as any).circleStep = 0;
-              const totalSteps = 90;
+              const totalSteps = Math.max(45, Math.round(90 / speedMultiplierRef.current));
               const bone = getBone(state.avatar, boneName);
               if (bone) {
                 const angle = (2 * Math.PI * (state as any).circleStep) / totalSteps;
@@ -198,8 +198,8 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
                 defaultPose(state);
               }
             } else {
-              // Dynamic step speed based on current multiplier (optimized for fast, natural signing)
-              const stepSpeed = Math.max(0.08, 0.16 * speedMultiplierRef.current);
+              // Dynamic step speed based on current multiplier (natural, legible human signing pace)
+              const stepSpeed = 0.055 * speedMultiplierRef.current;
 
               for (let i = 0; i < state.animations[0].length; ) {
                 const [boneName, action, axis, limit] = state.animations[0][i];
@@ -219,12 +219,12 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
               }
             }
           } else {
-            // Current pose chunk completed. Schedule short, natural transition pause.
+            // Current pose chunk completed. Schedule natural transition pause for clear recognition.
             const isLastChunk = state.animations.length <= 1 || state.animations[1]?.[0] === 'word-start';
             const basePause = pauseTimeMsRef.current;
             const delay = isLastChunk
-              ? Math.max(50, Math.round(basePause * 0.35))
-              : Math.max(15, Math.round(basePause * 0.12));
+              ? Math.max(200, Math.round(basePause * 0.8))
+              : Math.max(80, Math.round(basePause * 0.3));
 
             pauseEndTimeRef.current = performance.now() + delay;
             state.animations.shift();

@@ -128,7 +128,7 @@ export const TranslatePage: React.FC = () => {
 
   // Settings & Speed Control (0.75x, 1.0x, 1.25x, 1.5x, 2.0x, 2.5x, 3.0x)
   const [captionFontSize, setCaptionFontSize] = useState<'sm' | 'md' | 'lg'>('lg');
-  const [avatarSpeed, setAvatarSpeed] = useState<number>(1.25);
+  const [avatarSpeed, setAvatarSpeed] = useState<number>(1.0);
   const [autoSpeakGestures] = useState(true);
   const [autoReadOutChat, setAutoReadOutChat] = useState(true);
   const [isChatScrolledUp, setIsChatScrolledUp] = useState(false);
