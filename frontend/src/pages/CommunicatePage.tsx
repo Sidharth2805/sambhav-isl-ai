@@ -256,8 +256,10 @@ export const CommunicatePage: React.FC = () => {
       let targetId = `ROOM-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
       try {
         const newSession = await createSession('ONLINE', accessToken);
-        if (newSession && (newSession.roomCode || newSession.id)) {
-          targetId = (newSession.roomCode || newSession.id).toUpperCase();
+        if (newSession && newSession.roomCode) {
+          targetId = newSession.roomCode.toUpperCase();
+        } else if (newSession && newSession.id) {
+          targetId = newSession.id.toUpperCase();
         }
       } catch (backendErr) {
         console.warn('Backend session registration note (proceeding with local WebRTC room):', backendErr);

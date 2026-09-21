@@ -50,15 +50,22 @@ export const VideoTrack: React.FC<VideoTrackProps> = ({
 
     if (targetSrc) {
       video.srcObject = targetSrc;
-      video.play().catch((err) => {
-        console.log('[VideoTrack] Autoplay catch (will retry on interaction):', err);
-      });
+      const playVideo = () => {
+        if (video && video.srcObject && video.paused) {
+          video.play().catch(() => {});
+        }
+      };
+
+      playVideo();
+      video.onloadedmetadata = playVideo;
+      video.onloadeddata = playVideo;
+      video.oncanplay = playVideo;
 
       // Handle async track addition and unmute
       targetSrc.onaddtrack = () => {
         if (video) {
           video.srcObject = targetSrc;
-          video.play().catch(() => {});
+          playVideo();
         }
       };
 
@@ -66,9 +73,7 @@ export const VideoTrack: React.FC<VideoTrackProps> = ({
         vt.onunmute = () => {
           if (video) {
             video.srcObject = targetSrc;
-            if (video.paused) {
-              video.play().catch(() => {});
-            }
+            playVideo();
           }
         };
       });
@@ -90,6 +95,8 @@ export const VideoTrack: React.FC<VideoTrackProps> = ({
       window.removeEventListener('touchstart', handleUserInteraction);
       if (video) {
         video.onloadedmetadata = null;
+        video.onloadeddata = null;
+        video.oncanplay = null;
       }
     };
   }, [trackRef, track]);

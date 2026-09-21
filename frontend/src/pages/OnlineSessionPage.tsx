@@ -168,8 +168,21 @@ export const OnlineSessionPage: React.FC = () => {
           setSession(data);
           if (data.roomCode) {
             const upperCode = data.roomCode.toUpperCase();
+            const prevRoom = roomCodeRef.current;
             setRoomCode(upperCode);
             roomCodeRef.current = upperCode;
+
+            // If WebSocket was connected under a different ID (e.g. UUID), re-join the exact roomCode!
+            if (upperCode !== prevRoom && signalWsRef.current?.readyState === WebSocket.OPEN) {
+              console.log(`[WebRTC Signaling] Switching WS room from ${prevRoom} to ${upperCode}`);
+              signalWsRef.current.send(
+                JSON.stringify({
+                  type: 'join',
+                  roomId: upperCode,
+                  role: userRoleRef.current,
+                })
+              );
+            }
           }
           if (data.status === 'CREATED' || data.status === 'WAITING') {
             startSession(data.id || sessionId, accessToken).catch(() => {});
