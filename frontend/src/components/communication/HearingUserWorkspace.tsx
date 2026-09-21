@@ -3,6 +3,7 @@ import { VideoTrack } from './VideoTrack';
 import DraggableSelfView from './DraggableSelfView';
 import type { TranscriptEvent } from '../../types/transcript';
 import { naturalSpeech } from '../../utils/naturalSpeech';
+import { getSentencePattern } from '../../services/avatar/Services/sentencePatterns';
 
 export type LkConnectionState = 'connected' | 'connecting' | 'reconnecting' | 'disconnected';
 export const LkConnectionState = {
@@ -678,6 +679,23 @@ export const HearingUserWorkspace: React.FC<HearingUserWorkspaceProps> = ({
                     )}
                     <p className="select-text">{t.text}</p>
 
+                    {/* Detected Structured Sentence Pattern Chip */}
+                    {(() => {
+                      const pattern = getSentencePattern(t.text);
+                      if (!pattern) return null;
+                      return (
+                        <div className="mt-2 pt-1.5 border-t border-dashed border-black/10 dark:border-white/10 flex items-center gap-1.5 flex-wrap">
+                          <span className="px-1.5 py-0.5 rounded bg-[#fe9832]/20 text-[#8f4e00] dark:text-[#fe9832] border border-[#fe9832]/40 text-[9px] font-extrabold flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[12px]">account_tree</span>
+                            <span>ISL Structure:</span>
+                          </span>
+                          <span className="font-mono text-[10px] font-bold text-emerald-800 dark:text-[#8dfc75] bg-emerald-100/70 dark:bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-300 dark:border-emerald-800">
+                            {pattern.join(' ')}
+                          </span>
+                        </div>
+                      );
+                    })()}
+
                     {/* Action Bar with explicit Speak Aloud button */}
                     <div className="flex items-center justify-between pt-1.5 mt-1.5 border-t border-black/5 dark:border-white/10 gap-2">
                       <span className="text-[9px] text-gray-500 dark:text-gray-400 font-mono">
@@ -727,6 +745,23 @@ export const HearingUserWorkspace: React.FC<HearingUserWorkspaceProps> = ({
 
             <div ref={captionsEndRef} />
           </div>
+
+          {/* Real-time Detected ISL Pattern for Typed Text */}
+          {(() => {
+            const pattern = getSentencePattern(typedMessage);
+            if (!pattern) return null;
+            return (
+              <div className="px-3 py-1 bg-[#fe9832]/15 border-t border-[#fe9832]/30 text-[11px] flex items-center justify-between animate-fadeIn shrink-0">
+                <span className="font-bold text-[#8f4e00] dark:text-[#fe9832] flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px]">account_tree</span>
+                  <span>Detected ISL Structure:</span>
+                </span>
+                <span className="font-mono font-bold text-emerald-800 dark:text-[#8dfc75] bg-emerald-100 dark:bg-emerald-950/60 px-2 py-0.5 rounded-lg border border-emerald-300 dark:border-emerald-800">
+                  {pattern.join(' ')}
+                </span>
+              </div>
+            );
+          })()}
 
           {/* Quick Text Input for Hearing User */}
           <form

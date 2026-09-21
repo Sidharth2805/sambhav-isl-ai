@@ -23,6 +23,7 @@ import { ISLAvatarCanvas, type ISLAvatarCanvasRef } from '../cultural/ISLAvatarC
 import { useISLRecognition } from '../../hooks/useISLRecognition';
 import { naturalSpeech } from '../../utils/naturalSpeech';
 import { ISLMessageComposer } from './ISLMessageComposer';
+import { getSentencePattern } from '../../services/avatar/Services/sentencePatterns';
 
 interface DeafUserWorkspaceProps {
   sessionId: string;
@@ -73,6 +74,7 @@ interface DeafUserWorkspaceProps {
   onSequenceComplete: () => void;
   recoveryState?: 'CONNECTED' | 'RECONNECTING' | 'RECOVERING' | 'READY';
   onSendMessage?: (text: string) => void;
+  avatarTriggerText?: string;
 }
 
 export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
@@ -123,6 +125,7 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
   onSequenceComplete: _onSequenceComplete,
   recoveryState: _recoveryState = 'READY',
   onSendMessage,
+  avatarTriggerText = '',
 }) => {
   const videoParentRef = useRef<HTMLDivElement | null>(null);
   const [copied, setCopied] = useState(false);
@@ -284,6 +287,28 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
           </div>
 
           <div className="flex-1 w-full h-full flex items-center justify-center relative overflow-hidden bg-gradient-to-b from-[#050b16] via-[#091325] to-[#040914]">
+            {/* Detected Structured Sentence Pattern Overlay */}
+            {(() => {
+              const pattern = getSentencePattern(avatarTriggerText);
+              if (!pattern) return null;
+              return (
+                <div className="absolute top-2.5 inset-x-2.5 z-20 bg-black/85 backdrop-blur-md px-3 py-1.5 rounded-xl border border-[#fe9832]/60 text-white flex items-center justify-between shadow-xl animate-scaleUp">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="w-2 h-2 rounded-full bg-[#fe9832] animate-ping" />
+                    <span className="text-[10px] font-black text-[#fe9832] uppercase tracking-wide">
+                      ISL Structure:
+                    </span>
+                    <span className="text-xs font-mono font-bold text-emerald-300">
+                      {pattern.join(' ')}
+                    </span>
+                  </div>
+                  <span className="text-[9px] text-white/70 font-medium hidden sm:inline">
+                    Reordered for ISL
+                  </span>
+                </div>
+              );
+            })()}
+
             <ISLAvatarCanvas
               ref={avatarCanvasRef}
               modelPath={modelPath}
@@ -689,15 +714,34 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
                       : 'bg-[#f7fafc] dark:bg-white/5 border border-[#e0e3e5] dark:border-white/15 self-start max-w-[92%]'
                   }`}
                 >
-                  <div className="flex items-start gap-1.5 flex-1 min-w-0">
-                    <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded shrink-0 mt-0.5 ${
-                      isMe
-                        ? 'bg-[#fe9832]/25 text-[#8f4e00] dark:text-[#fe9832]'
-                        : 'bg-emerald-500/20 text-emerald-800 dark:text-[#8dfc75]'
-                    }`}>
-                      {isMe ? 'You' : (t.senderName || 'Participant')}
-                    </span>
-                    <span className="text-[#030813] dark:text-white tracking-wide break-words flex-1">{t.text}</span>
+                  <div className="flex flex-col flex-1 min-w-0">
+                    <div className="flex items-start gap-1.5 min-w-0">
+                      <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded shrink-0 mt-0.5 ${
+                        isMe
+                          ? 'bg-[#fe9832]/25 text-[#8f4e00] dark:text-[#fe9832]'
+                          : 'bg-emerald-500/20 text-emerald-800 dark:text-[#8dfc75]'
+                      }`}>
+                        {isMe ? 'You' : (t.senderName || 'Participant')}
+                      </span>
+                      <span className="text-[#030813] dark:text-white tracking-wide break-words flex-1">{t.text}</span>
+                    </div>
+
+                    {/* Detected Structured Sentence Pattern Chip */}
+                    {(() => {
+                      const pattern = getSentencePattern(t.text);
+                      if (!pattern) return null;
+                      return (
+                        <div className="mt-1 pt-1 border-t border-dashed border-black/10 dark:border-white/10 flex items-center gap-1.5 flex-wrap">
+                          <span className="px-1.5 py-0.2 rounded bg-[#fe9832]/20 text-[#8f4e00] dark:text-[#fe9832] border border-[#fe9832]/40 text-[9px] font-extrabold flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[11px]">account_tree</span>
+                            <span>ISL Structure:</span>
+                          </span>
+                          <span className="font-mono text-[9px] font-bold text-emerald-700 dark:text-[#8dfc75] bg-emerald-100/70 dark:bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-300 dark:border-emerald-800">
+                            {pattern.join(' ')}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Read Actions for this Message */}

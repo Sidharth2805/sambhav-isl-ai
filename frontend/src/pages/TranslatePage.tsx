@@ -5,6 +5,7 @@ import { useISLRecognition } from '../hooks/useISLRecognition';
 import { ISLMessageComposer } from '../components/communication/ISLMessageComposer';
 import { useAccessibility } from '../hooks/useAccessibility';
 import { ScanModal } from '../components/translate/ScanModal';
+import { getSentencePattern } from '../services/avatar/Services/sentencePatterns';
 
 interface SignAssetDto {
   assetId: string;
@@ -1226,6 +1227,29 @@ export const TranslatePage: React.FC = () => {
 
                   {/* 3D Avatar Canvas Area */}
                   <div className="flex-1 w-full h-full min-h-[320px] flex items-center justify-center relative overflow-hidden bg-slate-900 dark:bg-black/60 rounded-2xl border border-gray-200 dark:border-[#2d3133]">
+                    {/* Detected Structured Sentence Pattern Overlay */}
+                    {(() => {
+                      const activeText = (activeSigningMessageId ? textMessages.find(m => m.id === activeSigningMessageId)?.text : '') || liveCaption || inputText;
+                      const pattern = getSentencePattern(activeText);
+                      if (!pattern) return null;
+                      return (
+                        <div className="absolute top-3 left-3 right-3 z-20 bg-black/85 backdrop-blur-md px-3 py-1.5 rounded-xl border border-[#fe9832]/60 text-white flex items-center justify-between shadow-xl animate-scaleUp">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="w-2 h-2 rounded-full bg-[#fe9832] animate-ping" />
+                            <span className="text-[10px] font-black text-[#fe9832] uppercase tracking-wide">
+                              ISL Structure:
+                            </span>
+                            <span className="text-xs font-mono font-bold text-emerald-300">
+                              {pattern.join(' ')}
+                            </span>
+                          </div>
+                          <span className="text-[9px] text-white/70 font-medium hidden sm:inline">
+                            Reordered for Sign Avatar
+                          </span>
+                        </div>
+                      );
+                    })()}
+
                     <ISLAvatarCanvas
                       ref={avatarCanvasRef}
                       modelPath={modelPath}
@@ -1414,6 +1438,23 @@ export const TranslatePage: React.FC = () => {
                                 })}
                               </div>
 
+                              {/* Detected Structured Sentence Pattern Chip */}
+                              {(() => {
+                                const pattern = getSentencePattern(msg.text);
+                                if (!pattern) return null;
+                                return (
+                                  <div className="mt-2 pt-1.5 border-t border-dashed border-gray-200 dark:border-gray-800 flex items-center gap-1.5 flex-wrap">
+                                    <span className="px-1.5 py-0.5 rounded-md bg-[#fe9832]/20 text-[#8f4e00] dark:text-[#fe9832] border border-[#fe9832]/40 text-[9px] font-extrabold flex items-center gap-1">
+                                      <span className="material-symbols-outlined text-[12px]">account_tree</span>
+                                      <span>ISL Structure:</span>
+                                    </span>
+                                    <span className="font-mono text-[10px] font-bold text-emerald-800 dark:text-[#8dfc75] bg-emerald-100/70 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md border border-emerald-300 dark:border-emerald-800">
+                                      {pattern.join(' ')}
+                                    </span>
+                                  </div>
+                                );
+                              })()}
+
                               {/* Action Bar per message */}
                               <div className="flex items-center justify-between pt-2 mt-2 border-t border-gray-100 dark:border-gray-800">
                                 <span className="text-[10px] text-gray-500 dark:text-gray-400 font-mono">
@@ -1457,6 +1498,23 @@ export const TranslatePage: React.FC = () => {
                         <span>{t('translate.jumpLatest', 'Jump to Latest')}</span>
                       </button>
                     )}
+
+                    {/* Live Input Sentence Pattern Detection Pill */}
+                    {(() => {
+                      const pattern = getSentencePattern(inputText);
+                      if (!pattern) return null;
+                      return (
+                        <div className="px-3 py-1 bg-[#fe9832]/15 border border-[#fe9832]/30 rounded-xl text-[11px] flex items-center justify-between mb-1 animate-fadeIn shrink-0">
+                          <span className="font-bold text-[#8f4e00] dark:text-[#fe9832] flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[14px]">account_tree</span>
+                            <span>Detected ISL Structure:</span>
+                          </span>
+                          <span className="font-mono font-bold text-emerald-800 dark:text-[#8dfc75] bg-emerald-100 dark:bg-emerald-950/60 px-2 py-0.5 rounded-lg border border-emerald-300 dark:border-emerald-800">
+                            {pattern.join(' ')}
+                          </span>
+                        </div>
+                      );
+                    })()}
 
                     {/* Instant Status */}
                     {activeSigningMessageId && activeStepIndex >= 0 && (
