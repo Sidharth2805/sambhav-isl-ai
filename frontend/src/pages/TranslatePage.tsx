@@ -2173,13 +2173,13 @@ export const TranslatePage: React.FC = () => {
               <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl p-3.5">
                 <div className="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-300 text-sm mb-1.5">
                   <span className="material-symbols-outlined text-[18px]">front_hand</span>
-                  <span>1. {t('translate.guideTip1Title', '262 Whole-Word ISL Signs')}</span>
+                  <span>1. {t('translate.guideTip1Title', '169 ISL Classes (Sambhav Model 2)')}</span>
                 </div>
                 <p className="text-amber-800 dark:text-amber-200 leading-relaxed">
-                  {t('translate.guideTip1Desc', 'The AI recognizes full 262 whole-word Indian Sign Language (ISL) concepts rather than isolated letters. Both single-handed and two-handed gestures are supported:')}
+                  {t('translate.guideTip1Desc', 'The AI recognizes full 169 Indian Sign Language (ISL) concepts and letters (A–Z) from Sambhav Model 2. Both single-handed and two-handed gestures are supported:')}
                 </p>
                 <ul className="list-disc list-inside mt-2 space-y-1 text-amber-900 dark:text-amber-100 font-medium">
-                  <li><strong>Single-Hand Signs:</strong> {t('translate.guideTip1A', 'Perform clearly with dominant hand in full camera view (e.g., Hello, Good, Day).')}</li>
+                  <li><strong>Single-Hand Signs & Letters:</strong> {t('translate.guideTip1A', 'Perform clearly with dominant hand in full camera view (e.g., A–Z, Hello, Good, Day).')}</li>
                   <li><strong>Two-Hand Signs:</strong> {t('translate.guideTip1B', 'Frame both hands in view with green (Right) and orange (Left) skeleton tracking active.')}</li>
                   <li><strong>Natural Transitions:</strong> {t('translate.guideTip1C', 'Lower hands to rest between signs to cleanly demarcate consecutive words.')}</li>
                 </ul>
@@ -2189,10 +2189,10 @@ export const TranslatePage: React.FC = () => {
               <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-xl p-3.5">
                 <div className="flex items-center gap-2 font-bold text-blue-900 dark:text-blue-300 text-sm mb-1.5">
                   <span className="material-symbols-outlined text-[18px]">motion_photos_on</span>
-                  <span>2. {t('translate.guideTip2Title', 'Dynamic Gesture Timing (2.0s – 3.0s Motion Window)')}</span>
+                  <span>2. {t('translate.guideTip2Title', 'Dynamic Gesture Timing (~0.6s – 2.0s Motion Window)')}</span>
                 </div>
                 <p className="text-blue-800 dark:text-blue-200 leading-relaxed">
-                  {t('translate.guideTip2Desc', 'The BiLSTM neural model processes 60-frame continuous windows (~2.0 to 3.0 seconds). Maintain fluent, uninterrupted sign motion while performing your gesture.')}
+                  {t('translate.guideTip2Desc', 'The BiLSTM neural model processes 60-frame continuous windows with instant geometric letter recognition. Maintain fluent sign motion while performing your gesture.')}
                 </p>
                 <p className="text-blue-800 dark:text-blue-200 mt-1">
                   {t('translate.guideTip2Footer', 'Start your sign clearly in front of the camera, perform the motion, and then drop hands to resting position to trigger instant recognition.')}
@@ -2214,10 +2214,10 @@ export const TranslatePage: React.FC = () => {
               <div className="bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-750 rounded-xl p-3.5">
                 <h4 className="font-bold text-gray-900 dark:text-white mb-1.5 flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-[16px] text-[#fe9832]">category</span>
-                  <span>{t('translate.guideVocabTitle', 'Trained Vocabulary (262 ISL Classes)')}</span>
+                  <span>{t('translate.guideVocabTitle', 'Trained Vocabulary (169 ISL Classes)')}</span>
                 </h4>
                 <p className="text-gray-600 dark:text-gray-300 text-[11px] leading-relaxed">
-                  {t('translate.guideVocabDesc', 'Trained on 262 whole-word Indian Sign Language concepts from the Saanket Parquet dataset, including Days of Week, Months, Family Relations, Common Actions, Emergency, Medical, and Daily Life Vocabulary.')}
+                  {t('translate.guideVocabDesc', 'Trained on 169 Indian Sign Language classes from Sambhav Model 2, including Alphabets A-Z, Days of Week, Months, Family Relations, Common Actions, Emergency, Medical, and Daily Life Vocabulary.')}
                 </p>
               </div>
 
