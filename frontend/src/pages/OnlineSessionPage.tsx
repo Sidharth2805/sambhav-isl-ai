@@ -220,6 +220,11 @@ export const OnlineSessionPage: React.FC = () => {
   const addTranscriptEventRef = useRef(addTranscriptEvent);
   addTranscriptEventRef.current = addTranscriptEvent;
 
+  // Auto-scroll conversation transcript stream to the most recent message
+  useEffect(() => {
+    captionsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [finalTranscripts, interimTranscripts]);
+
   // Send Application Data over RTCDataChannel (with WebSocket signaling fallback)
   const sendAppData = useCallback((payload: Record<string, any>) => {
     const raw = JSON.stringify(payload);

@@ -211,6 +211,11 @@ export const HearingUserWorkspace: React.FC<HearingUserWorkspaceProps> = ({
     };
   }, [connectionState, primaryRemoteTrack]);
 
+  // Auto-scroll messages stream to the most recent message
+  useEffect(() => {
+    captionsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [finalTranscripts, interimTranscripts, captionsEndRef]);
+
   const handleCopyCode = () => {
     navigator.clipboard.writeText(roomCode);
     setCopied(true);

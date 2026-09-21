@@ -248,6 +248,11 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
     naturalSpeech.speak(text);
   };
 
+  // Auto-scroll messages stream to the most recent message
+  useEffect(() => {
+    captionsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [finalTranscripts, interimTranscripts, captionsEndRef]);
+
   // Caption Font Size Selector
   const [captionFontSize, setCaptionFontSize] = useState<'sm' | 'base' | 'lg'>('base');
 

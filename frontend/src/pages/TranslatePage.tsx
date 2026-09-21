@@ -149,12 +149,16 @@ export const TranslatePage: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const chatScrollContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // Auto-scroll to bottom only if user hasn't scrolled up
+  // Auto-scroll to bottom to always show the most recent message
   useEffect(() => {
-    if (!isChatScrolledUp) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (chatScrollContainerRef.current) {
+      chatScrollContainerRef.current.scrollTo({
+        top: chatScrollContainerRef.current.scrollHeight,
+        behavior: 'smooth',
+      });
     }
-  }, [textMessages, isChatScrolledUp]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [textMessages, liveCaption, activeSigningMessageId]);
 
   useEffect(() => {
     signedMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
