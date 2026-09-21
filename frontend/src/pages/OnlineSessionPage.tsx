@@ -59,10 +59,13 @@ export const OnlineSessionPage: React.FC = () => {
     isHost?: boolean;
   };
 
-  const [session, setSession] = useState<CommunicationSessionDto | null>(null);
-  const [roomCode, setRoomCode] = useState<string>(
+  const initialRoomCode = (
     incomingSettings.roomCode ? incomingSettings.roomCode.toUpperCase() : (sessionId?.toUpperCase() || 'SAMBHAV')
   );
+  const [session, setSession] = useState<CommunicationSessionDto | null>(null);
+  const [roomCode, setRoomCode] = useState<string>(initialRoomCode);
+  const roomCodeRef = useRef<string>(initialRoomCode);
+  roomCodeRef.current = roomCode;
 
   const isDeafDefault =
     (user as any)?.disabilityType === 'DEAF' ||
@@ -71,6 +74,9 @@ export const OnlineSessionPage: React.FC = () => {
     user?.accountType === 'ACCESSIBILITY_USER';
 
   const userRole = searchParams.get('role') || incomingSettings.userRole || (isDeafDefault ? 'deaf' : 'normal');
+  const userRoleRef = useRef<string>(userRole);
+  userRoleRef.current = userRole;
+
   const isDeafWorkspace = userRole === 'deaf' || user?.accountType === 'ACCESSIBILITY_USER';
 
   // Call Settings UI State
@@ -116,6 +122,10 @@ export const OnlineSessionPage: React.FC = () => {
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
 
+  // Stable handler refs
+  const handleSignalMessageRef = useRef<(msg: any) => void>(() => {});
+  const addTranscriptEventRef = useRef<(event: TranscriptEvent) => void>(() => {});
+
   // Fetch Session details from API if available
   useEffect(() => {
     if (!sessionId) return;
@@ -124,7 +134,15 @@ export const OnlineSessionPage: React.FC = () => {
         if (data) {
           setSession(data);
           if (data.roomCode) {
-            setRoomCode(data.roomCode.toUpperCase());
+            const upperCode = data.roomCode.toUpperCase();
+            if (upperCode !== roomCodeRef.current) {
+              if (signalWsRef.current?.readyState === WebSocket.OPEN) {
+                signalWsRef.current.send(JSON.stringify({ type: 'leave', roomId: roomCodeRef.current }));
+                signalWsRef.current.send(JSON.stringify({ type: 'join', roomId: upperCode, role: userRoleRef.current }));
+              }
+              setRoomCode(upperCode);
+              roomCodeRef.current = upperCode;
+            }
           }
           if (data.status === 'CREATED' || data.status === 'WAITING') {
             startSession(data.id || sessionId, accessToken).catch(() => {});
@@ -182,6 +200,7 @@ export const OnlineSessionPage: React.FC = () => {
       }));
     }
   }, []);
+  addTranscriptEventRef.current = addTranscriptEvent;
 
   // Send Transcript / Message over WebRTC Signaling
   const handleSendTextMessage = useCallback((text: string) => {
@@ -190,7 +209,7 @@ export const OnlineSessionPage: React.FC = () => {
 
     const event: TranscriptEvent = {
       id: `tx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      sessionId: sessionId || roomCode,
+      sessionId: sessionId || roomCodeRef.current,
       senderId: user?.id || user?.email || 'self',
       senderName: (user as any)?.fullName || (user as any)?.name || 'You',
       senderType: isDeafWorkspace ? 'ACCESSIBILITY_USER' : 'COMMON_USER',
@@ -206,7 +225,7 @@ export const OnlineSessionPage: React.FC = () => {
       signalWsRef.current.send(
         JSON.stringify({
           type: 'app-message',
-          roomId: roomCode,
+          roomId: roomCodeRef.current,
           payload: {
             kind: 'transcript',
             event,
@@ -216,7 +235,7 @@ export const OnlineSessionPage: React.FC = () => {
         })
       );
     }
-  }, [addTranscriptEvent, isDeafWorkspace, roomCode, sessionId, user]);
+  }, [addTranscriptEvent, isDeafWorkspace, sessionId, user]);
 
   // Live Microphone Audio Recognition (Web Speech STT)
   useEffect(() => {
@@ -227,18 +246,18 @@ export const OnlineSessionPage: React.FC = () => {
 
     if (micState && connectionState !== LkConnectionState.Disconnected) {
       stt.startRecording(
-        sessionId || roomCode,
+        sessionId || roomCodeRef.current,
         mySenderId,
         mySenderName,
         mySenderType,
         (event: TranscriptEvent) => {
-          addTranscriptEvent(event);
+          addTranscriptEventRef.current(event);
           if (signalWsRef.current?.readyState === WebSocket.OPEN) {
             signalWsRef.current.send(
               JSON.stringify({
                 type: 'app-message',
-                roomId: roomCode,
-                fromRole: userRole,
+                roomId: roomCodeRef.current,
+                fromRole: userRoleRef.current,
                 payload: {
                   kind: 'transcript',
                   event,
@@ -261,11 +280,15 @@ export const OnlineSessionPage: React.FC = () => {
     return () => {
       stt.stopRecording();
     };
-  }, [micState, connectionState, sessionId, roomCode, user, isDeafWorkspace, userRole, addTranscriptEvent]);
+  }, [micState, connectionState, sessionId, user, isDeafWorkspace]);
 
   // Create WebRTC Peer Connection
   const createPeerConnection = useCallback(() => {
-    if (peerConnectionRef.current) return peerConnectionRef.current;
+    if (peerConnectionRef.current) {
+      if (peerConnectionRef.current.signalingState !== 'closed') {
+        return peerConnectionRef.current;
+      }
+    }
 
     const pc = new RTCPeerConnection({ iceServers: STUN_SERVERS });
     peerConnectionRef.current = pc;
@@ -281,7 +304,7 @@ export const OnlineSessionPage: React.FC = () => {
         signalWsRef.current.send(
           JSON.stringify({
             type: 'signal',
-            roomId: roomCode,
+            roomId: roomCodeRef.current,
             data: {
               type: 'ice',
               candidate: event.candidate,
@@ -294,10 +317,11 @@ export const OnlineSessionPage: React.FC = () => {
     pc.ontrack = (event) => {
       console.log('[WebRTC] Remote track received:', event.track.kind, event.streams);
       if (event.streams && event.streams[0]) {
-        setRemoteTrackObj(new MediaStream(event.streams[0].getTracks()));
+        setRemoteTrackObj(event.streams[0]);
       } else if (event.track) {
         setRemoteTrackObj(new MediaStream([event.track]));
       }
+      setConnectionState(LkConnectionState.Connected);
     };
 
     pc.onconnectionstatechange = () => {
@@ -312,7 +336,7 @@ export const OnlineSessionPage: React.FC = () => {
     };
 
     return pc;
-  }, [roomCode]);
+  }, []);
 
   // Make SDP Offer
   const makeOffer = useCallback(async () => {
@@ -324,30 +348,30 @@ export const OnlineSessionPage: React.FC = () => {
       });
       await pc.setLocalDescription(offer);
 
-      signalWsRef.current?.send(
-        JSON.stringify({
-          type: 'signal',
-          roomId: roomCode,
-          data: {
-            type: 'offer',
-            sdp: offer,
-          },
-        })
-      );
+      if (signalWsRef.current?.readyState === WebSocket.OPEN) {
+        signalWsRef.current.send(
+          JSON.stringify({
+            type: 'signal',
+            roomId: roomCodeRef.current,
+            data: {
+              type: 'offer',
+              sdp: offer,
+            },
+          })
+        );
+      }
     } catch (err) {
       console.warn('Make offer error:', err);
     }
-  }, [createPeerConnection, roomCode]);
+  }, [createPeerConnection]);
 
   // Handle Signaling Messages
   const handleSignalMessage = useCallback(async (msg: any) => {
+    if (!msg) return;
+
     if (msg.type === 'joined') {
       createPeerConnection();
-      if (msg.initiator) {
-        setConnectionState(LkConnectionState.Connecting);
-      } else {
-        setConnectionState(LkConnectionState.Connecting);
-      }
+      setConnectionState(LkConnectionState.Connecting);
       return;
     }
 
@@ -379,16 +403,18 @@ export const OnlineSessionPage: React.FC = () => {
         });
         await pc.setLocalDescription(answer);
 
-        signalWsRef.current?.send(
-          JSON.stringify({
-            type: 'signal',
-            roomId: roomCode,
-            data: {
-              type: 'answer',
-              sdp: answer,
-            },
-          })
-        );
+        if (signalWsRef.current?.readyState === WebSocket.OPEN) {
+          signalWsRef.current.send(
+            JSON.stringify({
+              type: 'signal',
+              roomId: roomCodeRef.current,
+              data: {
+                type: 'answer',
+                sdp: answer,
+              },
+            })
+          );
+        }
 
         while (pendingIceRef.current.length > 0) {
           const c = pendingIceRef.current.shift();
@@ -404,8 +430,8 @@ export const OnlineSessionPage: React.FC = () => {
         }
       }
 
-      if (data.type === 'ice') {
-        if (pc.remoteDescription) {
+      if (data.type === 'ice' && data.candidate) {
+        if (pc.remoteDescription && pc.remoteDescription.type) {
           await pc.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(console.warn);
         } else {
           pendingIceRef.current.push(data.candidate);
@@ -416,11 +442,11 @@ export const OnlineSessionPage: React.FC = () => {
     if (msg.type === 'app-message') {
       const payload = msg.payload || {};
       if (payload.kind === 'transcript' && payload.event) {
-        addTranscriptEvent(payload.event);
+        addTranscriptEventRef.current(payload.event);
       } else if (payload.kind === 'text' || payload.kind === 'speech') {
         const ev: TranscriptEvent = {
           id: `tx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-          sessionId: sessionId || roomCode,
+          sessionId: sessionId || roomCodeRef.current,
           senderId: 'peer',
           senderName: msg.fromRole === 'deaf' ? 'Deaf Participant' : 'Hearing Participant',
           senderType: msg.fromRole === 'deaf' ? 'ACCESSIBILITY_USER' : 'COMMON_USER',
@@ -429,13 +455,13 @@ export const OnlineSessionPage: React.FC = () => {
           isFinal: true,
           confidence: 1.0,
         };
-        addTranscriptEvent(ev);
+        addTranscriptEventRef.current(ev);
       } else if (payload.kind === 'sign-result') {
         const text = payload.english || payload.gloss || '';
         if (text) {
           const ev: TranscriptEvent = {
             id: `sign-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-            sessionId: sessionId || roomCode,
+            sessionId: sessionId || roomCodeRef.current,
             senderId: 'peer',
             senderName: 'ISL Sign',
             senderType: 'ACCESSIBILITY_USER',
@@ -444,16 +470,18 @@ export const OnlineSessionPage: React.FC = () => {
             isFinal: true,
             confidence: 0.98,
           };
-          addTranscriptEvent(ev);
+          addTranscriptEventRef.current(ev);
         }
       }
     }
-  }, [addTranscriptEvent, createPeerConnection, makeOffer, roomCode]);
+  }, [createPeerConnection, makeOffer, sessionId]);
+  handleSignalMessageRef.current = handleSignalMessage;
 
   // Initialize Media and Signaling
   useEffect(() => {
     let localStream: MediaStream | null = null;
     let ws: WebSocket | null = null;
+    let isCleanedUp = false;
 
     const startMedia = async () => {
       try {
@@ -461,43 +489,47 @@ export const OnlineSessionPage: React.FC = () => {
           video: true,
           audio: true,
         });
+        if (isCleanedUp) {
+          localStream.getTracks().forEach((t) => t.stop());
+          return;
+        }
         localStreamRef.current = localStream;
 
         localStream.getAudioTracks().forEach((t) => (t.enabled = micState));
         localStream.getVideoTracks().forEach((t) => (t.enabled = cameraState));
 
-                setLocalTrackObj(localStream);
+        setLocalTrackObj(localStream);
 
-        // Attach tracks to active PeerConnection if already created
-        if (peerConnectionRef.current) {
-          const pc = peerConnectionRef.current;
-          const senders = pc.getSenders();
-          localStream.getTracks().forEach((track) => {
-            const hasSender = senders.some((s) => s.track?.id === track.id || s.track?.kind === track.kind);
-            if (!hasSender) {
-              pc.addTrack(track, localStream!);
-            }
-          });
-        }
+        // Pre-create and attach tracks to PeerConnection
+        const pc = createPeerConnection();
+        const senders = pc.getSenders();
+        localStream.getTracks().forEach((track) => {
+          const hasSender = senders.some((s) => s.track?.id === track.id || s.track?.kind === track.kind);
+          if (!hasSender) {
+            pc.addTrack(track, localStream!);
+          }
+        });
 
         const sigUrl = getSignalingUrl();
         ws = new WebSocket(sigUrl);
         signalWsRef.current = ws;
 
         ws.onopen = () => {
-          ws?.send(
-            JSON.stringify({
-              type: 'join',
-              roomId: roomCode,
-              role: userRole,
-            })
-          );
+          if (ws?.readyState === WebSocket.OPEN) {
+            ws.send(
+              JSON.stringify({
+                type: 'join',
+                roomId: roomCodeRef.current,
+                role: userRoleRef.current,
+              })
+            );
+          }
         };
 
         ws.onmessage = (e) => {
           try {
             const data = JSON.parse(e.data);
-            handleSignalMessage(data);
+            handleSignalMessageRef.current(data);
           } catch (err) {
             console.error('Signaling parse error:', err);
           }
@@ -519,11 +551,16 @@ export const OnlineSessionPage: React.FC = () => {
     startMedia();
 
     return () => {
+      isCleanedUp = true;
       if (localStream) {
         localStream.getTracks().forEach((t) => t.stop());
       }
       if (ws) {
-        ws.send(JSON.stringify({ type: 'leave', roomId: roomCode }));
+        if (ws.readyState === WebSocket.OPEN) {
+          try {
+            ws.send(JSON.stringify({ type: 'leave', roomId: roomCodeRef.current }));
+          } catch (_) {}
+        }
         ws.close();
       }
       if (peerConnectionRef.current) {
@@ -531,7 +568,7 @@ export const OnlineSessionPage: React.FC = () => {
         peerConnectionRef.current = null;
       }
     };
-  }, [roomCode, userRole, handleSignalMessage]);
+  }, [createPeerConnection]);
 
   // Toggle Controls Handlers
   const handleToggleMic = async () => {

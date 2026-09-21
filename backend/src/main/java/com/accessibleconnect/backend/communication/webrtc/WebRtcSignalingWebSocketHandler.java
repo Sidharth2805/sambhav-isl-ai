@@ -88,30 +88,24 @@ public class WebRtcSignalingWebSocketHandler extends TextWebSocketHandler {
                 "peerCount", room.size()
         ));
 
-        if (room.size() == 2) {
-            WebSocketSession peer1 = null;
-            WebSocketSession peer2 = null;
-            for (WebSocketSession s : room) {
-                if (peer1 == null) peer1 = s;
-                else peer2 = s;
-            }
+        // If there is an existing peer in this room, notify both peers deterministically
+        for (WebSocketSession existingPeer : room) {
+            if (!existingPeer.getId().equals(session.getId()) && existingPeer.isOpen()) {
+                String existingPeerRole = (String) existingPeer.getAttributes().getOrDefault("role", "normal");
+                String newPeerRole = role;
 
-            if (peer1 != null && peer2 != null) {
-                String role1 = (String) peer1.getAttributes().getOrDefault("role", "normal");
-                String role2 = (String) peer2.getAttributes().getOrDefault("role", "normal");
-
-                // peer1 (initiator) sends offer
-                sendJson(peer1, Map.of(
+                // Tell the existing peer (who is already initialized with local media) to create and send an SDP offer
+                sendJson(existingPeer, Map.of(
                         "type", "peer-joined",
                         "initiator", true,
-                        "role", role2
+                        "role", newPeerRole
                 ));
 
-                // peer2 (receiver) waits for offer
-                sendJson(peer2, Map.of(
+                // Tell the new peer that the existing peer is waiting and to expect an SDP offer
+                sendJson(session, Map.of(
                         "type", "peer-joined",
                         "initiator", false,
-                        "role", role1
+                        "role", existingPeerRole
                 ));
             }
         }
