@@ -1,6 +1,8 @@
 import os
 import json
 import base64
+import tempfile
+from datetime import datetime
 import numpy as np
 import cv2
 import tensorflow as tf
@@ -8,9 +10,10 @@ import mediapipe as mp
 from mediapipe.tasks import python as mp_python
 from mediapipe.tasks.python import vision as mp_vision
 from typing import List, Optional
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import hashlib
 
 app = FastAPI(
     title='Sambhav ISL AI - Sign Language Recognition Service',
@@ -29,7 +32,7 @@ app.add_middleware(
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODELS_DIR = os.path.join(BASE_DIR, 'models')
 
-# 7. Attention Layer Implementation
+# Attention Layer Implementation (registered for custom keras layer compatibility if present)
 @tf.keras.utils.register_keras_serializable()
 class AttentionLayer(tf.keras.layers.Layer):
     def __init__(self, units=96, **kwargs):
@@ -49,13 +52,13 @@ class AttentionLayer(tf.keras.layers.Layer):
         config.update({"units": self.units})
         return config
 
-MODEL_PATH = os.path.join(MODELS_DIR, 'saanket_parquet_bilstm.keras')
+MODEL_PATH = os.path.join(MODELS_DIR, 'saanket_bilstm.keras')
 LABEL_PATH = os.path.join(MODELS_DIR, 'label_mapping.json')
 MEAN_PATH = os.path.join(MODELS_DIR, 'mean.npy')
 STD_PATH = os.path.join(MODELS_DIR, 'std.npy')
 TASK_PATH = os.path.join(MODELS_DIR, 'hand_landmarker.task')
 
-print(f'[Sambhav ML] Loading model from: {MODEL_PATH}')
+print(f'[Sambhav ML] Loading frozen model from: {MODEL_PATH}')
 
 if not os.path.exists(MODEL_PATH):
     raise FileNotFoundError(f'Model file not found at: {MODEL_PATH}')
@@ -68,9 +71,8 @@ in_shape = model.input_shape
 out_shape = model.output_shape
 
 SEQUENCE_LENGTH = in_shape[1] if (in_shape and len(in_shape) >= 2 and in_shape[1] is not None) else 60
-RAW_FEATURES = 126
-NUM_FEATURES = in_shape[2] if (in_shape and len(in_shape) >= 3 and in_shape[2] is not None) else 252
-NUM_CLASSES = out_shape[-1] if (out_shape and len(out_shape) >= 2 and out_shape[-1] is not None) else 262
+NUM_FEATURES = in_shape[2] if (in_shape and len(in_shape) >= 3 and in_shape[2] is not None) else 126
+NUM_CLASSES = out_shape[-1] if (out_shape and len(out_shape) >= 2 and out_shape[-1] is not None) else 169
 
 if os.path.exists(LABEL_PATH):
     with open(LABEL_PATH, 'r', encoding='utf-8') as f:
@@ -92,18 +94,19 @@ print(f'[Sambhav ML] Loaded {len(LABEL_MAPPING)} label classes.')
 if os.path.exists(MEAN_PATH) and os.path.exists(STD_PATH):
     mean_vec = np.squeeze(np.load(MEAN_PATH)).astype(np.float32)
     std_vec = np.squeeze(np.load(STD_PATH)).astype(np.float32)
-    if mean_vec.shape[0] != NUM_FEATURES:
+    if mean_vec.size != NUM_FEATURES:
         mean_vec = np.zeros(NUM_FEATURES, dtype=np.float32)
         std_vec = np.ones(NUM_FEATURES, dtype=np.float32)
     else:
-        std_vec = np.where(std_vec < 1e-6, 1.0, std_vec)
+        mean_vec = mean_vec.reshape(NUM_FEATURES)
+        std_vec = np.where(std_vec.reshape(NUM_FEATURES) < 1e-6, 1.0, std_vec.reshape(NUM_FEATURES))
     print(f'[Sambhav ML] Normalization parameters loaded (mean: {mean_vec.shape}, std: {std_vec.shape})')
 else:
     mean_vec = np.zeros(NUM_FEATURES, dtype=np.float32)
     std_vec = np.ones(NUM_FEATURES, dtype=np.float32)
     print('[Sambhav ML] Using default normalization.')
 
-print(f'[Sambhav ML Dynamic Config] Sequence Length: {SEQUENCE_LENGTH}, Num Features: {NUM_FEATURES}, Num Classes: {NUM_CLASSES}')
+print(f'[Sambhav ML Config] Sequence Length: {SEQUENCE_LENGTH}, Num Features: {NUM_FEATURES}, Num Classes: {NUM_CLASSES}')
 
 hand_detector = None
 if os.path.exists(TASK_PATH):
@@ -150,16 +153,8 @@ FRIENDLY_PHRASES = {
 
 MIN_CONFIDENCE_THRESHOLD = 0.35
 
-def add_velocity(seq_126: np.ndarray) -> np.ndarray:
-    """seq_126: (60, 126) raw landmarks -> (60, 252) with velocity appended."""
-    seq = np.asarray(seq_126, dtype=np.float32)
-    mask = (seq != 0).any(axis=1, keepdims=True).astype(np.float32)
-    delta = np.zeros_like(seq)
-    delta[1:] = (seq[1:] - seq[:-1]) * mask[1:] * mask[:-1]
-    return np.concatenate([seq, delta], axis=1).astype(np.float32)
-
-def normalize_sequence(sequence_252: np.ndarray) -> np.ndarray:
-    seq = np.asarray(sequence_252, dtype=np.float32)
+def normalize_sequence(sequence_126: np.ndarray) -> np.ndarray:
+    seq = np.asarray(sequence_126, dtype=np.float32)
     if seq.shape != (SEQUENCE_LENGTH, NUM_FEATURES):
         raise ValueError(f"Expected ({SEQUENCE_LENGTH}, {NUM_FEATURES}), got {seq.shape}")
     mask = (seq != 0).any(axis=1, keepdims=True)
@@ -207,8 +202,6 @@ def extract_landmarks_from_cv2_frame(frame: np.ndarray):
 
     return landmarks.flatten(), has_hand
 
-import hashlib
-
 # Pre-compiled static computational graph for optimal CPU inference throughput
 @tf.function(input_signature=[tf.TensorSpec(shape=[1, SEQUENCE_LENGTH, NUM_FEATURES], dtype=tf.float32)])
 def _predict_compiled(batch_tensor: tf.Tensor) -> tf.Tensor:
@@ -227,10 +220,12 @@ def run_bilstm_inference(sequence_input: np.ndarray) -> dict:
     curr_len = len(seq_arr)
     if curr_len == 0:
         return {
-            'gesture': 'UNKNOWN',
-            'label': 'No gesture',
+            'gesture': 'NO_ACTIVE_SIGN',
+            'label': 'NO_ACTIVE_SIGN',
+            'raw_label': 'NO_ACTIVE_SIGN',
             'confidence': 0.0,
             'top2_confidence': 0.0,
+            'top2_label': '',
             'margin': 0.0,
             'phrase': '',
             'top_3': []
@@ -243,12 +238,39 @@ def run_bilstm_inference(sequence_input: np.ndarray) -> dict:
     elif curr_len == 1:
         seq_arr = np.repeat(seq_arr, SEQUENCE_LENGTH, axis=0)
 
-    # If shape is (60, 126), add velocity features to make (60, 252)
-    if seq_arr.shape == (SEQUENCE_LENGTH, RAW_FEATURES):
-        seq_arr = add_velocity(seq_arr)
-
     if seq_arr.shape != (SEQUENCE_LENGTH, NUM_FEATURES):
         raise ValueError(f'Expected ({SEQUENCE_LENGTH}, {NUM_FEATURES}), got {seq_arr.shape}')
+
+    # Activity & Variance Gating: Reject zero or static resting sequences before softmax
+    active_mask = (seq_arr != 0).any(axis=1)
+    active_count = int(np.sum(active_mask))
+    if active_count < 15:
+        return {
+            'gesture': 'NO_ACTIVE_SIGN',
+            'label': 'NO_ACTIVE_SIGN',
+            'raw_label': 'NO_ACTIVE_SIGN',
+            'confidence': 0.0,
+            'top2_confidence': 0.0,
+            'top2_label': '',
+            'margin': 0.0,
+            'phrase': '',
+            'top_3': []
+        }
+
+    active_frames = seq_arr[active_mask]
+    var_sum = float(np.sum(np.var(active_frames, axis=0)))
+    if var_sum < 0.0015:
+        return {
+            'gesture': 'NO_ACTIVE_SIGN',
+            'label': 'NO_ACTIVE_SIGN',
+            'raw_label': 'NO_ACTIVE_SIGN',
+            'confidence': 0.0,
+            'top2_confidence': 0.0,
+            'top2_label': '',
+            'margin': 0.0,
+            'phrase': '',
+            'top_3': []
+        }
 
     norm_seq = normalize_sequence(seq_arr)
     if norm_seq.ndim == 2:
@@ -303,7 +325,7 @@ async def health_check():
     return {
         'status': 'healthy',
         'service': 'Sambhav ISL AI Recognition Service',
-        'model': 'SAANKET BiLSTM Parquet Recognition Model',
+        'model': 'SAANKET Frozen BiLSTM Recognition Model',
         'model_file': os.path.basename(MODEL_PATH),
         'model_md5': md5_hash,
         'num_classes': len(LABEL_MAPPING),
@@ -324,12 +346,27 @@ async def get_labels():
 @app.post('/predict-landmarks')
 async def predict_landmarks(req: LandmarkSequenceRequest):
     try:
+        if not req.sequence or len(req.sequence) == 0:
+            return {
+                'gesture': 'NO_ACTIVE_SIGN',
+                'label': 'NO_ACTIVE_SIGN',
+                'raw_label': 'NO_ACTIVE_SIGN',
+                'confidence': 0.0,
+                'top2_confidence': 0.0,
+                'top2_label': '',
+                'margin': 0.0,
+                'phrase': '',
+                'top_3': []
+            }
+
         seq_array = np.array(req.sequence, dtype=np.float32)
-        if seq_array.ndim != 2 or (seq_array.shape[1] != RAW_FEATURES and seq_array.shape[1] != NUM_FEATURES):
-            raise HTTPException(status_code=400, detail=f'Expected shape (N, {RAW_FEATURES}) or (N, {NUM_FEATURES}), got {seq_array.shape}')
+        if seq_array.ndim != 2 or seq_array.shape[1] != NUM_FEATURES:
+            raise HTTPException(status_code=400, detail=f'Expected shape (N, {NUM_FEATURES}), got {seq_array.shape}')
         
         result = run_bilstm_inference(seq_array)
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -384,12 +421,345 @@ async def scan_handwriting_prescription(req: OCRScanRequest):
         if not result.get("success"):
             raise HTTPException(status_code=422, detail=result.get("error", "OCR processing failed"))
         return result
-
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"OCR processing failed: {str(e)}")
 
+# ============================================================
+# SESSION HISTORY & GRAMMAR CONVERSION FOR TRANSLATE FEATURE
+# ============================================================
+
+HISTORY_PATH = os.path.join(BASE_DIR, 'history.json')
+
+if not os.path.exists(HISTORY_PATH):
+    with open(HISTORY_PATH, 'w', encoding='utf-8') as f:
+        json.dump([], f, ensure_ascii=False, indent=2)
+
+def load_history():
+    try:
+        if not os.path.exists(HISTORY_PATH):
+            return []
+        with open(HISTORY_PATH, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return data if isinstance(data, list) else []
+    except Exception as e:
+        print('[Sambhav ML] History loading error:', e)
+        return []
+
+def save_history(gloss, english):
+    try:
+        history = load_history()
+        history_item = {
+            'gloss': str(gloss),
+            'english': str(english),
+            'created_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+        history.insert(0, history_item)
+        history = history[:100]
+        with open(HISTORY_PATH, 'w', encoding='utf-8') as f:
+            json.dump(history, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception as e:
+        print('[Sambhav ML] History saving error:', e)
+        return False
+
+class ConvertRequest(BaseModel):
+    gloss: Optional[str] = ""
+    gloss_words: Optional[List[str]] = None
+    text: Optional[str] = None
+
+class SpeakRequest(BaseModel):
+    text: str
+
+def convert_gloss_to_english(gloss: str) -> str:
+    if not gloss:
+        return ""
+    words = gloss.strip().lower().split()
+    if not words:
+        return ""
+    
+    # Remove consecutive duplicates
+    cleaned_words = []
+    for w in words:
+        if not cleaned_words or w != cleaned_words[-1]:
+            cleaned_words.append(w)
+    words = cleaned_words
+
+    phrase_map = {
+        "hello": "Hello.",
+        "hi": "Hello.",
+        "bye": "Goodbye.",
+        "thank you": "Thank you.",
+        "thankyou": "Thank you.",
+        "thanks": "Thank you.",
+        "good morning": "Good morning.",
+        "goodmorning": "Good morning.",
+        "good afternoon": "Good afternoon.",
+        "goodafternoon": "Good afternoon.",
+        "good evening": "Good evening.",
+        "goodevening": "Good evening.",
+        "good night": "Good night.",
+        "goodnight": "Good night.",
+        "how are you": "How are you?",
+        "howareyou": "How are you?",
+        "what your name": "What is your name?",
+        "what is your name": "What is your name?",
+        "my name": "My name is ...",
+        "i love you": "I love you.",
+        "i am happy": "I am happy.",
+        "i am sad": "I am sad.",
+        "i am fine": "I am fine.",
+        "i am good": "I am good.",
+        "where you go": "Where are you going?",
+        "where you live": "Where do you live?",
+        "what you doing": "What are you doing?",
+        "what doing": "What are you doing?",
+        "you okay": "Are you okay?",
+        "are you okay": "Are you okay?",
+        "i want water": "I want water.",
+        "i need water": "I need water.",
+        "give me water": "Please give me water.",
+        "i want food": "I want food.",
+        "i need food": "I need food.",
+        "i am hungry": "I am hungry.",
+        "i am thirsty": "I am thirsty.",
+        "go home": "I am going home.",
+        "go school": "I am going to school.",
+        "go college": "I am going to college.",
+        "go market": "I am going to the market.",
+        "market go": "I am going to the market.",
+        "school go": "I am going to school.",
+        "college go": "I am going to college.",
+        "home go": "I am going home.",
+        "today school": "I am going to school today.",
+        "today college": "I am going to college today.",
+        "tomorrow school": "I am going to school tomorrow.",
+        "tomorrow college": "I am going to college tomorrow.",
+        "yesterday school": "I went to school yesterday.",
+        "yesterday college": "I went to college yesterday.",
+        "i like": "I like it.",
+        "i don't like": "I do not like it.",
+        "help me": "Please help me.",
+        "please help": "Please help me.",
+        "sit down": "Please sit down.",
+        "stand up": "Please stand up.",
+        "open door": "Please open the door.",
+        "close door": "Please close the door.",
+        "turn on": "Please turn it on.",
+        "turn off": "Please turn it off.",
+        "yes": "Yes.",
+        "no": "No.",
+        "sorry": "I am sorry.",
+        "welcome": "You are welcome.",
+        "good": "Good.",
+        "bad": "Bad.",
+        "happy": "I am happy.",
+        "sad": "Sad.",
+        "angry": "I am angry.",
+        "tired": "I am tired.",
+        "strong": "I am strong.",
+        "weak": "I am weak.",
+        "question": "I have a question.",
+        "answer": "This is the answer.",
+        "time": "What is the time?",
+        "place": "What is the place?",
+        "language": "What is the language?",
+        "know": "I know.",
+        "don't know": "I do not know."
+    }
+
+    normalized_gloss = " ".join(words)
+    if normalized_gloss in phrase_map:
+        return phrase_map[normalized_gloss]
+
+    # Rule-based fallback
+    if len(words) >= 2 and words[-1] == "go":
+        destination = " ".join(words[:-1])
+        return f"I am going to {destination}."
+
+    if "want" in words:
+        want_index = words.index("want")
+        if want_index < len(words) - 1:
+            obj = " ".join(words[want_index + 1:])
+            return f"I want {obj}."
+
+    if "need" in words:
+        need_index = words.index("need")
+        if need_index < len(words) - 1:
+            obj = " ".join(words[need_index + 1:])
+            return f"I need {obj}."
+
+    if words[0] == "i" and len(words) >= 2:
+        sentence = " ".join(words)
+        return sentence[0].upper() + sentence[1:] + "."
+
+    question_words = {"what", "where", "when", "why", "who", "how"}
+    if words[0] in question_words:
+        sentence = " ".join(words)
+        return sentence[0].upper() + sentence[1:] + "?"
+
+    if len(words) == 1:
+        w = words[0]
+        if w in phrase_map:
+            return phrase_map[w]
+        return w.capitalize() + "."
+
+    sentence = " ".join(words)
+    return sentence[0].upper() + sentence[1:] + "."
+
+@app.post("/convert")
+async def convert_gloss(req: ConvertRequest):
+    try:
+        gloss = req.gloss or ""
+        if not gloss and req.gloss_words:
+            gloss = " ".join(req.gloss_words)
+        elif not gloss and req.text:
+            gloss = req.text
+        english = convert_gloss_to_english(gloss)
+        if gloss.strip() and english.strip():
+            save_history(gloss, english)
+        return {
+            "success": True,
+            "gloss": gloss,
+            "english": english,
+            "sentence": english
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+@app.get("/history")
+async def get_history():
+    return load_history()
+
+@app.post("/history/clear")
+async def clear_history():
+    try:
+        with open(HISTORY_PATH, "w", encoding="utf-8") as f:
+            json.dump([], f, ensure_ascii=False, indent=2)
+        return {"success": True, "message": "History cleared"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+def extract_video_sequence(video_path: str):
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        return None, 0, 0
+
+    frames = []
+    total_frames = 0
+    detected_frames = 0
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        total_frames += 1
+        landmarks_126, has_hand = extract_landmarks_from_cv2_frame(frame)
+        if has_hand:
+            detected_frames += 1
+        frames.append(landmarks_126)
+
+    cap.release()
+
+    if len(frames) == 0:
+        return None, total_frames, detected_frames
+
+    frames = np.asarray(frames, dtype=np.float32)
+
+    # Downsample or pad to exactly SEQUENCE_LENGTH (60) frames
+    if len(frames) >= SEQUENCE_LENGTH:
+        indexes = np.linspace(0, len(frames) - 1, SEQUENCE_LENGTH).astype(int)
+        frames = frames[indexes]
+    else:
+        padding = np.zeros((SEQUENCE_LENGTH - len(frames), NUM_FEATURES), dtype=np.float32)
+        frames = np.vstack([frames, padding])
+
+    return frames, total_frames, detected_frames
+
+@app.post("/predict-video")
+async def predict_video(file: UploadFile = File(...)):
+    temp_path = None
+    try:
+        contents = await file.read()
+        if not contents:
+            return {"success": False, "error": "Empty video received"}
+
+        suffix = ".webm" if file.filename and file.filename.lower().endswith(".webm") else ".mp4"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+            temp_file.write(contents)
+            temp_path = temp_file.name
+
+        sequence, total_frames, detected_frames = extract_video_sequence(temp_path)
+        if sequence is None:
+            return {"success": False, "error": "Could not read video frames"}
+
+        hand_detection_pct = (detected_frames / total_frames * 100.0) if total_frames > 0 else 0.0
+        if hand_detection_pct < 20.0 or detected_frames < 6:
+            return {
+                "success": True,
+                "word": "No hand detected",
+                "confidence": 0.0,
+                "reason": "low_hand_detection",
+                "video_info": {
+                    "total_frames": total_frames,
+                    "detected_frames": detected_frames,
+                    "hand_detection_percentage": round(hand_detection_pct, 2)
+                }
+            }
+
+        norm_seq = normalize_sequence(sequence)
+        input_data = np.expand_dims(norm_seq, axis=0)
+
+        preds = _predict_compiled(input_data).numpy()[0]
+        top_indices = np.argsort(preds)[::-1]
+        
+        top1_idx = int(top_indices[0])
+        top1_conf = float(preds[top1_idx])
+        top1_raw = LABEL_MAPPING.get(str(top1_idx), f"CLASS_{top1_idx}")
+        top1_formatted = format_class_name(top1_raw)
+
+        top3 = []
+        for rank in range(min(3, len(top_indices))):
+            idx = int(top_indices[rank])
+            conf = float(preds[idx])
+            raw_lbl = LABEL_MAPPING.get(str(idx), f"CLASS_{idx}")
+            top3.append({
+                "class_id": idx,
+                "label": format_class_name(raw_lbl),
+                "confidence": round(conf, 4)
+            })
+
+        print(f"[Sambhav ML] /predict-video: word='{top1_formatted}' conf={top1_conf:.4f} (detected={detected_frames}/{total_frames} frames)")
+
+        return {
+            "success": True,
+            "word": top1_formatted,
+            "confidence": round(top1_conf, 4),
+            "top3": top3,
+            "video_info": {
+                "total_frames": total_frames,
+                "detected_frames": detected_frames,
+                "hand_detection_percentage": round(hand_detection_pct, 2)
+            }
+        }
+    except Exception as e:
+        print("[Sambhav ML] /predict-video error:", e)
+        return {"success": False, "error": str(e)}
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+            except Exception:
+                pass
 
 @app.websocket('/ws/stream')
 async def websocket_stream_endpoint(websocket: WebSocket):

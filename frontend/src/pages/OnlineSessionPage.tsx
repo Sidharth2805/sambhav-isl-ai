@@ -9,39 +9,18 @@ import { HearingUserWorkspace, LkConnectionState } from '../components/communica
 import { DeafUserWorkspace } from '../components/communication/DeafUserWorkspace';
 import { SpeechToTextService } from '../services/SpeechToTextService';
 
-export const getSignalingUrl = (): string => {
-  const envSignaling = (import.meta as any).env?.VITE_SIGNALING_URL;
-  if (envSignaling) return envSignaling;
-
-  const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  if (isLocal) {
-    return 'ws://localhost:8080/ws/webrtc';
-  }
-
-  const apiUrl = (import.meta as any).env?.VITE_API_URL;
-  if (apiUrl) {
-    try {
-      const parsed = new URL(apiUrl);
-      const protocol = parsed.protocol === 'https:' ? 'wss:' : 'ws:';
-      return `${protocol}//${parsed.host}/ws/webrtc`;
-    } catch {
-      // fallback
-    }
-  }
-
-  if (typeof window !== 'undefined') {
-    return `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/webrtc`;
-  }
-  return 'ws://localhost:8080/ws/webrtc';
+const ICE_SERVERS: RTCConfiguration = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+  ],
 };
 
-const STUN_SERVERS = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'stun:stun2.l.google.com:19302' },
-  { urls: 'stun:stun3.l.google.com:19302' },
-  { urls: 'stun:stun4.l.google.com:19302' },
-];
+function getSignalingUrl(): string {
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = window.location.hostname || 'localhost';
+  return `${wsProtocol}//${host}:8080/ws/webrtc`;
+}
 
 export const OnlineSessionPage: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -60,7 +39,7 @@ export const OnlineSessionPage: React.FC = () => {
   };
 
   const initialRoomCode = (
-    incomingSettings.roomCode ? incomingSettings.roomCode.toUpperCase() : (sessionId?.toUpperCase() || 'SAMBHAV')
+    (incomingSettings.roomCode || sessionId || 'SAMBHAV').trim().toUpperCase()
   );
   const [session, setSession] = useState<CommunicationSessionDto | null>(null);
   const [roomCode, setRoomCode] = useState<string>(initialRoomCode);
@@ -73,11 +52,11 @@ export const OnlineSessionPage: React.FC = () => {
     (user as any)?.disabilityType === 'MUTE' ||
     user?.accountType === 'ACCESSIBILITY_USER';
 
-  const userRole = searchParams.get('role') || incomingSettings.userRole || (isDeafDefault ? 'deaf' : 'normal');
+  const userRole = (searchParams.get('role') as 'normal' | 'deaf') || incomingSettings.userRole || (isDeafDefault ? 'deaf' : 'normal');
   const userRoleRef = useRef<string>(userRole);
   userRoleRef.current = userRole;
 
-  const isDeafWorkspace = userRole === 'deaf' || user?.accountType === 'ACCESSIBILITY_USER';
+  const isDeafWorkspace = userRole === 'deaf';
 
   // Call Settings UI State
   const [micState, setMicState] = useState<boolean>(
@@ -112,19 +91,21 @@ export const OnlineSessionPage: React.FC = () => {
   const [interimTranscripts, setInterimTranscripts] = useState<Record<string, string>>({});
   const captionsEndRef = useRef<HTMLDivElement | null>(null);
 
-  // WebRTC Native Streams & Connections
+  // WebRTC Refs & Streams
   const localStreamRef = useRef<MediaStream | null>(null);
+  const remoteMediaStreamRef = useRef<MediaStream>(new MediaStream());
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const signalWsRef = useRef<WebSocket | null>(null);
+  const dataChannelRef = useRef<RTCDataChannel | null>(null);
+  const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
+
   const [localTrackObj, setLocalTrackObj] = useState<any>(null);
   const [remoteTrackObj, setRemoteTrackObj] = useState<any>(null);
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  const signalWsRef = useRef<WebSocket | null>(null);
-  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
-  const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
-
-  // Stable handler refs
-  const handleSignalMessageRef = useRef<(msg: any) => void>(() => {});
-  const addTranscriptEventRef = useRef<(event: TranscriptEvent) => void>(() => {});
+  // Avatar animation triggers
+  const [avatarTriggerText, setAvatarTriggerText] = useState<string>('');
+  const processedEventIdsRef = useRef<Set<string>>(new Set());
 
   // Fetch Session details from API if available
   useEffect(() => {
@@ -135,14 +116,8 @@ export const OnlineSessionPage: React.FC = () => {
           setSession(data);
           if (data.roomCode) {
             const upperCode = data.roomCode.toUpperCase();
-            if (upperCode !== roomCodeRef.current) {
-              if (signalWsRef.current?.readyState === WebSocket.OPEN) {
-                signalWsRef.current.send(JSON.stringify({ type: 'leave', roomId: roomCodeRef.current }));
-                signalWsRef.current.send(JSON.stringify({ type: 'join', roomId: upperCode, role: userRoleRef.current }));
-              }
-              setRoomCode(upperCode);
-              roomCodeRef.current = upperCode;
-            }
+            setRoomCode(upperCode);
+            roomCodeRef.current = upperCode;
           }
           if (data.status === 'CREATED' || data.status === 'WAITING') {
             startSession(data.id || sessionId, accessToken).catch(() => {});
@@ -150,7 +125,7 @@ export const OnlineSessionPage: React.FC = () => {
         }
       })
       .catch((e) => {
-        console.warn('Session API note (proceeding with native WebRTC session):', e);
+        console.warn('Session API note:', e);
       });
   }, [sessionId, accessToken]);
 
@@ -200,15 +175,49 @@ export const OnlineSessionPage: React.FC = () => {
       }));
     }
   }, []);
+
+  const addTranscriptEventRef = useRef(addTranscriptEvent);
   addTranscriptEventRef.current = addTranscriptEvent;
 
-  // Send Transcript / Message over WebRTC Signaling
+  // Send Application Data over RTCDataChannel (with WebSocket signaling fallback)
+  const sendAppData = useCallback((payload: Record<string, any>) => {
+    const raw = JSON.stringify(payload);
+    let sent = false;
+
+    if (dataChannelRef.current && dataChannelRef.current.readyState === 'open') {
+      try {
+        dataChannelRef.current.send(raw);
+        sent = true;
+      } catch (e) {
+        console.warn('DataChannel send error:', e);
+      }
+    }
+
+    // Fallback over WebSocket app-message if DataChannel is not open
+    if (!sent && signalWsRef.current && signalWsRef.current.readyState === WebSocket.OPEN) {
+      try {
+        signalWsRef.current.send(
+          JSON.stringify({
+            type: 'app-message',
+            roomId: roomCodeRef.current,
+            fromRole: userRoleRef.current,
+            payload: payload,
+          })
+        );
+      } catch (e) {
+        console.warn('WS app-message relay error:', e);
+      }
+    }
+  }, []);
+
+  // Send Transcript / Message
   const handleSendTextMessage = useCallback((text: string) => {
     const clean = text.trim();
     if (!clean) return;
 
+    const eventId = `tx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const event: TranscriptEvent = {
-      id: `tx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      id: eventId,
       sessionId: sessionId || roomCodeRef.current,
       senderId: user?.id || user?.email || 'self',
       senderName: (user as any)?.fullName || (user as any)?.name || 'You',
@@ -219,23 +228,15 @@ export const OnlineSessionPage: React.FC = () => {
       confidence: 1.0,
     };
 
-    addTranscriptEvent(event);
+    addTranscriptEventRef.current(event);
 
-    if (signalWsRef.current?.readyState === WebSocket.OPEN) {
-      signalWsRef.current.send(
-        JSON.stringify({
-          type: 'app-message',
-          roomId: roomCodeRef.current,
-          payload: {
-            kind: 'transcript',
-            event,
-            text: clean,
-            timestamp: Date.now(),
-          },
-        })
-      );
+    // Broadcast across DataChannel with explicit eventId
+    if (isDeafWorkspace) {
+      sendAppData({ type: 'ISL_SIGN', sign: clean, text: clean, eventId, timestamp: Date.now(), event });
+    } else {
+      sendAppData({ type: 'avatar-sign', text: clean, eventId, timestamp: Date.now(), event });
     }
-  }, [addTranscriptEvent, isDeafWorkspace, sessionId, user]);
+  }, [isDeafWorkspace, sendAppData, sessionId, user]);
 
   // Live Microphone Audio Recognition (Web Speech STT)
   useEffect(() => {
@@ -244,7 +245,7 @@ export const OnlineSessionPage: React.FC = () => {
     const mySenderName = (user as any)?.fullName || (user as any)?.name || 'You';
     const mySenderType = isDeafWorkspace ? 'ACCESSIBILITY_USER' : 'COMMON_USER';
 
-    if (micState && connectionState !== LkConnectionState.Disconnected) {
+    if (micState && connectionState === LkConnectionState.Connected) {
       stt.startRecording(
         sessionId || roomCodeRef.current,
         mySenderId,
@@ -252,18 +253,16 @@ export const OnlineSessionPage: React.FC = () => {
         mySenderType,
         (event: TranscriptEvent) => {
           addTranscriptEventRef.current(event);
-          if (signalWsRef.current?.readyState === WebSocket.OPEN) {
-            signalWsRef.current.send(
-              JSON.stringify({
-                type: 'app-message',
-                roomId: roomCodeRef.current,
-                fromRole: userRoleRef.current,
-                payload: {
-                  kind: 'transcript',
-                  event,
-                },
-              })
-            );
+          if (event.isFinal && event.text) {
+            const eventId = event.id || `stt-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+            sendAppData({
+              type: isDeafWorkspace ? 'ISL_SIGN' : 'avatar-sign',
+              sign: event.text,
+              text: event.text,
+              eventId,
+              timestamp: Date.now(),
+              event: event,
+            });
           }
         },
         'en-IN'
@@ -280,25 +279,93 @@ export const OnlineSessionPage: React.FC = () => {
     return () => {
       stt.stopRecording();
     };
-  }, [micState, connectionState, sessionId, user, isDeafWorkspace]);
+  }, [micState, connectionState, sessionId, user, isDeafWorkspace, sendAppData]);
 
-  // Create WebRTC Peer Connection
-  const createPeerConnection = useCallback(() => {
-    if (peerConnectionRef.current) {
-      if (peerConnectionRef.current.signalingState !== 'closed') {
-        return peerConnectionRef.current;
+  // Wire DataChannel Event Listeners
+  const wireDataChannel = useCallback((dc: RTCDataChannel) => {
+    dc.onopen = () => {
+      console.log('[WebRTC DataChannel] Open');
+    };
+    dc.onclose = () => {
+      console.log('[WebRTC DataChannel] Closed');
+    };
+    dc.onerror = (err) => {
+      console.warn('[WebRTC DataChannel] Error:', err);
+    };
+    dc.onmessage = (e) => {
+      try {
+        const msg = JSON.parse(e.data);
+        const eventId = msg.eventId || msg.event?.id;
+        if (eventId) {
+          if (processedEventIdsRef.current.has(eventId)) {
+            return;
+          }
+          processedEventIdsRef.current.add(eventId);
+          if (processedEventIdsRef.current.size > 200) {
+            const firstEntries = Array.from(processedEventIdsRef.current).slice(0, 50);
+            firstEntries.forEach((id) => processedEventIdsRef.current.delete(id));
+          }
+        }
+
+        if (msg.type === 'avatar-sign') {
+          if (msg.text) {
+            setAvatarTriggerText(msg.text);
+          }
+          if (msg.event) {
+            addTranscriptEventRef.current(msg.event);
+          } else if (msg.text) {
+            const ev: TranscriptEvent = {
+              id: msg.eventId || `av-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+              sessionId: sessionId || roomCodeRef.current,
+              senderId: 'remote',
+              senderName: 'Hearing Participant',
+              senderType: 'COMMON_USER',
+              text: msg.text,
+              timestamp: msg.timestamp || Date.now(),
+              isFinal: true,
+              confidence: 1.0,
+            };
+            addTranscriptEventRef.current(ev);
+          }
+        } else if (msg.type === 'ISL_SIGN' || msg.type === 'translation') {
+          const signText = msg.sign || msg.text || '';
+          if (!signText.trim()) return;
+
+          if (msg.event) {
+            addTranscriptEventRef.current(msg.event);
+          } else {
+            const ev: TranscriptEvent = {
+              id: msg.eventId || `isl-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+              sessionId: sessionId || roomCodeRef.current,
+              senderId: 'remote',
+              senderName: 'ISL Sign',
+              senderType: 'ACCESSIBILITY_USER',
+              text: signText.trim(),
+              timestamp: msg.timestamp || Date.now(),
+              isFinal: true,
+              confidence: msg.confidence || 0.98,
+            };
+            addTranscriptEventRef.current(ev);
+          }
+        } else if (msg.type === 'transcript' && msg.event) {
+          addTranscriptEventRef.current(msg.event);
+        }
+      } catch (err) {
+        console.error('[WebRTC DataChannel] Parse error:', err);
       }
+    };
+  }, [sessionId]);
+
+  // Create RTCPeerConnection Instance
+  const createPeerConnection = useCallback((): RTCPeerConnection => {
+    if (peerConnectionRef.current) {
+      return peerConnectionRef.current;
     }
 
-    const pc = new RTCPeerConnection({ iceServers: STUN_SERVERS });
+    const pc = new RTCPeerConnection(ICE_SERVERS);
     peerConnectionRef.current = pc;
 
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((track) => {
-        pc.addTrack(track, localStreamRef.current!);
-      });
-    }
-
+    // Send ICE candidates ONLY through WebSocket signaling
     pc.onicecandidate = (event) => {
       if (event.candidate && signalWsRef.current?.readyState === WebSocket.OPEN) {
         signalWsRef.current.send(
@@ -306,7 +373,7 @@ export const OnlineSessionPage: React.FC = () => {
             type: 'signal',
             roomId: roomCodeRef.current,
             data: {
-              type: 'ice',
+              type: 'candidate',
               candidate: event.candidate,
             },
           })
@@ -314,34 +381,62 @@ export const OnlineSessionPage: React.FC = () => {
       }
     };
 
+    // Receive Remote Media Stream
     pc.ontrack = (event) => {
-      console.log('[WebRTC] Remote track received:', event.track.kind, event.streams);
-      if (event.streams && event.streams[0]) {
-        setRemoteTrackObj(event.streams[0]);
-      } else if (event.track) {
-        setRemoteTrackObj(new MediaStream([event.track]));
+      console.log('[WebRTC] Remote track received:', event.track.kind);
+      if (!remoteMediaStreamRef.current) {
+        remoteMediaStreamRef.current = new MediaStream();
       }
-      setConnectionState(LkConnectionState.Connected);
+      if (event.streams && event.streams[0]) {
+        event.streams[0].getTracks().forEach((track) => {
+          if (!remoteMediaStreamRef.current.getTracks().some((t) => t.id === track.id)) {
+            remoteMediaStreamRef.current.addTrack(track);
+          }
+        });
+      } else if (event.track) {
+        if (!remoteMediaStreamRef.current.getTracks().some((t) => t.id === event.track.id)) {
+          remoteMediaStreamRef.current.addTrack(event.track);
+        }
+      }
+      setRemoteTrackObj(new MediaStream(remoteMediaStreamRef.current.getTracks()));
+    };
+
+    // Handle incoming DataChannel
+    pc.ondatachannel = (event) => {
+      console.log('[WebRTC] Inbound DataChannel received');
+      dataChannelRef.current = event.channel;
+      wireDataChannel(event.channel);
     };
 
     pc.onconnectionstatechange = () => {
       const state = pc.connectionState;
+      console.log('[WebRTC] Connection state:', state);
       if (state === 'connected') {
         setConnectionState(LkConnectionState.Connected);
+        setRemoteLeftNotice(false);
       } else if (state === 'connecting') {
         setConnectionState(LkConnectionState.Connecting);
       } else if (state === 'disconnected' || state === 'failed') {
+        setConnectionState(LkConnectionState.Disconnected);
+      } else if (state === 'closed') {
         setConnectionState(LkConnectionState.Disconnected);
       }
     };
 
     return pc;
-  }, []);
+  }, [wireDataChannel]);
 
-  // Make SDP Offer
+  // Send SDP Offer via WebSocket Signaling
   const makeOffer = useCallback(async () => {
+    const pc = createPeerConnection();
     try {
-      const pc = createPeerConnection();
+      // Create DataChannel on initiator side
+      if (!dataChannelRef.current || dataChannelRef.current.readyState === 'closed') {
+        const dc = pc.createDataChannel('main');
+        dataChannelRef.current = dc;
+        wireDataChannel(dc);
+      }
+
       const offer = await pc.createOffer({
         offerToReceiveAudio: true,
         offerToReceiveVideo: true,
@@ -359,43 +454,54 @@ export const OnlineSessionPage: React.FC = () => {
             },
           })
         );
+        console.log('[WebRTC Signaling] Dispatched SDP offer');
       }
     } catch (err) {
-      console.warn('Make offer error:', err);
+      console.error('[WebRTC] Error creating SDP offer:', err);
     }
-  }, [createPeerConnection]);
+  }, [createPeerConnection, wireDataChannel]);
 
-  // Handle Signaling Messages
+  // Handle Signaling Messages from WebSocket
   const handleSignalMessage = useCallback(async (msg: any) => {
     if (!msg) return;
 
     if (msg.type === 'joined') {
-      createPeerConnection();
-      setConnectionState(LkConnectionState.Connecting);
-      return;
+      console.log(`[WebRTC Signaling] Joined room=${msg.roomId}, peers=${msg.peerCount}`);
+      if (msg.peerCount > 1) {
+        setConnectionState(LkConnectionState.Connecting);
+      }
     }
 
     if (msg.type === 'peer-joined') {
+      console.log(`[WebRTC Signaling] Peer joined. Initiator=${msg.initiator}`);
+      setRemoteLeftNotice(false);
+      setInterimTranscripts({});
+      setAvatarTriggerText('');
+      processedEventIdsRef.current.clear();
       if (msg.initiator) {
         await makeOffer();
       }
-      return;
     }
 
     if (msg.type === 'peer-left') {
-      setRemoteTrackObj(null);
+      console.log('[WebRTC Signaling] Remote peer left room');
       setRemoteLeftNotice(true);
-      setShowEndModal(true);
-      return;
+      if (remoteMediaStreamRef.current) {
+        remoteMediaStreamRef.current.getTracks().forEach((t) => t.stop());
+      }
+      remoteMediaStreamRef.current = new MediaStream();
+      setRemoteTrackObj(null);
+      setInterimTranscripts({});
+      setAvatarTriggerText('');
+      processedEventIdsRef.current.clear();
     }
 
     if (msg.type === 'signal') {
-      const data = msg.data;
-      if (!data) return;
-
+      const data = msg.data || {};
       const pc = createPeerConnection();
 
       if (data.type === 'offer') {
+        console.log('[WebRTC Signaling] Received SDP offer, creating answer');
         await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
         const answer = await pc.createAnswer({
           offerToReceiveAudio: true,
@@ -423,6 +529,7 @@ export const OnlineSessionPage: React.FC = () => {
       }
 
       if (data.type === 'answer') {
+        console.log('[WebRTC Signaling] Received SDP answer');
         await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
         while (pendingIceRef.current.length > 0) {
           const c = pendingIceRef.current.shift();
@@ -430,7 +537,7 @@ export const OnlineSessionPage: React.FC = () => {
         }
       }
 
-      if (data.type === 'ice' && data.candidate) {
+      if (data.type === 'candidate' && data.candidate) {
         if (pc.remoteDescription && pc.remoteDescription.type) {
           await pc.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(console.warn);
         } else {
@@ -441,66 +548,91 @@ export const OnlineSessionPage: React.FC = () => {
 
     if (msg.type === 'app-message') {
       const payload = msg.payload || {};
-      if (payload.kind === 'transcript' && payload.event) {
-        addTranscriptEventRef.current(payload.event);
-      } else if (payload.kind === 'text' || payload.kind === 'speech') {
-        const ev: TranscriptEvent = {
-          id: `tx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-          sessionId: sessionId || roomCodeRef.current,
-          senderId: 'peer',
-          senderName: msg.fromRole === 'deaf' ? 'Deaf Participant' : 'Hearing Participant',
-          senderType: msg.fromRole === 'deaf' ? 'ACCESSIBILITY_USER' : 'COMMON_USER',
-          text: payload.text,
-          timestamp: Date.now(),
-          isFinal: true,
-          confidence: 1.0,
-        };
-        addTranscriptEventRef.current(ev);
-      } else if (payload.kind === 'sign-result') {
-        const text = payload.english || payload.gloss || '';
-        if (text) {
+      const eventId = payload.eventId || payload.event?.id;
+      if (eventId) {
+        if (processedEventIdsRef.current.has(eventId)) {
+          return;
+        }
+        processedEventIdsRef.current.add(eventId);
+        if (processedEventIdsRef.current.size > 200) {
+          const firstEntries = Array.from(processedEventIdsRef.current).slice(0, 50);
+          firstEntries.forEach((id) => processedEventIdsRef.current.delete(id));
+        }
+      }
+
+      if (payload.type === 'avatar-sign' || payload.kind === 'speech' || payload.kind === 'text') {
+        const text = payload.text || '';
+        if (text) setAvatarTriggerText(text);
+        if (payload.event) {
+          addTranscriptEventRef.current(payload.event);
+        } else if (text) {
           const ev: TranscriptEvent = {
-            id: `sign-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            id: payload.eventId || `av-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
             sessionId: sessionId || roomCodeRef.current,
-            senderId: 'peer',
-            senderName: 'ISL Sign',
-            senderType: 'ACCESSIBILITY_USER',
+            senderId: 'remote',
+            senderName: msg.fromRole === 'deaf' ? 'Deaf Participant' : 'Hearing Participant',
+            senderType: msg.fromRole === 'deaf' ? 'ACCESSIBILITY_USER' : 'COMMON_USER',
             text: text,
-            timestamp: Date.now(),
+            timestamp: payload.timestamp || Date.now(),
             isFinal: true,
-            confidence: 0.98,
+            confidence: 1.0,
           };
           addTranscriptEventRef.current(ev);
         }
+      } else if (payload.type === 'ISL_SIGN' || payload.type === 'translation' || payload.kind === 'sign-result') {
+        const text = payload.sign || payload.text || payload.english || payload.gloss || '';
+        if (!text.trim()) return;
+
+        if (payload.event) {
+          addTranscriptEventRef.current(payload.event);
+        } else {
+          const ev: TranscriptEvent = {
+            id: payload.eventId || `isl-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            sessionId: sessionId || roomCodeRef.current,
+            senderId: 'remote',
+            senderName: 'ISL Sign',
+            senderType: 'ACCESSIBILITY_USER',
+            text: text.trim(),
+            timestamp: payload.timestamp || Date.now(),
+            isFinal: true,
+            confidence: payload.confidence || 0.98,
+          };
+          addTranscriptEventRef.current(ev);
+        }
+      } else if (payload.kind === 'transcript' && payload.event) {
+        addTranscriptEventRef.current(payload.event);
       }
     }
   }, [createPeerConnection, makeOffer, sessionId]);
+
+  const handleSignalMessageRef = useRef(handleSignalMessage);
   handleSignalMessageRef.current = handleSignalMessage;
 
-  // Initialize Media and Signaling
+  // Single Authoritative Media Capture and WebRTC Initialization
   useEffect(() => {
     let localStream: MediaStream | null = null;
     let ws: WebSocket | null = null;
     let isCleanedUp = false;
 
-    const startMedia = async () => {
+    const startCall = async () => {
       try {
         localStream = await navigator.mediaDevices.getUserMedia({
           video: true,
           audio: true,
         });
+
         if (isCleanedUp) {
           localStream.getTracks().forEach((t) => t.stop());
           return;
         }
-        localStreamRef.current = localStream;
 
+        localStreamRef.current = localStream;
         localStream.getAudioTracks().forEach((t) => (t.enabled = micState));
         localStream.getVideoTracks().forEach((t) => (t.enabled = cameraState));
 
         setLocalTrackObj(localStream);
 
-        // Pre-create and attach tracks to PeerConnection
+        // Attach tracks to PeerConnection
         const pc = createPeerConnection();
         const senders = pc.getSenders();
         localStream.getTracks().forEach((track) => {
@@ -510,6 +642,7 @@ export const OnlineSessionPage: React.FC = () => {
           }
         });
 
+        // Connect WebSocket Signaling
         const sigUrl = getSignalingUrl();
         ws = new WebSocket(sigUrl);
         signalWsRef.current = ws;
@@ -531,30 +664,34 @@ export const OnlineSessionPage: React.FC = () => {
             const data = JSON.parse(e.data);
             handleSignalMessageRef.current(data);
           } catch (err) {
-            console.error('Signaling parse error:', err);
+            console.error('Signaling message parse error:', err);
           }
         };
 
         ws.onerror = () => {
-          console.warn('Signaling error on:', sigUrl);
+          console.warn('Signaling WebSocket error on:', sigUrl);
         };
 
         ws.onclose = () => {
           setConnectionState(LkConnectionState.Disconnected);
         };
-      } catch (mediaErr) {
-        console.warn('Media capture error:', mediaErr);
+      } catch (err) {
+        console.warn('Media capture error:', err);
         setConnectionState(LkConnectionState.Disconnected);
       }
     };
 
-    startMedia();
+    startCall();
 
     return () => {
       isCleanedUp = true;
       if (localStream) {
         localStream.getTracks().forEach((t) => t.stop());
       }
+      if (remoteMediaStreamRef.current) {
+        remoteMediaStreamRef.current.getTracks().forEach((t) => t.stop());
+      }
+      remoteMediaStreamRef.current = new MediaStream();
       if (ws) {
         if (ws.readyState === WebSocket.OPEN) {
           try {
@@ -699,6 +836,11 @@ export const OnlineSessionPage: React.FC = () => {
   };
 
   const handleConfirmEndCall = async () => {
+    setFinalTranscripts([]);
+    setInterimTranscripts({});
+    setAvatarTriggerText('');
+    processedEventIdsRef.current.clear();
+
     if (sessionId && accessToken) {
       try {
         await endSession(sessionId, accessToken);
@@ -765,6 +907,25 @@ export const OnlineSessionPage: React.FC = () => {
     onSequenceComplete: () => {},
     recoveryState: 'READY' as const,
     onSendMessage: handleSendTextMessage,
+    avatarTriggerText: avatarTriggerText,
+    onSignRecognized: (signText: string) => {
+      if (!signText || !signText.trim()) return;
+      const cleanSign = signText.trim();
+      const eventId = `sign-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      const event: TranscriptEvent = {
+        id: eventId,
+        sessionId: sessionId || roomCodeRef.current,
+        senderId: user?.id || user?.email || 'self',
+        senderName: (user as any)?.fullName || (user as any)?.name || 'ISL Sign',
+        senderType: 'ACCESSIBILITY_USER',
+        text: cleanSign,
+        timestamp: Date.now(),
+        isFinal: true,
+        confidence: 0.98,
+      };
+      addTranscriptEventRef.current(event);
+      sendAppData({ type: 'ISL_SIGN', sign: cleanSign, text: cleanSign, eventId, timestamp: Date.now(), event });
+    },
   };
 
   return (

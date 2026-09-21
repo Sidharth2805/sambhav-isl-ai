@@ -45,8 +45,13 @@ export const ISLMessageComposer: React.FC<ISLMessageComposerProps> = ({
 
   // Dedicated Committed Sign Token Appender (Appends ONLY on genuine validated committedSign event)
   useEffect(() => {
-    // If incomingCommittedSign is provided, use strict sequenceId latching
-    if (incomingCommittedSign) {
+    if (incomingCommittedSign !== undefined) {
+      // If incomingCommittedSign is null (recognition reset), reset sequence latch
+      if (!incomingCommittedSign) {
+        lastAppendedSequenceIdRef.current = -1;
+        return;
+      }
+
       const { text, confidence, sequenceId } = incomingCommittedSign;
       if (!text || !text.trim() || sequenceId === lastAppendedSequenceIdRef.current) {
         return;

@@ -256,8 +256,8 @@ export const CommunicatePage: React.FC = () => {
       let targetId = `ROOM-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
       try {
         const newSession = await createSession('ONLINE', accessToken);
-        if (newSession && (newSession.id || newSession.roomCode)) {
-          targetId = newSession.roomCode || newSession.id;
+        if (newSession && (newSession.roomCode || newSession.id)) {
+          targetId = (newSession.roomCode || newSession.id).toUpperCase();
         }
       } catch (backendErr) {
         console.warn('Backend session registration note (proceeding with local WebRTC room):', backendErr);
@@ -302,7 +302,7 @@ export const CommunicatePage: React.FC = () => {
       try {
         const session = await getSessionByRoomCode(cleanCode, accessToken);
         if (session) {
-          targetId = session.roomCode || session.id;
+          targetId = (session.roomCode || session.id).toUpperCase();
           if (session.status === 'CREATED' || session.status === 'WAITING') {
             try {
               await startSession(session.id, accessToken);
@@ -1006,7 +1006,16 @@ export const CommunicatePage: React.FC = () => {
                             {isCallActive ? (
                               <button
                                 type="button"
-                                onClick={() => navigate(`/communicate/online/${call.id}`)}
+                                onClick={() => {
+                                  const code = (call.roomCode || call.id).toUpperCase();
+                                  navigate(`/communicate/online/${code}?role=${userRole}`, {
+                                    state: {
+                                      roomCode: code,
+                                      userRole: userRole,
+                                      isHost: call.creatorUserId === user?.id,
+                                    },
+                                  });
+                                }}
                                 className="px-2.5 py-1 bg-gradient-to-r from-sky-500 to-indigo-600 text-white dark:bg-none dark:bg-[#fe9832] dark:text-[#683700] rounded-lg font-bold text-[11px] shadow-sm cursor-pointer"
                               >
                                 Rejoin
@@ -1129,7 +1138,16 @@ export const CommunicatePage: React.FC = () => {
                       {isCallActive ? (
                         <button
                           type="button"
-                          onClick={() => navigate(`/communicate/online/${call.id}`)}
+                          onClick={() => {
+                            const code = (call.roomCode || call.id).toUpperCase();
+                            navigate(`/communicate/online/${code}?role=${userRole}`, {
+                              state: {
+                                roomCode: code,
+                                userRole: userRole,
+                                isHost: call.creatorUserId === user?.id,
+                              },
+                            });
+                          }}
                           className="px-3.5 py-1.5 bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 text-white dark:bg-none dark:bg-[#fe9832] dark:text-[#542900] rounded-xl font-bold text-xs shadow-sm hover:scale-105 transition-all cursor-pointer flex items-center gap-1"
                         >
                           <span>{t('communicate.rejoin', 'Rejoin Call')}</span>

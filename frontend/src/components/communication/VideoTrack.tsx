@@ -41,25 +41,24 @@ export const VideoTrack: React.FC<VideoTrackProps> = ({
       mediaTrack = trackRef.track;
     }
 
+    let targetSrc: MediaStream | null = null;
     if (stream) {
-      video.srcObject = stream;
+      targetSrc = stream;
     } else if (mediaTrack) {
-      video.srcObject = new MediaStream([mediaTrack]);
-    } else {
-      video.srcObject = null;
+      targetSrc = new MediaStream([mediaTrack]);
     }
 
-    const playVideo = () => {
-      if (video && video.srcObject) {
+    if (video.srcObject !== targetSrc) {
+      video.srcObject = targetSrc;
+      if (targetSrc) {
         video.play().catch(() => {});
       }
-    };
-
-    video.onloadedmetadata = playVideo;
-    playVideo();
+    }
 
     const handleUserInteraction = () => {
-      playVideo();
+      if (video && video.srcObject && video.paused) {
+        video.play().catch(() => {});
+      }
     };
 
     window.addEventListener('click', handleUserInteraction, { once: true });

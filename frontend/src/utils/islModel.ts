@@ -62,62 +62,178 @@ export interface ISLClassifier {
 }
 
 /**
- * Vocabulary dictionary representing all 262 trained ISL classes from the Parquet BiLSTM dataset.
+ * Vocabulary dictionary representing all 169 trained ISL classes from the Sambhav Model 2 dataset.
  */
 export const ISL_VOCABULARY: Record<string, string> = {
-  'actor': 'Actor', 'adult': 'Adult', 'afternoon': 'Afternoon', 'alive': 'Alive', 'alright': 'Alright',
-  'animal': 'Animal', 'artist': 'Artist', 'attack': 'Attack', 'author': 'Author', 'baby': 'Baby',
-  'bad': 'Bad', 'bag': 'Bag', 'ball': 'Ball', 'bank': 'Bank', 'bathroom': 'Bathroom',
-  'beautiful': 'Beautiful', 'bed': 'Bed', 'bedroom': 'Bedroom', 'bicycle': 'Bicycle', 'biglarge': 'Big / Large',
-  'bill': 'Bill', 'bird': 'Bird', 'black': 'Black', 'blind': 'Blind', 'blue': 'Blue',
-  'boat': 'Boat', 'book': 'Book', 'box': 'Box', 'boy': 'Boy', 'brother': 'Brother',
-  'brown': 'Brown', 'bus': 'Bus', 'camera': 'Camera', 'car': 'Car', 'card': 'Card',
-  'cat': 'Cat', 'cellphone': 'Cellphone', 'chair': 'Chair', 'cheap': 'Cheap', 'child': 'Child',
-  'city': 'City', 'clean': 'Clean', 'clock': 'Clock', 'clothing': 'Clothing', 'cold': 'Cold',
-  'colour': 'Colour', 'computer': 'Computer', 'cool': 'Cool', 'court': 'Court', 'cow': 'Cow',
-  'crowd': 'Crowd', 'curved': 'Curved', 'daughter': 'Daughter', 'dead': 'Dead', 'deaf': 'Deaf',
-  'death': 'Death', 'deep': 'Deep', 'dirty': 'Dirty', 'doctor': 'Doctor', 'dog': 'Dog',
-  'door': 'Door', 'dream': 'Dream', 'dress': 'Dress', 'dry': 'Dry', 'election': 'Election',
-  'energy': 'Energy', 'evening': 'Evening', 'exercise': 'Exercise', 'exmonsoon': 'Monsoon', 'expensive': 'Expensive',
-  'fall': 'Fall', 'family': 'Family', 'famous': 'Famous', 'fan': 'Fan', 'fast': 'Fast',
-  'father': 'Father', 'female': 'Female', 'fish': 'Fish', 'flat': 'Flat', 'friday': 'Friday',
-  'friend': 'Friend', 'gift': 'Gift', 'girl': 'Girl', 'god': 'God', 'good': 'Good',
-  'goodafternoon': 'Good Afternoon', 'goodevening': 'Good Evening', 'goodmorning': 'Good Morning', 'goodnight': 'Good Night',
-  'grandfather': 'Grandfather', 'grandmother': 'Grandmother', 'green': 'Green', 'grey': 'Grey', 'ground': 'Ground',
-  'gun': 'Gun', 'happy': 'Happy', 'hard': 'Hard', 'hat': 'Hat', 'he': 'He',
-  'healthy': 'Healthy', 'heavy': 'Heavy', 'hello': 'Hello', 'high': 'High', 'horse': 'Horse',
-  'hospital': 'Hospital', 'hot': 'Hot', 'hour': 'Hour', 'house': 'House', 'howareyou': 'How Are You',
-  'husband': 'Husband', 'i': 'I', 'india': 'India', 'it': 'It', 'job': 'Job',
-  'key': 'Key', 'king': 'King', 'kitchen': 'Kitchen', 'lamp': 'Lamp', 'laptop': 'Laptop',
-  'lawyer': 'Lawyer', 'letter': 'Letter', 'library': 'Library', 'light': 'Light', 'location': 'Location',
-  'lock': 'Lock', 'long': 'Long', 'loose': 'Loose', 'loud': 'Loud', 'low': 'Low',
-  'male': 'Male', 'man': 'Man', 'manager': 'Manager', 'market': 'Market', 'marriage': 'Marriage',
-  'mean': 'Mean', 'medicine': 'Medicine', 'minute': 'Minute', 'monday': 'Monday', 'money': 'Money',
-  'month': 'Month', 'morning': 'Morning', 'mother': 'Mother', 'mouse': 'Mouse', 'narrow': 'Narrow',
-  'neighbour': 'Neighbour', 'new': 'New', 'newspaper': 'Newspaper', 'nice': 'Nice', 'night': 'Night',
-  'office': 'Office', 'old': 'Old', 'orange': 'Orange', 'page': 'Page', 'paint': 'Paint',
-  'pant': 'Pant', 'paper': 'Paper', 'parent': 'Parent', 'park': 'Park', 'patient': 'Patient',
-  'peace': 'Peace', 'pen': 'Pen', 'pencil': 'Pencil', 'photograph': 'Photograph', 'pink': 'Pink',
-  'plane': 'Plane', 'player': 'Player', 'pleased': 'Pleased', 'pocket': 'Pocket', 'police': 'Police',
-  'poor': 'Poor', 'president': 'President', 'price': 'Price', 'priest': 'Priest', 'queen': 'Queen',
-  'quiet': 'Quiet', 'raceethnicity': 'Race / Ethnicity', 'radio': 'Radio', 'red': 'Red', 'religion': 'Religion',
-  'reporter': 'Reporter', 'restaurant': 'Restaurant', 'rich': 'Rich', 'ring': 'Ring', 'sad': 'Sad',
-  'saturday': 'Saturday', 'school': 'School', 'science': 'Science', 'screen': 'Screen', 'season': 'Season',
-  'second': 'Second', 'secretary': 'Secretary', 'shallow': 'Shallow', 'she': 'She', 'shirt': 'Shirt',
-  'shoes': 'Shoes', 'short': 'Short', 'sick': 'Sick', 'sign': 'Sign', 'sister': 'Sister',
-  'skirt': 'Skirt', 'slow': 'Slow', 'smalllittle': 'Small', 'soap': 'Soap', 'soft': 'Soft',
-  'soldier': 'Soldier', 'son': 'Son', 'sport': 'Sport', 'spring': 'Spring', 'storeorshop': 'Store / Shop',
-  'streetorroad': 'Street / Road', 'strong': 'Strong', 'student': 'Student', 'suit': 'Suit', 'summer': 'Summer',
-  'sunday': 'Sunday', 'table': 'Table', 'tall': 'Tall', 'teacher': 'Teacher', 'team': 'Team',
-  'technology': 'Technology', 'telephone': 'Telephone', 'television': 'Television', 'temple': 'Temple', 'thankyou': 'Thank You',
-  'they': 'They', 'thick': 'Thick', 'thin': 'Thin', 'thursday': 'Thursday', 'tight': 'Tight',
-  'time': 'Time', 'today': 'Today', 'tomorrow': 'Tomorrow', 'tool': 'Tool', 'train': 'Train',
-  'trainstation': 'Train Station', 'trainticket': 'Train Ticket', 'transportation': 'Transportation', 'truck': 'Truck', 'tshirt': 'T-Shirt',
-  'tuesday': 'Tuesday', 'ugly': 'Ugly', 'university': 'University', 'waiter': 'Waiter', 'war': 'War',
-  'warm': 'Warm', 'we': 'We', 'weak': 'Weak', 'wednesday': 'Wednesday', 'week': 'Week',
-  'wet': 'Wet', 'white': 'White', 'wide': 'Wide', 'wife': 'Wife', 'window': 'Window',
-  'winter': 'Winter', 'woman': 'Woman', 'year': 'Year', 'yellow': 'Yellow', 'yesterday': 'Yesterday',
-  'you': 'You', 'young': 'Young', 'youplural': 'You (Plural)'
+  'A': 'A',
+  'B': 'B',
+  'C': 'C',
+  'D': 'D',
+  'E': 'E',
+  'F': 'F',
+  'G': 'G',
+  'H': 'H',
+  'I': 'I',
+  'J': 'J',
+  'K': 'K',
+  'L': 'L',
+  'M': 'M',
+  'N': 'N',
+  'O': 'O',
+  'P': 'P',
+  'Q': 'Q',
+  'R': 'R',
+  'S': 'S',
+  'T': 'T',
+  'U': 'U',
+  'V': 'V',
+  'W': 'W',
+  'X': 'X',
+  'Y': 'Y',
+  'Z': 'Z',
+  'a': 'A',
+  'again': 'Again',
+  'am': 'Am',
+  'an': 'An',
+  'answer': 'Answer',
+  'april': 'April',
+  'august': 'August',
+  'aunt': 'Aunt',
+  'bad': 'Bad',
+  'beautiful': 'Beautiful',
+  'book': 'Book',
+  'boy': 'Boy',
+  'bright': 'Bright',
+  'brother': 'Brother',
+  'bye': 'Bye',
+  'camera': 'Camera',
+  'car': 'Car',
+  'chair': 'Chair',
+  'child': 'Child',
+  'come': 'Come',
+  'correct': 'Correct',
+  'dark': 'Dark',
+  'daughter': 'Daughter',
+  'day': 'Day',
+  'deaf': 'Deaf',
+  'december': 'December',
+  'difficult': 'Difficult',
+  'do': 'Do',
+  'drink': 'Drink',
+  'easy': 'Easy',
+  'eat': 'Eat',
+  'face': 'Face',
+  'family': 'Family',
+  'fat': 'Fat',
+  'father': 'Father',
+  'february': 'February',
+  'fine': 'Fine',
+  'food': 'Food',
+  'friday': 'Friday',
+  'friend': 'Friend',
+  'girl': 'Girl',
+  'give': 'Give',
+  'go': 'Go',
+  'good': 'Good',
+  'good_afternoon': 'Good Afternoon',
+  'good_morning': 'Good Morning',
+  'good_night': 'Good Night',
+  'grandfather': 'Grandfather',
+  'grandmother': 'Grandmother',
+  'happy': 'Happy',
+  'he': 'He',
+  'hearing': 'Hearing',
+  'hello': 'Hello',
+  'help': 'Help',
+  'her': 'Her',
+  'his': 'His',
+  'home': 'Home',
+  'hospital': 'Hospital',
+  'house': 'House',
+  'how': 'How',
+  'husband': 'Husband',
+  'i': 'I',
+  'indian': 'Indian',
+  'is': 'Is',
+  'it': 'It',
+  'january': 'January',
+  'july': 'July',
+  'june': 'June',
+  'know': 'Know',
+  'language': 'Language',
+  'man': 'Man',
+  'march': 'March',
+  'market': 'Market',
+  'married': 'Married',
+  'marry': 'Marry',
+  'may': 'May',
+  'monday': 'Monday',
+  'money': 'Money',
+  'month': 'Month',
+  'mother': 'Mother',
+  'my': 'My',
+  'namaste': 'Namaste',
+  'name': 'Name',
+  'no': 'No',
+  'november': 'November',
+  'october': 'October',
+  'our': 'Our',
+  'paper': 'Paper',
+  'place': 'Place',
+  'please': 'Please',
+  'practice': 'Practice',
+  'question': 'Question',
+  'remember': 'Remember',
+  'sad': 'Sad',
+  'saturday': 'Saturday',
+  'school': 'School',
+  'september': 'September',
+  'she': 'She',
+  'short': 'Short',
+  'sign': 'Sign',
+  'sister': 'Sister',
+  'son': 'Son',
+  'sorry': 'Sorry',
+  'strong': 'Strong',
+  'sunday': 'Sunday',
+  'table': 'Table',
+  'take': 'Take',
+  'tall': 'Tall',
+  'teacher': 'Teacher',
+  'thank_you': 'Thank You',
+  'their': 'Their',
+  'they': 'They',
+  'thin': 'Thin',
+  'this': 'This',
+  'thursday': 'Thursday',
+  'time': 'Time',
+  'to': 'To',
+  'tree': 'Tree',
+  'tuesday': 'Tuesday',
+  'ugly': 'Ugly',
+  'uncle': 'Uncle',
+  'understand': 'Understand',
+  'want': 'Want',
+  'water': 'Water',
+  'we': 'We',
+  'weak': 'Weak',
+  'wednesday': 'Wednesday',
+  'week': 'Week',
+  'welcome': 'Welcome',
+  'what': 'What',
+  'when': 'When',
+  'where': 'Where',
+  'which': 'Which',
+  'who': 'Who',
+  'why': 'Why',
+  'wife': 'Wife',
+  'women': 'Women',
+  'work': 'Work',
+  'wrong': 'Wrong',
+  'year': 'Year',
+  'yes': 'Yes',
+  'you': 'You',
+  'your': 'Your',
 };
 
 /**
@@ -167,7 +283,7 @@ export function resampleSequence(rawFrames: number[][], targetLength: number = 6
  * Evaluates 60-frame landmark sequences (126 features) using your trained saanket_bilstm.keras model.
  */
 export class SaanketBiLSTMClassifier implements ISLClassifier {
-  public name = 'Saanket BiLSTM Neural Network (171 ISL Classes)';
+  public name = 'Saanket BiLSTM Neural Network (169 ISL Classes)';
   public isDemo = false;
   private candidateUrls: string[] = [];
   private activeUrl: string = 'http://127.0.0.1:8000';
@@ -202,6 +318,8 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
     return this.lastPingMs;
   }
 
+  private hasLoggedConnection = false;
+
   public async initialize(): Promise<void> {
     for (const url of this.candidateUrls) {
       try {
@@ -220,7 +338,10 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
           this.activeUrl = url;
           this.isOnline = true;
           this.lastPingMs = Math.round(performance.now() - start);
-          console.log(`[Sambhav ML] Connected to ML service at ${url} (${this.lastPingMs}ms):`, data);
+          if (!this.hasLoggedConnection) {
+            console.log(`[Sambhav ML] Connected to ML service at ${url} (${this.lastPingMs}ms):`, data);
+            this.hasLoggedConnection = true;
+          }
           return;
         }
       } catch {
@@ -228,7 +349,10 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
       }
     }
     this.isOnline = false;
-    console.warn('[Sambhav ML] No ML inference service reachable. ML service offline.');
+    if (this.hasLoggedConnection) {
+      console.warn('[Sambhav ML] No ML inference service reachable. ML service offline.');
+      this.hasLoggedConnection = false;
+    }
   }
 
   public getIsOnline(): boolean {
@@ -357,6 +481,34 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
       }
     }
 
+    // Compute spatial landmark variance across active frames to distinguish real gestures from static resting hands
+    let landmarkVariance = 0.0;
+    if (activeFrameCount >= 15) {
+      for (let c = 0; c < 126; c++) {
+        let sum = 0.0;
+        let count = 0;
+        for (let t = 0; t < bufLen; t++) {
+          const v = this.landmarkBuffer[t][c];
+          if (v !== 0) {
+            sum += v;
+            count++;
+          }
+        }
+        if (count >= 15) {
+          const mean = sum / count;
+          let varSum = 0.0;
+          for (let t = 0; t < bufLen; t++) {
+            const v = this.landmarkBuffer[t][c];
+            if (v !== 0) {
+              const diff = v - mean;
+              varSum += diff * diff;
+            }
+          }
+          landmarkVariance += varSum / count;
+        }
+      }
+    }
+
     const activeSpan = firstActive !== -1 && lastActive !== -1 ? lastActive - firstActive + 1 : 0;
     const evalWindow = Math.min(bufLen, 60);
     const activeFrameRatio = evalWindow > 0 ? Math.min(1.0, activeFrameCount / evalWindow) : 0.0;
@@ -365,14 +517,12 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
     const currentHandCount = (hasLeftHand ? 1 : 0) + (hasRightHand ? 1 : 0);
 
     // Active gesture gating:
-    // Requires activeFrameRatio >= 0.20 AND (motionFrameRatio >= 0.04 OR maxDisplacement >= 0.015 OR static pose held with activeSpan >= 15 frames)
-    // AND requires a genuine gesture window (activeSpan >= 15 frames, ~0.5s at 30 FPS).
-    const isStaticPoseHeld = activeFrameRatio >= 0.20 && currentHandCount >= 1 && activeSpan >= 15;
-    const isDynamicStroke = activeFrameRatio >= 0.20 && activeSpan >= 15 && (
-      motionFrameRatio >= 0.04 ||
-      maxDisplacement >= 0.015
-    );
-    const gatePassed = isStaticPoseHeld || isDynamicStroke;
+    // Requires intentional active signing window (activeFrameCount >= 15, activeSpan >= 15 frames)
+    // AND spatial landmark variance >= 0.0015 (strictly rejects static resting hand jitter ~0.0001 while preserving real signs)
+    // AND genuine dynamic stroke (averageMotion >= 0.002 OR maxDisplacement >= 0.008)
+    const hasSufficientMotion = (maxDisplacement >= 0.008 && motionFrameRatio >= 0.05) || (averageMotion >= 0.002);
+    const hasVariance = landmarkVariance >= 0.0015;
+    const gatePassed = activeFrameCount >= 15 && activeSpan >= 15 && hasVariance && hasSufficientMotion;
 
     const telemetry: ISLActivityTelemetry = {
       activeFrameRatio,
@@ -386,7 +536,7 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
 
     if (!gatePassed || activeSpan < 15) {
       if (reqId !== undefined) {
-        console.log(`[Recognition] cycle=${cycleId} req=${reqId} gate=FAIL reason=INSUFFICIENT_ACTIVITY activeRatio=${activeFrameRatio.toFixed(2)} activeSpan=${activeSpan} motionRatio=${motionFrameRatio.toFixed(2)} maxDisp=${maxDisplacement.toFixed(3)} request=NO committed=NO`);
+        console.log(`[Recognition] cycle=${cycleId} req=${reqId} gate=FAIL reason=INSUFFICIENT_ACTIVITY activeCount=${activeFrameCount} activeSpan=${activeSpan} motionRatio=${motionFrameRatio.toFixed(2)} maxDisp=${maxDisplacement.toFixed(3)} avgMotion=${averageMotion.toFixed(4)} var=${landmarkVariance.toFixed(5)} request=NO committed=NO`);
       }
       return {
         gesture: '',
@@ -404,7 +554,7 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
 
     // 3. Resample the genuine active signing stroke into exactly 60 frames matching model training
     let sequenceToSend: number[][];
-    if (activeSpan >= 15 && firstActive !== -1 && lastActive !== -1) {
+    if (activeSpan >= 18 && firstActive !== -1 && lastActive !== -1) {
       const activeSlice = this.landmarkBuffer.slice(firstActive, lastActive + 1);
       sequenceToSend = resampleSequence(activeSlice, 60);
     } else {
@@ -426,7 +576,7 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
           const result = await response.json();
           this.activeUrl = url;
           this.isOnline = true;
-          if (result.gesture && result.gesture !== 'UNKNOWN' && result.gesture !== 'NO_HANDS') {
+          if (result.gesture && result.gesture !== 'UNKNOWN' && result.gesture !== 'NO_HANDS' && result.gesture !== 'NO_ACTIVE_SIGN') {
             const rawLabel = result.gesture;
             const formattedText = formatISLLabel(rawLabel);
             return {
@@ -443,6 +593,19 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
               requestId: reqId,
               gestureCycleId: cycleId,
               top_3: result.top_3
+            };
+          } else {
+            return {
+              gesture: '',
+              confidence: 0.0,
+              label: 'NO_ACTIVE_SIGN',
+              phrase: '',
+              isRealModel: true,
+              frameCount: this.landmarkBuffer.length,
+              rejectionReason: 'NO_ACTIVE_SIGN',
+              activityTelemetry: telemetry,
+              requestId: reqId,
+              gestureCycleId: cycleId
             };
           }
         }
@@ -490,4 +653,6 @@ export class DemoISLClassifier extends SaanketBiLSTMClassifier {
 export class SambhavModel2Classifier extends SaanketBiLSTMClassifier {
   public override name = 'Sambhav Model 2 Classifier (10-layer BiLSTM)';
 }
+
+export const defaultSaanketClassifier = new SaanketBiLSTMClassifier();
 

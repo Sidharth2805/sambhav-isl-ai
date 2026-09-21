@@ -58,6 +58,8 @@ interface HearingUserWorkspaceProps {
 
   controlsVisible: boolean;
   onSendMessage?: (text: string) => void;
+  avatarTriggerText?: string;
+  onSignRecognized?: (signText: string) => void;
 }
 
 export const HearingUserWorkspace: React.FC<HearingUserWorkspaceProps> = ({
@@ -171,6 +173,44 @@ export const HearingUserWorkspace: React.FC<HearingUserWorkspaceProps> = ({
     });
   }, [finalTranscripts, ttsEnabled, user]);
 
+  // Active remote sign banner with 4-second auto-clear timer
+  const [activeRemoteSign, setActiveRemoteSign] = useState<{ text: string; confidence: number; eventId?: string } | null>(null);
+  const remoteSignTimerRef = useRef<any>(null);
+  const activeRemoteEventIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (finalTranscripts.length > 0) {
+      const lastMsg = finalTranscripts[finalTranscripts.length - 1];
+      const isMe = lastMsg.senderId === user?.email || lastMsg.senderId === user?.id;
+      if (!isMe && lastMsg.text && lastMsg.senderType === 'ACCESSIBILITY_USER') {
+        const currentEventId = lastMsg.id;
+        activeRemoteEventIdRef.current = currentEventId;
+        setActiveRemoteSign({ text: lastMsg.text, confidence: lastMsg.confidence || 0.95, eventId: currentEventId });
+        
+        if (remoteSignTimerRef.current) clearTimeout(remoteSignTimerRef.current);
+        remoteSignTimerRef.current = setTimeout(() => {
+          // Race-condition protection: only clear if this timer matches the latest active event
+          if (activeRemoteEventIdRef.current === currentEventId) {
+            setActiveRemoteSign(null);
+            activeRemoteEventIdRef.current = null;
+          }
+        }, 4000);
+      }
+    }
+  }, [finalTranscripts, user]);
+
+  // Clean remote recognition state when remote peer disconnects or on unmount
+  useEffect(() => {
+    if (connectionState === LkConnectionState.Disconnected || !primaryRemoteTrack) {
+      setActiveRemoteSign(null);
+      activeRemoteEventIdRef.current = null;
+      if (remoteSignTimerRef.current) clearTimeout(remoteSignTimerRef.current);
+    }
+    return () => {
+      if (remoteSignTimerRef.current) clearTimeout(remoteSignTimerRef.current);
+    };
+  }, [connectionState, primaryRemoteTrack]);
+
   const handleCopyCode = () => {
     navigator.clipboard.writeText(roomCode);
     setCopied(true);
@@ -247,6 +287,21 @@ export const HearingUserWorkspace: React.FC<HearingUserWorkspaceProps> = ({
                 <span className="material-symbols-outlined text-[48px] text-[#fe9832] animate-pulse">videocam</span>
                 <span className="text-xs font-bold uppercase tracking-wider text-white">Camera Inactive</span>
                 <span className="text-[11px] text-[#828796]">Waiting for other participant to join...</span>
+              </div>
+            )}
+
+            {/* Live Remote ISL Sign Badge */}
+            {activeRemoteSign && (
+              <div className="absolute top-3 right-3 z-30 flex items-center gap-2 animate-scaleUp">
+                <div className="bg-black/85 backdrop-blur-md px-3 py-1 rounded-xl border border-emerald-500/50 text-white flex items-center gap-2 shadow-xl">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                  <span className="text-xs font-black text-emerald-400 uppercase tracking-wide">
+                    Sign: {activeRemoteSign.text}
+                  </span>
+                  <span className="text-[10px] font-mono text-emerald-300 font-bold px-1.5 py-0.2 rounded bg-emerald-950/80">
+                    {Math.round(activeRemoteSign.confidence * 100)}%
+                  </span>
+                </div>
               </div>
             )}
 

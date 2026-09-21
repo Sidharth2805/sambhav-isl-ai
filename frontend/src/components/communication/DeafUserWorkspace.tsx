@@ -174,30 +174,32 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
   const speedOptions = [0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0];
   const [activeReadingMessageId, setActiveReadingMessageId] = useState<string | null>(null);
 
-  // Real-time Neural BiLSTM Sign Recognition Hook (171 ISL Classes for letters & words)
+  // Real-time Neural BiLSTM Sign Recognition Hook (169 ISL Classes for letters & words)
   const {
     currentGesture: recognizedSign,
     confidence: signConfidence,
     translatedText: recognizedSignPhrase,
     committedSign,
     isModelOnline,
+    gestureState,
     startRecognition,
     stopRecognition,
   } = useISLRecognition();
 
   // Auto-start ISL gesture recognition strictly on the local camera
+  const hasLocalTrack = !!localTrack;
   useEffect(() => {
-    if (cameraState && localTrack) {
+    if (cameraState && hasLocalTrack) {
       const timer = setTimeout(() => {
         const localVid = (document.querySelector('video[data-self-view="true"]') ||
                          document.querySelector('div[data-self-view="true"] video')) as HTMLVideoElement;
         startRecognition(localVid);
       }, 150);
       return () => clearTimeout(timer);
-    } else {
-      stopRecognition();
+    } else if (!cameraState) {
+      stopRecognition('CAMERA_DISABLED');
     }
-  }, [cameraState, localTrack, startRecognition, stopRecognition]);
+  }, [cameraState, hasLocalTrack, startRecognition, stopRecognition]);
 
   // Helper to check if a sender is the local user
   const isSenderMe = useCallback((senderId: string, senderName?: string) => {
@@ -347,7 +349,7 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
           {/* Live ISL Gesture Recognition HUD Overlay */}
           {cameraState && (
             <div className="absolute top-2.5 right-3 z-30 flex items-center gap-2">
-              {recognizedSign ? (
+              {gestureState === 'COMMITTED' || (recognizedSign && gestureState !== 'IDLE') ? (
                 <div className="bg-black/85 backdrop-blur-md px-3 py-1 rounded-xl border border-emerald-500/50 text-white flex items-center gap-2 shadow-xl animate-scaleUp">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
                   <span className="text-xs font-black text-emerald-400 uppercase tracking-wide">
@@ -357,10 +359,25 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
                     {Math.round(signConfidence * 100)}%
                   </span>
                 </div>
+              ) : gestureState === 'VALIDATING' ? (
+                <div className="bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-xl border border-blue-400/50 text-blue-300 text-[10px] font-bold flex items-center gap-1.5 animate-pulse">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
+                  <span>Validating sign...</span>
+                </div>
+              ) : gestureState === 'COLLECTING' || gestureState === 'SIGN_DETECTED' ? (
+                <div className="bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-xl border border-[#fe9832]/50 text-[#fe9832] text-[10px] font-bold flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#fe9832] animate-ping" />
+                  <span>Capturing gesture...</span>
+                </div>
+              ) : gestureState === 'WAIT_FOR_SIGN_END' ? (
+                <div className="bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-xl border border-amber-400/50 text-amber-300 text-[10px] font-bold flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                  <span>Release hand to sign again</span>
+                </div>
               ) : (
                 <div className="bg-black/65 backdrop-blur-md px-2.5 py-1 rounded-xl border border-white/15 text-white/80 text-[10px] font-bold flex items-center gap-1.5">
                   <span className={`w-1.5 h-1.5 rounded-full ${isModelOnline ? 'bg-emerald-400 animate-ping' : 'bg-[#fe9832] animate-pulse'}`} />
-                  <span>{isModelOnline ? '171-Class BiLSTM Neural Live' : 'AI Gesture Recognition Active (171 Classes)'}</span>
+                  <span>{isModelOnline ? 'No sign detected • 169-Class Active' : 'AI Gesture Recognition (Offline)'}</span>
                 </div>
               )}
             </div>

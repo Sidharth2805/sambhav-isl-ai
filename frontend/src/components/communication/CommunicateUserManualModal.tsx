@@ -86,7 +86,7 @@ export const CommunicateUserManualCard: React.FC<CommunicateUserManualCardProps>
     {
       step: '03',
       title: t('manual.step3.title', 'Chest-Level Signing'),
-      badge: t('manual.step3.badge', '171 ISL Signs'),
+      badge: t('manual.step3.badge', '169 ISL Signs'),
       icon: 'sign_language',
       image: '/assets/manual_sign_gesture.jpg',
       fallback: '/assets/isl_gesture_hello.jpg',

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { SaanketBiLSTMClassifier, ISL_VOCABULARY } from '../utils/islModel';
+import { defaultSaanketClassifier, ISL_VOCABULARY } from '../utils/islModel';
 import type { ISLClassifier, ISLLandmarks, ISLLandmark } from '../utils/islModel';
 
 // Dynamic loader for MediaPipe Hands script with CDN fallback
@@ -64,10 +64,9 @@ async function getSharedMediaPipeHands(): Promise<any> {
 
 export type GestureCaptureState =
   | 'IDLE'
-  | 'SIGN_ACTIVE'
+  | 'SIGN_DETECTED'
   | 'COLLECTING'
-  | 'INFERENCE'
-  | 'VALIDATED'
+  | 'VALIDATING'
   | 'COMMITTED'
   | 'WAIT_FOR_SIGN_END'
   | 'DISPLAY RESULT'
@@ -80,7 +79,7 @@ export interface CommittedSignEvent {
   timestamp: number;
 }
 
-export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMClassifier()) {
+export function useISLRecognition(classifier: ISLClassifier = defaultSaanketClassifier) {
   const [isRecognizing, setIsRecognizing] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [currentGesture, setCurrentGesture] = useState<string | null>(null);
@@ -107,6 +106,19 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const handsDetectedCountRef = useRef<number>(0);
 
+  // Diagnostic throttle & telemetry refs
+  const processedFramesCountRef = useRef<number>(0);
+  const lastLoopLogTimeRef = useRef<number>(0);
+  const lastMediaPipeLogTimeRef = useRef<number>(0);
+
+  // Lifecycle diagnostic
+  useEffect(() => {
+    console.log('[ISL Recognition] MOUNT');
+    return () => {
+      console.log('[ISL Recognition] UNMOUNT');
+    };
+  }, []);
+
   // Deterministic State Machine & Fencing Refs
   const machineStateRef = useRef<GestureCaptureState>('IDLE');
   const gestureCycleIdRef = useRef<number>(0);
@@ -115,6 +127,36 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
   const absenceFramesCountRef = useRef<number>(0);
   const recentPredictionsRef = useRef<string[]>([]);
   const isRecognizingRef = useRef<boolean>(false);
+
+  // Centralized Reset Mechanism
+  const resetRecognition = useCallback((reason = 'UNSPECIFIED') => {
+    if (classifier && (classifier as any).clearBuffer) {
+      (classifier as any).clearBuffer();
+    }
+    machineStateRef.current = 'IDLE';
+    gestureCycleIdRef.current += 1;
+    currentRequestIdRef.current += 1;
+    activeFramesAccumulatedRef.current = 0;
+    absenceFramesCountRef.current = 0;
+    recentPredictionsRef.current = [];
+
+    setCurrentGesture(null);
+    setConfidence(0);
+    setTranslatedText('');
+    setCommittedSign(null);
+    setGestureState('IDLE');
+    setFrameCount(0);
+    setHandsDetectedCount(0);
+    setUnrecognizedNotice(null);
+
+    if (canvasRef.current) {
+      const ctx = canvasRef.current.getContext('2d');
+      if (ctx) {
+        ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      }
+    }
+    console.log(`[ISL Recognition] RESET reason=${reason}`);
+  }, [classifier]);
 
   // Draw hand skeleton connections onto the canvas
   const drawHandSkeleton = (ctx: CanvasRenderingContext2D, landmarks: ISLLandmark[], width: number, height: number, color = '#fe9832') => {
@@ -156,46 +198,19 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
     });
   };
 
-  // Stop recognition and release camera tracks
-  const stopRecognition = useCallback(() => {
+  // Stop recognition and clear canvas
+  const stopRecognition = useCallback((reason = 'STOP_RECOGNITION') => {
     if (animFrameIdRef.current) {
       cancelAnimationFrame(animFrameIdRef.current);
       animFrameIdRef.current = null;
     }
 
     handsInstanceRef.current = null;
-
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-
-    if (videoElementRef.current) {
-      videoElementRef.current.srcObject = null;
-      videoElementRef.current = null;
-    }
-
-    // Clear overlay canvas
-    const canvas = document.querySelector('canvas');
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
-
     isRecognizingRef.current = false;
-    machineStateRef.current = 'IDLE';
-    currentRequestIdRef.current += 1;
-    activeFramesAccumulatedRef.current = 0;
-    absenceFramesCountRef.current = 0;
-
+    resetRecognition(reason);
     setIsRecognizing(false);
     setIsPaused(false);
-    setCurrentGesture(null);
-    setConfidence(0);
-    setTranslatedText('');
-    setCommittedSign(null);
-    setGestureState('IDLE');
-  }, []);
+  }, [resetRecognition]);
 
   const pauseRecognition = useCallback(() => {
     setIsPaused(true);
@@ -227,16 +242,24 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
                      document.querySelector('video')) as HTMLVideoElement;
     }
 
+    console.log('[ISL Recognition] startRecognition requested. videoElement check:', {
+      exists: !!videoElement,
+      readyState: videoElement?.readyState,
+      videoWidth: videoElement?.videoWidth,
+      videoHeight: videoElement?.videoHeight,
+      paused: videoElement?.paused,
+      hasSrcObject: !!videoElement?.srcObject
+    });
+
     if (!videoElement) {
       setError('Video element reference is null.');
       return;
     }
 
-    if (isRecognizingRef.current && videoElementRef.current === videoElement) {
+    if (isRecognizingRef.current && videoElementRef.current === videoElement && handsInstanceRef.current) {
       return;
     }
 
-    isRecognizingRef.current = true;
     setError(null);
     videoElementRef.current = videoElement;
     lastValidTimeRef.current = performance.now();
@@ -256,24 +279,7 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
         if (videoElement.paused) {
           await videoElement.play().catch(() => {});
         }
-      } else {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: 640, max: 640 },
-            height: { ideal: 480, max: 480 },
-            frameRate: { ideal: 30, max: 30 },
-            facingMode: 'user'
-          },
-          audio: false,
-        });
-
-        streamRef.current = stream;
-        videoElement.srcObject = stream;
-        await videoElement.play().catch(() => {});
       }
-
-      setIsRecognizing(true);
-      setIsPaused(false);
 
       const hands = await getSharedMediaPipeHands();
 
@@ -297,6 +303,10 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
           
           let ctx: CanvasRenderingContext2D | null = null;
           if (canvas && canvas.getContext) {
+            if (vid && vid.clientWidth > 0 && (canvas.width !== vid.clientWidth || canvas.height !== vid.clientHeight)) {
+              canvas.width = vid.clientWidth;
+              canvas.height = vid.clientHeight;
+            }
             ctx = canvas.getContext('2d');
             if (ctx) {
               ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -371,6 +381,14 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
             (classifier as any).addFrame(landmarksPayload);
           }
 
+          const now = performance.now();
+          if (now - lastMediaPipeLogTimeRef.current >= 2000) {
+            lastMediaPipeLogTimeRef.current = now;
+            const lmCount = (landmarksPayload.leftHand?.length || 0) + (landmarksPayload.rightHand?.length || 0);
+            const currentBufLen = (classifier as any)?.getLatestBuffer?.()?.length ?? 0;
+            console.log(`[ISL Recognition] MediaPipe results received handsDetected=${detectedCount} landmarks=${lmCount} buffer=${currentBufLen}/60 state=${machineStateRef.current}`);
+          }
+
           if (isCapturingManualRef.current) {
             frameCountRef.current += 1;
             setFrameCount(frameCountRef.current);
@@ -378,19 +396,20 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
           }
 
           // Strict Recognition Lifecycle State Machine:
-          // IDLE -> SIGN_ACTIVE -> COLLECTING -> INFERENCE -> VALIDATED -> COMMITTED -> WAIT_FOR_SIGN_END -> IDLE
+          // IDLE -> SIGN_DETECTED -> COLLECTING -> VALIDATING -> COMMITTED -> WAIT_FOR_SIGN_END -> IDLE
           const hasHandsInFrame = !!(landmarksPayload.leftHand?.length || landmarksPayload.rightHand?.length);
           const currentState = machineStateRef.current;
-          const now = performance.now();
 
           // Helper to trigger neural inference on current gesture buffer
           const triggerInference = () => {
-            if (machineStateRef.current === 'INFERENCE') return;
-            machineStateRef.current = 'INFERENCE';
-            setGestureState('INFERENCE');
+            if (machineStateRef.current === 'VALIDATING') return;
+            machineStateRef.current = 'VALIDATING';
+            setGestureState('VALIDATING');
 
             const thisReqId = ++currentRequestIdRef.current;
             const thisCycleId = gestureCycleIdRef.current;
+
+            console.log(`[ISL Recognition] INFERENCE START inputShape=[1,60,126] cycle=${thisCycleId} req=${thisReqId}`);
 
             if (classifier && (classifier as any).evaluateBuffer) {
               (classifier as any).evaluateBuffer({ requestId: thisReqId, gestureCycleId: thisCycleId })
@@ -402,14 +421,16 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
                     return;
                   }
 
-                  const isConfidenceValid = (inf?.confidence || 0) >= 0.35;
-                  const isMarginValid = (inf?.margin ?? 1.0) >= 0.05;
+                  const isConfidenceValid = (inf?.confidence || 0) >= 0.45;
+                  const isMarginValid = (inf?.margin ?? 1.0) >= 0.08;
                   const isGestureValid = !!inf?.gesture &&
                     inf.gesture !== 'G_UNKNOWN' &&
                     inf.gesture !== 'NO_HANDS' &&
                     inf.gesture !== 'UNKNOWN' &&
                     inf.gesture !== 'NO_ACTIVE_SIGN' &&
                     inf.label !== 'NO_ACTIVE_SIGN';
+
+                  console.log(`[ISL Recognition] INFERENCE RESULT top1=${inf?.label || inf?.gesture} conf=${(inf?.confidence || 0).toFixed(4)} margin=${(inf?.margin || 0).toFixed(4)} isRealModel=${inf?.isRealModel} gate=${isGestureValid && isConfidenceValid && isMarginValid ? 'PASS' : 'REJECT'}`);
 
                   if (isGestureValid && isConfidenceValid && isMarginValid && inf.isRealModel) {
                     lastValidTimeRef.current = performance.now();
@@ -427,7 +448,7 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
                     const smoothedLabel = Object.keys(counts).reduce((a, b) => (counts[a] >= counts[b] ? a : b), label);
                     const phrase = inf.phrase || ISL_VOCABULARY[smoothedLabel] || smoothedLabel;
 
-                    console.log(`[Recognition] cycle=${thisCycleId} req=${thisReqId} gate=PASS top1=${smoothedLabel} conf=${(inf.confidence || 0).toFixed(2)} top2=${inf.top2Label || ''} margin=${(inf.margin || 0).toFixed(2)} committed=YES`);
+                    console.log(`[ISL Recognition] cycle=${thisCycleId} req=${thisReqId} gate=PASS top1=${smoothedLabel} conf=${(inf.confidence || 0).toFixed(2)} top2=${inf.top2Label || ''} margin=${(inf.margin || 0).toFixed(2)} committed=YES`);
 
                     // Emit ONE committedSign event
                     const detectedConfidence = typeof inf.confidence === 'number' ? inf.confidence : 0.0;
@@ -451,10 +472,13 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
                       activeFramesAccumulatedRef.current = 0;
                     }
                   } else {
-                    console.log(`[Recognition] cycle=${thisCycleId} req=${thisReqId} rejected: conf=${(inf?.confidence || 0).toFixed(2)} margin=${(inf?.margin || 0).toFixed(2)} label=${inf?.label}`);
-                    if (absenceFramesCountRef.current < 6) {
-                      machineStateRef.current = 'WAIT_FOR_SIGN_END';
-                      setGestureState('WAIT_FOR_SIGN_END');
+                    console.log(`[ISL Recognition] cycle=${thisCycleId} req=${thisReqId} rejected: conf=${(inf?.confidence || 0).toFixed(2)} margin=${(inf?.margin || 0).toFixed(2)} label=${inf?.label}`);
+                    // Non-deadlock rejection: do NOT latch into WAIT_FOR_SIGN_END on rejection.
+                    // Allow ongoing continuous motion to evaluate smoothly.
+                    if (hasHandsInFrame && activeFramesAccumulatedRef.current >= 15) {
+                      machineStateRef.current = 'COLLECTING';
+                      setGestureState('COLLECTING');
+                      activeFramesAccumulatedRef.current = Math.min(activeFramesAccumulatedRef.current, 30);
                     } else {
                       machineStateRef.current = 'IDLE';
                       setGestureState('IDLE');
@@ -474,19 +498,27 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
           if (!hasHandsInFrame) {
             absenceFramesCountRef.current += 1;
 
-            // If the user just completed a sign gesture (accumulated >= 20 frames) and dropped their hands:
-            if (currentState === 'COLLECTING' && activeFramesAccumulatedRef.current >= 20) {
+            // If the user just completed a sign gesture (accumulated >= 15 frames) and dropped their hands:
+            if (currentState === 'COLLECTING' && activeFramesAccumulatedRef.current >= 15) {
               triggerInference();
               return;
             }
 
-            if (absenceFramesCountRef.current >= 10) {
-              if (currentState !== 'IDLE' && currentState !== 'INFERENCE') {
+            if (absenceFramesCountRef.current >= 6) {
+              if (currentState === 'WAIT_FOR_SIGN_END' || currentState === 'COMMITTED') {
                 machineStateRef.current = 'IDLE';
                 setGestureState('IDLE');
                 activeFramesAccumulatedRef.current = 0;
               }
-              if (now - lastValidTimeRef.current > 4000) {
+            }
+
+            if (absenceFramesCountRef.current >= 10) {
+              if (currentState !== 'IDLE' && currentState !== 'VALIDATING') {
+                machineStateRef.current = 'IDLE';
+                setGestureState('IDLE');
+                activeFramesAccumulatedRef.current = 0;
+              }
+              if (now - lastValidTimeRef.current > 3500) {
                 setCurrentGesture(null);
                 setConfidence(0);
                 setTranslatedText('');
@@ -502,13 +534,14 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
             gestureCycleIdRef.current += 1;
             activeFramesAccumulatedRef.current = 1;
             machineStateRef.current = 'COLLECTING';
-            setGestureState('COLLECTING');
+            setGestureState('SIGN_DETECTED');
             return;
           }
 
-          if (currentState === 'COLLECTING') {
+          if (currentState === 'COLLECTING' || currentState === 'SIGN_DETECTED') {
             activeFramesAccumulatedRef.current += 1;
             setFrameCount(activeFramesAccumulatedRef.current);
+            setGestureState('COLLECTING');
 
             // Collect complete gesture window: 60 frames (~2.0 seconds at 30 FPS matching the BiLSTM model)
             if (activeFramesAccumulatedRef.current >= 60) {
@@ -517,7 +550,7 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
             return;
           }
 
-          if (currentState === 'INFERENCE') {
+          if (currentState === 'VALIDATING') {
             // While inference is in flight, continue buffering frames without re-triggering
             return;
           }
@@ -531,6 +564,10 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
         handsInstanceRef.current = hands;
       }
 
+      isRecognizingRef.current = true;
+      setIsRecognizing(true);
+      setIsPaused(false);
+
       // 5. Continuous frame processing loop at native 30 FPS
       let isProcessingFrame = false;
 
@@ -540,12 +577,21 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
         const vid = videoElementRef.current;
         const now = performance.now();
 
-        if (!isPaused && handsInstanceRef.current && vid.videoWidth > 0 && vid.videoHeight > 0 && !isProcessingFrame && now - lastSendTimeRef.current >= 33) {
+        // Check for active video frame dimensions
+        const isVidReady = (vid.readyState >= 2 || (vid.videoWidth > 0 && vid.videoHeight > 0));
+
+        processedFramesCountRef.current++;
+        if (now - lastLoopLogTimeRef.current >= 2000) {
+          lastLoopLogTimeRef.current = now;
+          console.log(`[ISL Recognition] frame loop alive framesProcessed=${processedFramesCountRef.current} readyState=${vid.readyState} dim=${vid.videoWidth}x${vid.videoHeight}`);
+        }
+
+        if (!isPaused && handsInstanceRef.current && isVidReady && !isProcessingFrame && now - lastSendTimeRef.current >= 33) {
           lastSendTimeRef.current = now;
           isProcessingFrame = true;
           try {
             await handsInstanceRef.current.send({ image: vid });
-          } catch {
+          } catch (sendErr) {
             // Frame processing catch
           } finally {
             isProcessingFrame = false;
@@ -555,6 +601,9 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
         animFrameIdRef.current = requestAnimationFrame(processLoop);
       };
 
+      if (animFrameIdRef.current) {
+        cancelAnimationFrame(animFrameIdRef.current);
+      }
       animFrameIdRef.current = requestAnimationFrame(processLoop);
 
     } catch (err: any) {
@@ -563,13 +612,13 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
         ? 'Camera permission denied. Please allow camera access in browser settings.'
         : 'Failed to access camera. Please verify your camera device is available.';
       setError(friendlyErr);
-      stopRecognition();
+      stopRecognition('CAMERA_ERROR');
     }
   }, [classifier, isPaused, stopRecognition]);
 
   useEffect(() => {
     return () => {
-      stopRecognition();
+      stopRecognition('HOOK_UNMOUNT');
     };
   }, [stopRecognition]);
 
@@ -605,14 +654,18 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
         setCaptureCountdown(null);
         isCapturingManualRef.current = false;
         setIsCapturingManual(false);
-        setGestureState('INFERENCE');
+        setGestureState('VALIDATING');
 
         const testReqId = ++currentRequestIdRef.current;
         const testCycleId = ++gestureCycleIdRef.current;
 
         if (classifier && (classifier as any).evaluateBuffer) {
           (classifier as any).evaluateBuffer({ requestId: testReqId, gestureCycleId: testCycleId }).then((inf: any) => {
-            if (inf && inf.gesture && inf.gesture !== 'NO_ACTIVE_SIGN' && inf.gesture !== 'NO_HANDS' && inf.gesture !== 'UNKNOWN') {
+            const isConfOk = (inf?.confidence || 0) >= 0.45;
+            const isMarginOk = (inf?.margin ?? 1.0) >= 0.08;
+            const isGestureOk = !!inf?.gesture && inf.gesture !== 'NO_ACTIVE_SIGN' && inf.gesture !== 'NO_HANDS' && inf.gesture !== 'UNKNOWN' && inf.label !== 'NO_ACTIVE_SIGN';
+
+            if (isGestureOk && isConfOk && isMarginOk) {
               const label = inf.label || inf.gesture;
               const phrase = inf.phrase || ISL_VOCABULARY[label] || label;
               const detectedConf = typeof inf.confidence === 'number' ? inf.confidence : 0.0;
@@ -669,6 +722,7 @@ export function useISLRecognition(classifier: ISLClassifier = new SaanketBiLSTMC
     pauseRecognition,
     resumeRecognition,
     stopRecognition,
+    resetRecognition,
   };
 }
 
