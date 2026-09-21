@@ -1,0 +1,8 @@
+{
+    "lstm1_units": 128,
+    "lstm2_units": 96,
+    "dense_units": 128,
+    "dropout": 0.2,
+    "learning_rate": 0.0001,
+    "l2_reg": 0.001
+}
