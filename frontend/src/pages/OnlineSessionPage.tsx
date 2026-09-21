@@ -497,10 +497,9 @@ export const OnlineSessionPage: React.FC = () => {
             remoteMediaStreamRef.current.addTrack(track);
           }
         });
-      } else if (event.track) {
-        if (!remoteMediaStreamRef.current.getTracks().some((t) => t.id === event.track.id)) {
-          remoteMediaStreamRef.current.addTrack(event.track);
-        }
+      }
+      if (event.track && !remoteMediaStreamRef.current.getTracks().some((t) => t.id === event.track.id)) {
+        remoteMediaStreamRef.current.addTrack(event.track);
       }
 
       const newStream = new MediaStream(remoteMediaStreamRef.current.getTracks());
@@ -525,6 +524,18 @@ export const OnlineSessionPage: React.FC = () => {
       console.log('[WebRTC] Inbound DataChannel received');
       dataChannelRef.current = event.channel;
       wireDataChannel(event.channel);
+    };
+
+    // Handle Dynamic Renegotiation
+    pc.onnegotiationneeded = async () => {
+      console.log('[WebRTC] onnegotiationneeded triggered');
+      try {
+        if (signalWsRef.current?.readyState === WebSocket.OPEN && pc.signalingState === 'stable') {
+          await makeOffer();
+        }
+      } catch (err) {
+        console.warn('[WebRTC] Error during onnegotiationneeded:', err);
+      }
     };
 
     const updateConnectionState = () => {
@@ -629,7 +640,15 @@ export const OnlineSessionPage: React.FC = () => {
 
       if (data.type === 'offer') {
         console.log('[WebRTC Signaling] Received SDP offer, creating answer');
-        await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+        if (pc.signalingState !== 'stable') {
+          console.log('[WebRTC] Handling offer collision with rollback');
+          await Promise.all([
+            pc.setLocalDescription({ type: 'rollback' } as any).catch(console.warn),
+            pc.setRemoteDescription(new RTCSessionDescription(data.sdp)),
+          ]);
+        } else {
+          await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+        }
 
         // Drain pending ICE candidates
         while (pendingIceRef.current.length > 0) {
@@ -838,17 +857,23 @@ export const OnlineSessionPage: React.FC = () => {
 
         if (audioTrack) {
           if (audioTransceiver) {
-            audioTransceiver.sender.replaceTrack(audioTrack).catch(console.warn);
+            await audioTransceiver.sender.replaceTrack(audioTrack).catch(console.warn);
           } else {
             pc.addTransceiver(audioTrack, { direction: 'sendrecv', streams: [localStream] });
           }
         }
         if (videoTrack) {
           if (videoTransceiver) {
-            videoTransceiver.sender.replaceTrack(videoTrack).catch(console.warn);
+            await videoTransceiver.sender.replaceTrack(videoTrack).catch(console.warn);
           } else {
             pc.addTransceiver(videoTrack, { direction: 'sendrecv', streams: [localStream] });
           }
+        }
+
+        // If signaling WS is already open and peer connection is active, dispatch offer so creator/joiner both receive streams
+        if (signalWsRef.current?.readyState === WebSocket.OPEN && pc.signalingState === 'stable') {
+          console.log('[WebRTC] Local media ready, dispatching renegotiation offer');
+          await makeOffer();
         }
       } catch (err) {
         console.warn('Media capture warning (call continues with text/ISL):', err);
@@ -880,7 +905,7 @@ export const OnlineSessionPage: React.FC = () => {
         peerConnectionRef.current = null;
       }
     };
-  }, [createPeerConnection]);
+  }, [createPeerConnection, makeOffer]);
 
   // Toggle Controls Handlers
   const handleToggleMic = async () => {
@@ -924,6 +949,9 @@ export const OnlineSessionPage: React.FC = () => {
           if (audioTransceiver) {
             await audioTransceiver.sender.replaceTrack(newTrack);
           }
+          if (signalWsRef.current?.readyState === WebSocket.OPEN && peerConnectionRef.current.signalingState === 'stable') {
+            await makeOffer();
+          }
         }
       }
     } catch (err) {
@@ -956,6 +984,9 @@ export const OnlineSessionPage: React.FC = () => {
           if (videoTransceiver) {
             await videoTransceiver.sender.replaceTrack(newTrack);
           }
+          if (signalWsRef.current?.readyState === WebSocket.OPEN && peerConnectionRef.current.signalingState === 'stable') {
+            await makeOffer();
+          }
         }
       }
     } catch (err) {
@@ -976,6 +1007,9 @@ export const OnlineSessionPage: React.FC = () => {
           if (videoTransceiver) {
             await videoTransceiver.sender.replaceTrack(screenTrack);
           }
+          if (signalWsRef.current?.readyState === WebSocket.OPEN && peerConnectionRef.current.signalingState === 'stable') {
+            await makeOffer();
+          }
         }
         screenTrack.onended = () => {
           setScreenShareState(false);
@@ -985,7 +1019,13 @@ export const OnlineSessionPage: React.FC = () => {
             const videoTransceiver = transceivers.find(
               (t) => t.receiver.track.kind === 'video' || t.sender.track?.kind === 'video'
             );
-            if (videoTransceiver) videoTransceiver.sender.replaceTrack(localVideo);
+            if (videoTransceiver) {
+              videoTransceiver.sender.replaceTrack(localVideo).then(() => {
+                if (signalWsRef.current?.readyState === WebSocket.OPEN && peerConnectionRef.current?.signalingState === 'stable') {
+                  makeOffer();
+                }
+              }).catch(console.warn);
+            }
           }
         };
         setScreenShareState(true);
@@ -997,7 +1037,12 @@ export const OnlineSessionPage: React.FC = () => {
           const videoTransceiver = transceivers.find(
             (t) => t.receiver.track.kind === 'video' || t.sender.track?.kind === 'video'
           );
-          if (videoTransceiver) videoTransceiver.sender.replaceTrack(localVideo);
+          if (videoTransceiver) {
+            await videoTransceiver.sender.replaceTrack(localVideo);
+            if (signalWsRef.current?.readyState === WebSocket.OPEN && peerConnectionRef.current.signalingState === 'stable') {
+              await makeOffer();
+            }
+          }
         }
       }
     } catch (e) {

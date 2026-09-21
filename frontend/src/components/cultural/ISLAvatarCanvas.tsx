@@ -179,9 +179,8 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
                 state.animations.shift();
                 defaultPose(state);
               }
-            } else {
-              // Dynamic step speed based on current multiplier
-              const stepSpeed = 0.08 * speedMultiplierRef.current;
+              // Dynamic step speed based on current multiplier (optimized for fast, natural signing)
+              const stepSpeed = Math.max(0.08, 0.16 * speedMultiplierRef.current);
 
               for (let i = 0; i < state.animations[0].length; ) {
                 const [boneName, action, axis, limit] = state.animations[0][i];
@@ -201,8 +200,13 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
               }
             }
           } else {
-            // Current pose chunk completed. Schedule non-blocking timestamp pause.
-            const delay = pauseTimeMsRef.current;
+            // Current pose chunk completed. Schedule short, natural transition pause.
+            const isLastChunk = state.animations.length <= 1 || state.animations[1]?.[0] === 'word-start';
+            const basePause = pauseTimeMsRef.current;
+            const delay = isLastChunk
+              ? Math.max(50, Math.round(basePause * 0.35))
+              : Math.max(15, Math.round(basePause * 0.12));
+
             pauseEndTimeRef.current = performance.now() + delay;
             state.animations.shift();
             if (state.animations.length === 0 && onFinish) {

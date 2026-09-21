@@ -32,8 +32,8 @@ export interface SignAvatarRef {
 const SignAvatar = forwardRef<SignAvatarRef, SignAvatarProps>(function SignAvatar(
   {
     avatar = "ybot",
-    speed = 0.035,
-    pause = 700,
+    speed = 0.16,
+    pause = 120,
   },
   ref
 ) {
