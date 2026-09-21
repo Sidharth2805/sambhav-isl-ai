@@ -122,6 +122,16 @@ export const TranslatePage: React.FC = () => {
   const [signedMessages, setSignedMessages] = useState<{ id: string; sign: string; phrase: string; confidence: number; timestamp: string }[]>([]);
   const signedMessagesEndRef = useRef<HTMLDivElement | null>(null);
 
+  // Sambhav Model 2 Video Recording & Gloss-to-English State
+  const [glossWords, setGlossWords] = useState<string[]>([]);
+  const [englishSentence, setEnglishSentence] = useState<string>('');
+  const [isVideoRecording, setIsVideoRecording] = useState<boolean>(false);
+  const [isVideoProcessing, setIsVideoProcessing] = useState<boolean>(false);
+  const [recordingCountdown, setRecordingCountdown] = useState<number | null>(null);
+  const videoRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingTimerRef = useRef<any>(null);
+  const countdownIntervalRef = useRef<any>(null);
+
   // ISL Avatar Sequence State
   const [_currentSequence, setCurrentSequence] = useState<SignSequenceDto | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -225,6 +235,208 @@ export const TranslatePage: React.FC = () => {
       speak(trimmed);
     }
   }, [autoSpeakGestures, speak]);
+
+  // 6-Second Video Sign Capture using Sambhav Model 2 BiLSTM (POST /predict-video)
+  const captureSignVideo = useCallback(async () => {
+    if (isVideoRecording || isVideoProcessing) return;
+    const stream = mediaStreamRef.current || (gestureVideoRef.current?.srcObject as MediaStream);
+    if (!stream) {
+      alert('Camera stream not available. Please ensure camera is active.');
+      return;
+    }
+
+    let mimeType = '';
+    if (typeof MediaRecorder !== 'undefined') {
+      if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) mimeType = 'video/webm;codecs=vp9';
+      else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) mimeType = 'video/webm;codecs=vp8';
+      else if (MediaRecorder.isTypeSupported('video/webm')) mimeType = 'video/webm';
+      else if (MediaRecorder.isTypeSupported('video/mp4')) mimeType = 'video/mp4';
+    }
+
+    try {
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      videoRecorderRef.current = recorder;
+      const chunks: Blob[] = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunks.push(e.data);
+      };
+
+      recorder.onstop = async () => {
+        setIsVideoRecording(false);
+        setRecordingCountdown(null);
+        setIsVideoProcessing(true);
+
+        try {
+          if (chunks.length === 0) throw new Error('No video data was recorded.');
+          const videoBlob = new Blob(chunks, { type: mimeType || 'video/webm' });
+          const formData = new FormData();
+          formData.append('file', videoBlob, 'sign.webm');
+
+          const endpointsToTry = [
+            activeEndpoint || 'http://127.0.0.1:8000',
+            'http://localhost:8000',
+            'https://sambhav-ml.onrender.com'
+          ];
+
+          let success = false;
+          let resultData: any = null;
+
+          for (const ep of endpointsToTry) {
+            try {
+              const res = await fetch(`${ep}/predict-video`, {
+                method: 'POST',
+                body: formData,
+              });
+              if (res.ok) {
+                resultData = await res.json();
+                success = true;
+                break;
+              }
+            } catch {
+              // Try next endpoint
+            }
+          }
+
+          if (!success || !resultData) {
+            throw new Error('ML inference service is not reachable on port 8000.');
+          }
+
+          if (resultData.word === 'No hand detected' || resultData.success === false) {
+            alert('No hand detected during recording. Please make sure your hand is clearly visible in the camera frame.');
+            return;
+          }
+
+          const predictedWord = resultData.word || resultData.label;
+          const predictedConfidence = Number(resultData.confidence) || 0.95;
+
+          if (predictedWord) {
+            setGlossWords((prev) => [...prev, predictedWord]);
+            setEnglishSentence('');
+
+            const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            setSignedMessages((prev) => [
+              ...prev,
+              {
+                id: `video-sign-${Date.now()}`,
+                sign: predictedWord,
+                phrase: predictedWord,
+                confidence: predictedConfidence,
+                timestamp,
+              },
+            ]);
+
+            setSessionHistoryLogs((prev) => [
+              ...prev,
+              { mode: 'GESTURE', text: predictedWord, time: timestamp },
+            ]);
+
+            if (autoSpeakGestures) {
+              speak(predictedWord);
+            }
+          }
+        } catch (err: any) {
+          console.error('[Sambhav Model 2] Video prediction error:', err);
+          alert(`Video prediction note: ${err.message || 'Check ML service terminal.'}`);
+        } finally {
+          setIsVideoProcessing(false);
+        }
+      };
+
+      setIsVideoRecording(true);
+      setRecordingCountdown(6);
+      recorder.start(250);
+
+      let secs = 6;
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = setInterval(() => {
+        secs -= 1;
+        if (secs <= 0) {
+          clearInterval(countdownIntervalRef.current);
+          countdownIntervalRef.current = null;
+        } else {
+          setRecordingCountdown(secs);
+        }
+      }, 1000);
+
+      if (recordingTimerRef.current) clearTimeout(recordingTimerRef.current);
+      recordingTimerRef.current = setTimeout(() => {
+        if (recorder.state !== 'inactive') {
+          recorder.stop();
+        }
+      }, 6000);
+    } catch (err) {
+      console.error('MediaRecorder start error:', err);
+      setIsVideoRecording(false);
+      setRecordingCountdown(null);
+    }
+  }, [activeEndpoint, autoSpeakGestures, isVideoProcessing, isVideoRecording, speak]);
+
+  // Convert Accumulated ISL Gloss to English Grammar (POST /convert)
+  const convertGlossToEnglish = useCallback(async () => {
+    if (glossWords.length === 0) {
+      alert('Please perform or record at least one ISL sign first.');
+      return;
+    }
+
+    const glossText = glossWords.join(' ').trim();
+    const endpointsToTry = [
+      activeEndpoint || 'http://127.0.0.1:8000',
+      'http://localhost:8000',
+      'https://sambhav-ml.onrender.com'
+    ];
+
+    for (const ep of endpointsToTry) {
+      try {
+        const res = await fetch(`${ep}/convert`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ gloss: glossText }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const sentence = data.english || data.sentence || glossText;
+          setEnglishSentence(sentence);
+
+          const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          setSignedMessages((prev) => [
+            ...prev,
+            {
+              id: `english-conv-${Date.now()}`,
+              sign: 'ENGLISH',
+              phrase: sentence,
+              confidence: 1.0,
+              timestamp,
+            },
+          ]);
+
+          if (autoSpeakGestures) {
+            speak(sentence);
+          }
+          return;
+        }
+      } catch {
+        // Try next endpoint
+      }
+    }
+
+    // Client-side fallback rule engine
+    const fallbackSentence = glossText.charAt(0).toUpperCase() + glossText.slice(1) + '.';
+    setEnglishSentence(fallbackSentence);
+    if (autoSpeakGestures) {
+      speak(fallbackSentence);
+    }
+  }, [activeEndpoint, autoSpeakGestures, glossWords, speak]);
+
+  const removeLastGlossWord = useCallback(() => {
+    setGlossWords((prev) => prev.slice(0, -1));
+    setEnglishSentence('');
+  }, []);
+
+  const clearGloss = useCallback(() => {
+    setGlossWords([]);
+    setEnglishSentence('');
+  }, []);
 
   // Fast Instant Sign Tokenizer & Sequencer
   const translateTextToSign = useCallback((text: string, messageId?: string) => {
@@ -1058,11 +1270,49 @@ export const TranslatePage: React.FC = () => {
                       </button>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
+                      {/* Sambhav Model 2 6-Second Video Capture Button */}
+                      <button
+                        type="button"
+                        onClick={captureSignVideo}
+                        disabled={isVideoRecording || isVideoProcessing}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-md cursor-pointer border ${
+                          isVideoRecording
+                            ? 'bg-rose-600 text-white border-rose-400 animate-pulse'
+                            : isVideoProcessing
+                            ? 'bg-indigo-600 text-white border-indigo-400 animate-pulse'
+                            : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white border-emerald-400/50 hover:scale-[1.02] active:scale-95'
+                        }`}
+                        title="Record 6-second sign video clip and predict with Sambhav Model 2 BiLSTM"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">
+                          {isVideoRecording ? 'fiber_manual_record' : isVideoProcessing ? 'hourglass_top' : 'videocam'}
+                        </span>
+                        <span>
+                          {isVideoRecording
+                            ? `Recording (${recordingCountdown || 6}s)...`
+                            : isVideoProcessing
+                            ? 'AI Processing...'
+                            : '🎥 Record Sign (6s)'}
+                        </span>
+                      </button>
+
+                      {/* Convert Accumulated ISL Gloss to English Sentence Button */}
+                      <button
+                        type="button"
+                        onClick={convertGlossToEnglish}
+                        disabled={glossWords.length === 0 || isVideoRecording || isVideoProcessing}
+                        className="px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-md cursor-pointer border bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white border-indigo-400/50 disabled:opacity-40 disabled:pointer-events-none hover:scale-[1.02] active:scale-95"
+                        title="Convert accumulated ISL sign words into a grammatical English sentence"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">auto_fix_high</span>
+                        <span>Convert to English</span>
+                      </button>
+
                       <button
                         type="button"
                         onClick={start5sCapture}
-                        disabled={isCapturingManual}
-                        className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-md cursor-pointer border ${
+                        disabled={isCapturingManual || isVideoRecording}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-md cursor-pointer border ${
                           captureCountdown !== null
                             ? 'bg-rose-500 text-white border-rose-400 animate-pulse'
                             : 'bg-gradient-to-r from-amber-500 to-[#fe9832] hover:from-amber-600 hover:to-[#e08328] text-gray-950 border-amber-300/50 hover:scale-[1.02] active:scale-95'
@@ -1084,8 +1334,8 @@ export const TranslatePage: React.FC = () => {
                         <span>
                           {isModelOnline 
                             ? (activeEndpoint.includes('127.0.0.1') || activeEndpoint.includes('localhost') 
-                                ? `Local BiLSTM (${pingLatencyMs || 15}ms)` 
-                                : t('translate.cloudMLLive', 'Cloud ML Live'))
+                                ? `Sambhav Model 2 (${pingLatencyMs || 15}ms)` 
+                                : t('translate.cloudMLLive', 'Sambhav ML Live'))
                             : t('translate.mlReconnecting', 'ML Reconnecting...')}
                         </span>
                       </span>
@@ -1168,11 +1418,69 @@ export const TranslatePage: React.FC = () => {
                     )}
                   </div>
 
+                  {/* Sambhav Model 2 Gloss & English Translation Display */}
+                  {(glossWords.length > 0 || englishSentence) && (
+                    <div className="my-2 p-2.5 bg-gray-50 dark:bg-black/60 rounded-xl border border-indigo-200 dark:border-indigo-900/60 flex flex-col gap-1.5 animate-fadeIn z-10 shrink-0">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-extrabold text-indigo-800 dark:text-indigo-300 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[14px]">sign_language</span>
+                          <span>Sambhav Model 2 ISL Gloss:</span>
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={removeLastGlossWord}
+                            className="px-1.5 py-0.5 text-[10px] text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-950/40 rounded font-bold cursor-pointer"
+                          >
+                            Remove Last
+                          </button>
+                          <button
+                            type="button"
+                            onClick={clearGloss}
+                            className="px-1.5 py-0.5 text-[10px] text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-950/40 rounded font-bold cursor-pointer"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      </div>
+
+                      {glossWords.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {glossWords.map((w, idx) => (
+                            <span
+                              key={idx}
+                              className="px-2 py-0.5 bg-indigo-100 dark:bg-indigo-950 text-indigo-900 dark:text-indigo-200 text-xs font-black rounded-lg border border-indigo-300 dark:border-indigo-700"
+                            >
+                              {w}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {englishSentence && (
+                        <div className="mt-1 pt-1.5 border-t border-indigo-200 dark:border-indigo-900 flex items-center justify-between gap-2">
+                          <div className="text-xs font-bold text-gray-950 dark:text-white">
+                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold uppercase mr-1.5">English:</span>
+                            "{englishSentence}"
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => speak(englishSentence)}
+                            className="p-1 text-indigo-600 dark:text-[#fe9832] hover:bg-indigo-50 dark:hover:bg-white/10 rounded-md cursor-pointer"
+                            title="Speak English Sentence"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">volume_up</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Bottom Camera Toolbar */}
                   <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-800 mt-2 shrink-0 z-10">
                     <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300 font-medium">
                       <span className="material-symbols-outlined text-[16px] text-[#fe9832]">psychology</span>
-                      <span>BiLSTM Neural Network (port 8000)</span>
+                      <span>Sambhav Model 2 (Saanket BiLSTM 169 ISL Classes)</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
