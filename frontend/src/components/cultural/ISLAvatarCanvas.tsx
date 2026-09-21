@@ -179,6 +179,7 @@ export const ISLAvatarCanvas = forwardRef<ISLAvatarCanvasRef, ISLAvatarCanvasPro
                 state.animations.shift();
                 defaultPose(state);
               }
+            } else {
               // Dynamic step speed based on current multiplier (optimized for fast, natural signing)
               const stepSpeed = Math.max(0.08, 0.16 * speedMultiplierRef.current);
 

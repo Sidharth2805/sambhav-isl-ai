@@ -448,7 +448,7 @@ useImperativeHandle(
                 if (
                   Math.abs(
                     current - limit
-                  ) < speed
+                  ) <= speed
                 ) {
                   targetBone[action][axis] =
                     limit;
