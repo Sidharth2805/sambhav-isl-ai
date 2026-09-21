@@ -287,24 +287,40 @@ export const ISLMessageComposer: React.FC<ISLMessageComposerProps> = ({
         </button>
       </div>
 
-      {/* Detected Token Chips Helper Bar */}
-      {recentTokens.length > 0 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 custom-scrollbar">
-          <span className="text-[10px] text-gray-700 dark:text-gray-300 font-semibold shrink-0">Recent Signs:</span>
-          {recentTokens.map((tok) => (
-            <button
-              key={tok.id}
-              type="button"
-              onClick={() => handleInsertToken(tok.word)}
-              className="px-2 py-0.5 rounded-full bg-white/80 dark:bg-black/50 hover:bg-[#fe9832]/30 text-gray-950 dark:text-white border border-white/60 dark:border-white/10 text-[10px] font-bold transition shrink-0 flex items-center gap-1 cursor-pointer active:scale-95"
-              title="Click to insert into draft"
-            >
-              <span className="text-[#fe9832]">+</span>
-              <span>{tok.word}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Quick Phrase Chips & Detected Token Chips Helper Bar */}
+      <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 custom-scrollbar">
+        <span className="text-[10px] text-gray-700 dark:text-gray-300 font-bold shrink-0">Quick Phrases:</span>
+        {['Hello', 'Thank you', 'Please repeat', 'Wait a moment', 'I understand', 'Yes', 'No'].map((phrase) => (
+          <button
+            key={phrase}
+            type="button"
+            onClick={() => handleInsertToken(phrase)}
+            className="px-2 py-0.5 rounded-full bg-white/90 dark:bg-white/10 hover:bg-[#fe9832]/25 text-gray-900 dark:text-white border border-gray-200 dark:border-white/15 text-[10px] font-bold transition shrink-0 flex items-center gap-1 cursor-pointer active:scale-95 shadow-2xs"
+            title={`Insert "${phrase}"`}
+          >
+            <span className="text-[#fe9832] font-black">+</span>
+            <span>{phrase}</span>
+          </button>
+        ))}
+
+        {recentTokens.length > 0 && (
+          <>
+            <span className="text-[10px] text-gray-500 dark:text-gray-400 font-bold shrink-0 pl-1 border-l border-gray-300 dark:border-gray-700">Recent Signs:</span>
+            {recentTokens.map((tok) => (
+              <button
+                key={tok.id}
+                type="button"
+                onClick={() => handleInsertToken(tok.word)}
+                className="px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700 text-[10px] font-bold transition shrink-0 flex items-center gap-1 cursor-pointer active:scale-95"
+                title="Click to insert into draft"
+              >
+                <span className="text-emerald-600 dark:text-emerald-400 font-black">+</span>
+                <span>{tok.word}</span>
+              </button>
+            ))}
+          </>
+        )}
+      </div>
     </div>
   );
 };

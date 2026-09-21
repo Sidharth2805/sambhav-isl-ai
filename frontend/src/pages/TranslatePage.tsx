@@ -428,6 +428,13 @@ export const TranslatePage: React.FC = () => {
     }
   }, [activeEndpoint, autoSpeakGestures, glossWords, speak]);
 
+  const [copiedSentence, setCopiedSentence] = useState(false);
+
+  const removeGlossWordAtIndex = useCallback((index: number) => {
+    setGlossWords((prev) => prev.filter((_, i) => i !== index));
+    setEnglishSentence('');
+  }, []);
+
   const removeLastGlossWord = useCallback(() => {
     setGlossWords((prev) => prev.slice(0, -1));
     setEnglishSentence('');
@@ -437,6 +444,13 @@ export const TranslatePage: React.FC = () => {
     setGlossWords([]);
     setEnglishSentence('');
   }, []);
+
+  const handleCopyEnglishSentence = useCallback(() => {
+    if (!englishSentence) return;
+    navigator.clipboard.writeText(englishSentence);
+    setCopiedSentence(true);
+    setTimeout(() => setCopiedSentence(false), 2000);
+  }, [englishSentence]);
 
   // Fast Instant Sign Tokenizer & Sequencer
   const translateTextToSign = useCallback((text: string, messageId?: string) => {
@@ -1387,6 +1401,35 @@ export const TranslatePage: React.FC = () => {
                       )}
                     </div>
 
+                    {/* Live 6-Second Recording Central HUD Overlay */}
+                    {isVideoRecording && (
+                      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px] flex flex-col items-center justify-center gap-3 z-20 animate-fadeIn">
+                        <div className="relative flex items-center justify-center">
+                          <div className="w-20 h-20 rounded-full border-4 border-rose-500/30 border-t-rose-500 animate-spin" />
+                          <div className="absolute text-2xl font-black text-white font-mono">
+                            {recordingCountdown ?? 6}s
+                          </div>
+                        </div>
+                        <div className="bg-rose-600/90 text-white px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-lg animate-pulse border border-rose-400">
+                          <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
+                          <span>Recording ISL Sign Clip...</span>
+                        </div>
+                        <p className="text-[11px] text-white/80 font-medium">Perform your gesture clearly inside the frame</p>
+                      </div>
+                    )}
+
+                    {/* AI Inference Processing Overlay */}
+                    {isVideoProcessing && (
+                      <div className="absolute inset-0 bg-black/65 backdrop-blur-[2px] flex flex-col items-center justify-center gap-3 z-20 animate-fadeIn">
+                        <div className="w-12 h-12 rounded-2xl bg-indigo-600/80 text-white flex items-center justify-center shadow-xl animate-bounce">
+                          <span className="material-symbols-outlined text-[28px] animate-spin">psychology</span>
+                        </div>
+                        <div className="bg-indigo-600/90 text-white px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-lg border border-indigo-400">
+                          <span>Analyzing with Sambhav Model 2...</span>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Bottom Floating Detected Sign Gauge */}
                     {recognizedSign && (
                       <div className="absolute bottom-3 left-3 right-3 bg-black/85 backdrop-blur-md p-3 rounded-xl border border-white/15 text-white flex items-center justify-between z-10 animate-scaleUp">
@@ -1420,57 +1463,79 @@ export const TranslatePage: React.FC = () => {
 
                   {/* Sambhav Model 2 Gloss & English Translation Display */}
                   {(glossWords.length > 0 || englishSentence) && (
-                    <div className="my-2 p-2.5 bg-gray-50 dark:bg-black/60 rounded-xl border border-indigo-200 dark:border-indigo-900/60 flex flex-col gap-1.5 animate-fadeIn z-10 shrink-0">
+                    <div className="my-2 p-3 bg-gray-50 dark:bg-black/60 rounded-xl border border-indigo-200 dark:border-indigo-900/60 flex flex-col gap-2 animate-fadeIn z-10 shrink-0">
                       <div className="flex items-center justify-between text-[11px]">
-                        <span className="font-extrabold text-indigo-800 dark:text-indigo-300 flex items-center gap-1">
-                          <span className="material-symbols-outlined text-[14px]">sign_language</span>
-                          <span>Sambhav Model 2 ISL Gloss:</span>
+                        <span className="font-extrabold text-indigo-800 dark:text-indigo-300 flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-[15px]">sign_language</span>
+                          <span>ISL Sign Tokens ({glossWords.length}):</span>
                         </span>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1.5">
                           <button
                             type="button"
                             onClick={removeLastGlossWord}
-                            className="px-1.5 py-0.5 text-[10px] text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-950/40 rounded font-bold cursor-pointer"
+                            className="px-2 py-0.5 text-[10px] text-amber-800 dark:text-amber-300 bg-amber-100/80 dark:bg-amber-950/50 hover:bg-amber-200 dark:hover:bg-amber-900/60 rounded-md font-bold cursor-pointer transition border border-amber-300/50"
                           >
                             Remove Last
                           </button>
                           <button
                             type="button"
                             onClick={clearGloss}
-                            className="px-1.5 py-0.5 text-[10px] text-rose-700 dark:text-rose-300 hover:bg-rose-100 dark:hover:bg-rose-950/40 rounded font-bold cursor-pointer"
+                            className="px-2 py-0.5 text-[10px] text-rose-800 dark:text-rose-300 bg-rose-100/80 dark:bg-rose-950/50 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded-md font-bold cursor-pointer transition border border-rose-300/50"
                           >
-                            Clear
+                            Clear All
                           </button>
                         </div>
                       </div>
 
                       {glossWords.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-wrap gap-1.5">
                           {glossWords.map((w, idx) => (
                             <span
                               key={idx}
-                              className="px-2 py-0.5 bg-indigo-100 dark:bg-indigo-950 text-indigo-900 dark:text-indigo-200 text-xs font-black rounded-lg border border-indigo-300 dark:border-indigo-700"
+                              className="group inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-100 dark:bg-indigo-950 text-indigo-900 dark:text-indigo-200 text-xs font-black rounded-lg border border-indigo-300 dark:border-indigo-700 shadow-2xs"
                             >
-                              {w}
+                              <span>{w}</span>
+                              <button
+                                type="button"
+                                onClick={() => removeGlossWordAtIndex(idx)}
+                                className="text-indigo-400 hover:text-rose-500 rounded p-0.5 transition cursor-pointer"
+                                title={`Remove "${w}"`}
+                              >
+                                <span className="material-symbols-outlined text-[12px]">close</span>
+                              </button>
                             </span>
                           ))}
                         </div>
                       )}
 
                       {englishSentence && (
-                        <div className="mt-1 pt-1.5 border-t border-indigo-200 dark:border-indigo-900 flex items-center justify-between gap-2">
-                          <div className="text-xs font-bold text-gray-950 dark:text-white">
-                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold uppercase mr-1.5">English:</span>
-                            "{englishSentence}"
+                        <div className="mt-1 pt-2 border-t border-indigo-200 dark:border-indigo-900 flex items-center justify-between gap-2">
+                          <div className="text-xs font-bold text-gray-950 dark:text-white flex items-center gap-1.5">
+                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800">
+                              English
+                            </span>
+                            <span>"{englishSentence}"</span>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => speak(englishSentence)}
-                            className="p-1 text-indigo-600 dark:text-[#fe9832] hover:bg-indigo-50 dark:hover:bg-white/10 rounded-md cursor-pointer"
-                            title="Speak English Sentence"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">volume_up</span>
-                          </button>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={handleCopyEnglishSentence}
+                              className="p-1 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/10 rounded-md cursor-pointer transition"
+                              title="Copy English Sentence"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">
+                                {copiedSentence ? 'check' : 'content_copy'}
+                              </span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => speak(englishSentence)}
+                              className="p-1 text-indigo-600 dark:text-[#fe9832] hover:bg-indigo-50 dark:hover:bg-white/10 rounded-md cursor-pointer transition"
+                              title="Speak English Sentence"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">volume_up</span>
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1527,9 +1592,24 @@ export const TranslatePage: React.FC = () => {
                           XBot
                         </button>
                       </div>
-                      <span className="text-[10px] bg-[#fe9832]/20 text-[#8f4e00] dark:text-[#fe9832] px-2 py-0.5 rounded font-mono font-bold">
-                        {avatarSpeed}x Speed
-                      </span>
+                      
+                      {/* Avatar Speed Selector Buttons */}
+                      <div className="flex items-center gap-1 bg-gray-100 dark:bg-black/60 p-0.5 rounded-lg border border-gray-300 dark:border-white/10 text-[10px]">
+                        {[0.75, 1.0, 1.25, 1.5].map((sp) => (
+                          <button
+                            key={sp}
+                            type="button"
+                            onClick={() => setAvatarSpeed(sp)}
+                            className={`px-1.5 py-0.5 rounded font-mono font-bold transition-all cursor-pointer ${
+                              avatarSpeed === sp
+                                ? 'bg-[#fe9832] text-[#542900] shadow-2xs'
+                                : 'text-gray-700 dark:text-gray-300 hover:text-[#fe9832]'
+                            }`}
+                          >
+                            {sp}x
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
 

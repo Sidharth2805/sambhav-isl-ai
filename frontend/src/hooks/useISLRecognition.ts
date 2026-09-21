@@ -556,7 +556,13 @@ export function useISLRecognition(classifier: ISLClassifier = defaultSaanketClas
           }
 
           if (currentState === 'WAIT_FOR_SIGN_END') {
-            // Latch active: While the sign is held, DO NOT trigger new inferences or spam duplicate tokens
+            // Latch active: Prevent duplicate tokens for 1000ms cooldown, then smoothly allow next sign
+            if (now - lastValidTimeRef.current > 1000) {
+              gestureCycleIdRef.current += 1;
+              activeFramesAccumulatedRef.current = 1;
+              machineStateRef.current = 'COLLECTING';
+              setGestureState('COLLECTING');
+            }
             return;
           }
         });
