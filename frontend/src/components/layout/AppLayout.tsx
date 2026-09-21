@@ -69,12 +69,6 @@ export const AppLayout: React.FC = () => {
       iconColor: 'text-amber-600 group-hover:text-amber-700',
     },
     {
-      name: t('sidebar.notesReader', 'Prescription & Notes'),
-      path: '/translate?scan=true',
-      icon: 'document_scanner',
-      iconColor: 'text-teal-600 group-hover:text-teal-700',
-    },
-    {
       name: t('sidebar.learn', 'Learn ISL'),
       path: '/learn-isl',
       icon: 'sign_language',

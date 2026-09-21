@@ -51,41 +51,66 @@ public class CommunicationSessionController {
 
     @GetMapping("/{id}")
     public ResponseEntity<CommunicationSessionResponse> getSession(
-            @PathVariable UUID id,
+            @PathVariable String id,
             Principal principal
     ) {
         String email = principal.getName();
-        CommunicationSessionResponse response = sessionService.getSession(id, email);
-        return ResponseEntity.ok(response);
+        try {
+            UUID uuid = UUID.fromString(id);
+            return ResponseEntity.ok(sessionService.getSession(uuid, email));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.ok(sessionService.getSessionByRoomCode(id, email));
+        }
     }
 
     @PostMapping("/{id}/start")
     public ResponseEntity<CommunicationSessionResponse> startSession(
-            @PathVariable UUID id,
+            @PathVariable String id,
             Principal principal
     ) {
         String email = principal.getName();
-        CommunicationSessionResponse response = sessionService.startSession(id, email);
+        UUID uuid;
+        try {
+            uuid = UUID.fromString(id);
+        } catch (IllegalArgumentException e) {
+            CommunicationSessionResponse resp = sessionService.getSessionByRoomCode(id, email);
+            uuid = resp.getId();
+        }
+        CommunicationSessionResponse response = sessionService.startSession(uuid, email);
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/{id}/end")
     public ResponseEntity<CommunicationSessionResponse> endSession(
-            @PathVariable UUID id,
+            @PathVariable String id,
             Principal principal
     ) {
         String email = principal.getName();
-        CommunicationSessionResponse response = sessionService.endSession(id, email);
+        UUID uuid;
+        try {
+            uuid = UUID.fromString(id);
+        } catch (IllegalArgumentException e) {
+            CommunicationSessionResponse resp = sessionService.getSessionByRoomCode(id, email);
+            uuid = resp.getId();
+        }
+        CommunicationSessionResponse response = sessionService.endSession(uuid, email);
         return ResponseEntity.ok(response);
     }
 
     @PostMapping("/{id}/cancel")
     public ResponseEntity<CommunicationSessionResponse> cancelSession(
-            @PathVariable UUID id,
+            @PathVariable String id,
             Principal principal
     ) {
         String email = principal.getName();
-        CommunicationSessionResponse response = sessionService.cancelSession(id, email);
+        UUID uuid;
+        try {
+            uuid = UUID.fromString(id);
+        } catch (IllegalArgumentException e) {
+            CommunicationSessionResponse resp = sessionService.getSessionByRoomCode(id, email);
+            uuid = resp.getId();
+        }
+        CommunicationSessionResponse response = sessionService.cancelSession(uuid, email);
         return ResponseEntity.ok(response);
     }
 

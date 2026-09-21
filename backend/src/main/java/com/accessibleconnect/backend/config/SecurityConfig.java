@@ -45,6 +45,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/health").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/ws/session/**", "/ws/session").permitAll()
+                .requestMatchers("/ws/webrtc/**", "/ws/webrtc").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             );

@@ -2,12 +2,17 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { SaanketBiLSTMClassifier, ISL_VOCABULARY } from '../utils/islModel';
 import type { ISLClassifier, ISLLandmarks, ISLLandmark } from '../utils/islModel';
 
-// Dynamic loader for MediaPipe Hands script
+// Dynamic loader for MediaPipe Hands script with CDN fallback
 async function loadMediaPipeHands(): Promise<any> {
   if (typeof window === 'undefined') return null;
   if ((window as any).Hands) return (window as any).Hands;
 
   return new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[src*="mediapipe/hands"]');
+    if (existing && (window as any).Hands) {
+      return resolve((window as any).Hands);
+    }
+
     const script = document.createElement('script');
     script.src = 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js';
     script.crossOrigin = 'anonymous';
@@ -15,7 +20,12 @@ async function loadMediaPipeHands(): Promise<any> {
       resolve((window as any).Hands);
     };
     script.onerror = () => {
-      reject(new Error('Failed to load MediaPipe Hands from CDN'));
+      const fallbackScript = document.createElement('script');
+      fallbackScript.src = 'https://unpkg.com/@mediapipe/hands@0.4.1675469240/hands.js';
+      fallbackScript.crossOrigin = 'anonymous';
+      fallbackScript.onload = () => resolve((window as any).Hands);
+      fallbackScript.onerror = () => reject(new Error('Failed to load MediaPipe Hands from CDNs'));
+      document.head.appendChild(fallbackScript);
     };
     document.head.appendChild(script);
   });

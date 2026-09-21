@@ -64,6 +64,8 @@ export const VideoTrack: React.FC<VideoTrackProps> = ({
       autoPlay
       playsInline
       muted={isSelfView}
+      data-self-view={isSelfView ? 'true' : undefined}
+      data-remote={props['data-remote'] ? 'true' : undefined}
       className={`${className} ${isSelfView ? 'scale-x-[-1]' : ''}`}
       style={style}
     />

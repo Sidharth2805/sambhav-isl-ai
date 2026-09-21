@@ -9,11 +9,38 @@ import { HearingUserWorkspace, LkConnectionState } from '../components/communica
 import { DeafUserWorkspace } from '../components/communication/DeafUserWorkspace';
 import { SpeechToTextService } from '../services/SpeechToTextService';
 
-const SIGNALING_URL = (import.meta as any).env?.VITE_SIGNALING_URL || 'ws://localhost:8080';
+export const getSignalingUrl = (): string => {
+  const envSignaling = (import.meta as any).env?.VITE_SIGNALING_URL;
+  if (envSignaling) return envSignaling;
+
+  const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  if (isLocal) {
+    return 'ws://localhost:8080/ws/webrtc';
+  }
+
+  const apiUrl = (import.meta as any).env?.VITE_API_URL;
+  if (apiUrl) {
+    try {
+      const parsed = new URL(apiUrl);
+      const protocol = parsed.protocol === 'https:' ? 'wss:' : 'ws:';
+      return `${protocol}//${parsed.host}/ws/webrtc`;
+    } catch {
+      // fallback
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    return `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/webrtc`;
+  }
+  return 'ws://localhost:8080/ws/webrtc';
+};
 
 const STUN_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun3.l.google.com:19302' },
+  { urls: 'stun:stun4.l.google.com:19302' },
 ];
 
 export const OnlineSessionPage: React.FC = () => {
@@ -33,8 +60,8 @@ export const OnlineSessionPage: React.FC = () => {
   };
 
   const [session, setSession] = useState<CommunicationSessionDto | null>(null);
-  const [roomCode] = useState<string>(
-    incomingSettings.roomCode || sessionId || 'SAMBHAV'
+  const [roomCode, setRoomCode] = useState<string>(
+    incomingSettings.roomCode ? incomingSettings.roomCode.toUpperCase() : (sessionId?.toUpperCase() || 'SAMBHAV')
   );
 
   const isDeafDefault =
@@ -96,8 +123,11 @@ export const OnlineSessionPage: React.FC = () => {
       .then((data) => {
         if (data) {
           setSession(data);
+          if (data.roomCode) {
+            setRoomCode(data.roomCode.toUpperCase());
+          }
           if (data.status === 'CREATED' || data.status === 'WAITING') {
-            startSession(sessionId, accessToken).catch(() => {});
+            startSession(data.id || sessionId, accessToken).catch(() => {});
           }
         }
       })
@@ -431,9 +461,22 @@ export const OnlineSessionPage: React.FC = () => {
         localStream.getAudioTracks().forEach((t) => (t.enabled = micState));
         localStream.getVideoTracks().forEach((t) => (t.enabled = cameraState));
 
-        setLocalTrackObj(localStream);
+                setLocalTrackObj(localStream);
 
-        ws = new WebSocket(SIGNALING_URL);
+        // Attach tracks to active PeerConnection if already created
+        if (peerConnectionRef.current) {
+          const pc = peerConnectionRef.current;
+          const senders = pc.getSenders();
+          localStream.getTracks().forEach((track) => {
+            const hasSender = senders.some((s) => s.track?.id === track.id || s.track?.kind === track.kind);
+            if (!hasSender) {
+              pc.addTrack(track, localStream!);
+            }
+          });
+        }
+
+        const sigUrl = getSignalingUrl();
+        ws = new WebSocket(sigUrl);
         signalWsRef.current = ws;
 
         ws.onopen = () => {
@@ -456,7 +499,7 @@ export const OnlineSessionPage: React.FC = () => {
         };
 
         ws.onerror = () => {
-          console.warn('Signaling error (ws://localhost:8080)');
+          console.warn('Signaling error on:', sigUrl);
         };
 
         ws.onclose = () => {
@@ -500,6 +543,64 @@ export const OnlineSessionPage: React.FC = () => {
       localStreamRef.current?.getVideoTracks().forEach((t) => (t.enabled = next));
       return next;
     });
+  };
+
+  // Device switching handlers that replace track on active peerConnection
+  const handleSelectAudioDevice = async (deviceId: string) => {
+    setActiveAudioDeviceId(deviceId);
+    try {
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        audio: { deviceId: { exact: deviceId } },
+      });
+      const newTrack = newStream.getAudioTracks()[0];
+      if (newTrack && localStreamRef.current) {
+        const oldTrack = localStreamRef.current.getAudioTracks()[0];
+        if (oldTrack) {
+          localStreamRef.current.removeTrack(oldTrack);
+          oldTrack.stop();
+        }
+        localStreamRef.current.addTrack(newTrack);
+        newTrack.enabled = micState;
+
+        if (peerConnectionRef.current) {
+          const sender = peerConnectionRef.current.getSenders().find((s) => s.track?.kind === 'audio');
+          if (sender) {
+            await sender.replaceTrack(newTrack);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Error changing audio device:', err);
+    }
+  };
+
+  const handleSelectVideoDevice = async (deviceId: string) => {
+    setActiveVideoDeviceId(deviceId);
+    try {
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        video: { deviceId: { exact: deviceId } },
+      });
+      const newTrack = newStream.getVideoTracks()[0];
+      if (newTrack && localStreamRef.current) {
+        const oldTrack = localStreamRef.current.getVideoTracks()[0];
+        if (oldTrack) {
+          localStreamRef.current.removeTrack(oldTrack);
+          oldTrack.stop();
+        }
+        localStreamRef.current.addTrack(newTrack);
+        newTrack.enabled = cameraState;
+        setLocalTrackObj(new MediaStream(localStreamRef.current.getTracks()));
+
+        if (peerConnectionRef.current) {
+          const sender = peerConnectionRef.current.getSenders().find((s) => s.track?.kind === 'video');
+          if (sender) {
+            await sender.replaceTrack(newTrack);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Error changing video device:', err);
+    }
   };
 
   const handleToggleScreen = async () => {
@@ -589,10 +690,10 @@ export const OnlineSessionPage: React.FC = () => {
 
     audioDevices,
     activeAudioDeviceId,
-    setActiveAudioDevice: setActiveAudioDeviceId,
+    setActiveAudioDevice: handleSelectAudioDevice,
     videoDevices,
     activeVideoDeviceId,
-    setActiveVideoDevice: setActiveVideoDeviceId,
+    setActiveVideoDevice: handleSelectVideoDevice,
     speakerDevices,
     activeSpeakerDeviceId,
     setActiveSpeakerDevice: setActiveSpeakerDeviceId,
