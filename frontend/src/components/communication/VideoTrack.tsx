@@ -49,9 +49,7 @@ export const VideoTrack: React.FC<VideoTrackProps> = ({
     }
 
     if (targetSrc) {
-      if (video.srcObject !== targetSrc) {
-        video.srcObject = targetSrc;
-      }
+      video.srcObject = targetSrc;
       video.play().catch((err) => {
         console.log('[VideoTrack] Autoplay catch (will retry on interaction):', err);
       });
@@ -66,8 +64,11 @@ export const VideoTrack: React.FC<VideoTrackProps> = ({
 
       targetSrc.getVideoTracks().forEach((vt) => {
         vt.onunmute = () => {
-          if (video && video.paused) {
-            video.play().catch(() => {});
+          if (video) {
+            video.srcObject = targetSrc;
+            if (video.paused) {
+              video.play().catch(() => {});
+            }
           }
         };
       });
