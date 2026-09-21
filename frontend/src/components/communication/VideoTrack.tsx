@@ -18,6 +18,7 @@ export const VideoTrack: React.FC<VideoTrackProps> = ({
   ...props
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const isSelfView = props['data-self-view'] === true || props['data-self-view'] === 'true';
 
   useEffect(() => {
     const video = videoRef.current;
@@ -43,20 +44,35 @@ export const VideoTrack: React.FC<VideoTrackProps> = ({
     if (stream) {
       video.srcObject = stream;
     } else if (mediaTrack) {
-      const ms = new MediaStream([mediaTrack]);
-      video.srcObject = ms;
+      video.srcObject = new MediaStream([mediaTrack]);
     } else {
       video.srcObject = null;
     }
 
-    video.play().catch(() => {});
+    const playVideo = () => {
+      if (video && video.srcObject) {
+        video.play().catch(() => {});
+      }
+    };
+
+    video.onloadedmetadata = playVideo;
+    playVideo();
+
+    const handleUserInteraction = () => {
+      playVideo();
+    };
+
+    window.addEventListener('click', handleUserInteraction, { once: true });
+    window.addEventListener('touchstart', handleUserInteraction, { once: true });
 
     return () => {
-      if (video) video.srcObject = null;
+      window.removeEventListener('click', handleUserInteraction);
+      window.removeEventListener('touchstart', handleUserInteraction);
+      if (video) {
+        video.onloadedmetadata = null;
+      }
     };
   }, [trackRef, track]);
-
-  const isSelfView = props['data-self-view'] === true || props['data-self-view'] === 'true';
 
   return (
     <video

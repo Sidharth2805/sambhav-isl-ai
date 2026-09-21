@@ -292,12 +292,11 @@ export const OnlineSessionPage: React.FC = () => {
     };
 
     pc.ontrack = (event) => {
-      const [remoteStream] = event.streams;
-      if (remoteStream) {
-        setRemoteTrackObj(remoteStream);
+      console.log('[WebRTC] Remote track received:', event.track.kind, event.streams);
+      if (event.streams && event.streams[0]) {
+        setRemoteTrackObj(new MediaStream(event.streams[0].getTracks()));
       } else if (event.track) {
-        const ms = new MediaStream([event.track]);
-        setRemoteTrackObj(ms);
+        setRemoteTrackObj(new MediaStream([event.track]));
       }
     };
 
@@ -319,7 +318,10 @@ export const OnlineSessionPage: React.FC = () => {
   const makeOffer = useCallback(async () => {
     try {
       const pc = createPeerConnection();
-      const offer = await pc.createOffer();
+      const offer = await pc.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: true,
+      });
       await pc.setLocalDescription(offer);
 
       signalWsRef.current?.send(
@@ -371,7 +373,10 @@ export const OnlineSessionPage: React.FC = () => {
 
       if (data.type === 'offer') {
         await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-        const answer = await pc.createAnswer();
+        const answer = await pc.createAnswer({
+          offerToReceiveAudio: true,
+          offerToReceiveVideo: true,
+        });
         await pc.setLocalDescription(answer);
 
         signalWsRef.current?.send(

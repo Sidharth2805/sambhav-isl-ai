@@ -66,8 +66,11 @@ public class WebRtcSignalingWebSocketHandler extends TextWebSocketHandler {
 
         Set<WebSocketSession> room = rooms.computeIfAbsent(roomId, k -> Collections.newSetFromMap(new ConcurrentHashMap<>()));
 
+        // Clean up any closed sessions in this room
+        room.removeIf(s -> !s.isOpen());
+
         if (room.size() >= 2 && !room.contains(session)) {
-            log.warn("[WebRTC Signaling] Room {} is full. Rejecting session {}", roomId, session.getId());
+            log.warn("[WebRTC Signaling] Room {} is full (size={}). Rejecting session {}", roomId, room.size(), session.getId());
             sendJson(session, Map.of("type", "room-full", "roomId", roomId));
             return;
         }
@@ -86,21 +89,30 @@ public class WebRtcSignalingWebSocketHandler extends TextWebSocketHandler {
         ));
 
         if (room.size() == 2) {
-            for (WebSocketSession peer : room) {
-                if (!peer.getId().equals(session.getId())) {
-                    sendJson(peer, Map.of(
-                            "type", "peer-joined",
-                            "initiator", true,
-                            "role", role
-                    ));
-                } else {
-                    String existingRole = (String) peer.getAttributes().getOrDefault("role", "normal");
-                    sendJson(peer, Map.of(
-                            "type", "peer-joined",
-                            "initiator", false,
-                            "role", existingRole
-                    ));
-                }
+            WebSocketSession peer1 = null;
+            WebSocketSession peer2 = null;
+            for (WebSocketSession s : room) {
+                if (peer1 == null) peer1 = s;
+                else peer2 = s;
+            }
+
+            if (peer1 != null && peer2 != null) {
+                String role1 = (String) peer1.getAttributes().getOrDefault("role", "normal");
+                String role2 = (String) peer2.getAttributes().getOrDefault("role", "normal");
+
+                // peer1 (initiator) sends offer
+                sendJson(peer1, Map.of(
+                        "type", "peer-joined",
+                        "initiator", true,
+                        "role", role2
+                ));
+
+                // peer2 (receiver) waits for offer
+                sendJson(peer2, Map.of(
+                        "type", "peer-joined",
+                        "initiator", false,
+                        "role", role1
+                ));
             }
         }
     }
