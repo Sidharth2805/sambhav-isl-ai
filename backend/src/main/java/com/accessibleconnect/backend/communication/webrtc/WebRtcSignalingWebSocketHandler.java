@@ -64,6 +64,17 @@ public class WebRtcSignalingWebSocketHandler extends TextWebSocketHandler {
             return;
         }
 
+        String oldRoomId = (String) session.getAttributes().get("roomId");
+        if (oldRoomId != null && !oldRoomId.equalsIgnoreCase(roomId)) {
+            Set<WebSocketSession> oldRoom = rooms.get(oldRoomId);
+            if (oldRoom != null) {
+                oldRoom.remove(session);
+                if (oldRoom.isEmpty()) {
+                    rooms.remove(oldRoomId);
+                }
+            }
+        }
+
         session.getAttributes().put("roomId", roomId);
         session.getAttributes().put("role", role);
 

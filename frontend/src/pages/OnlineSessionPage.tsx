@@ -108,6 +108,15 @@ export const OnlineSessionPage: React.FC = () => {
   const userRoleRef = useRef<string>(userRole);
   userRoleRef.current = userRole;
 
+  const isHostParam = searchParams.get('host') === 'true';
+  const isCreator = Boolean(
+    incomingSettings.isHost !== undefined
+      ? incomingSettings.isHost
+      : isHostParam || (session ? (session as any).creatorUserId === user?.id || (session as any).initiatorId === user?.id : false)
+  );
+  const isCreatorRef = useRef<boolean>(isCreator);
+  isCreatorRef.current = isCreator;
+
   const isDeafWorkspace = userRole === 'deaf';
 
   // Call Settings UI State
@@ -150,6 +159,7 @@ export const OnlineSessionPage: React.FC = () => {
   const signalWsRef = useRef<WebSocket | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
   const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
+  const makingOfferRef = useRef<boolean>(false);
 
   const [localTrackObj, setLocalTrackObj] = useState<any>(null);
   const [remoteTrackObj, setRemoteTrackObj] = useState<any>(null);
@@ -577,6 +587,7 @@ export const OnlineSessionPage: React.FC = () => {
   const makeOffer = useCallback(async () => {
     const pc = createPeerConnection();
     try {
+      makingOfferRef.current = true;
       // Create DataChannel on initiator side
       if (!dataChannelRef.current || dataChannelRef.current.readyState === 'closed') {
         const dc = pc.createDataChannel('main');
@@ -588,6 +599,7 @@ export const OnlineSessionPage: React.FC = () => {
         offerToReceiveAudio: true,
         offerToReceiveVideo: true,
       });
+      if (pc.signalingState !== 'stable') return;
       await pc.setLocalDescription(offer);
 
       if (signalWsRef.current?.readyState === WebSocket.OPEN) {
@@ -605,6 +617,8 @@ export const OnlineSessionPage: React.FC = () => {
       }
     } catch (err) {
       console.error('[WebRTC] Error creating SDP offer:', err);
+    } finally {
+      makingOfferRef.current = false;
     }
   }, [createPeerConnection, wireDataChannel]);
 
@@ -652,16 +666,21 @@ export const OnlineSessionPage: React.FC = () => {
       const pc = createPeerConnection();
 
       if (data.type === 'offer') {
-        console.log('[WebRTC Signaling] Received SDP offer, creating answer');
-        if (pc.signalingState !== 'stable') {
-          console.log('[WebRTC] Handling offer collision with rollback');
-          await Promise.all([
-            pc.setLocalDescription({ type: 'rollback' } as any).catch(console.warn),
-            pc.setRemoteDescription(new RTCSessionDescription(data.sdp)),
-          ]);
-        } else {
-          await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+        console.log('[WebRTC Signaling] Received SDP offer, evaluating negotiation state');
+        const isPolite = !isCreatorRef.current;
+        const offerCollision = makingOfferRef.current || pc.signalingState !== 'stable';
+        
+        if (offerCollision && !isPolite) {
+          console.log('[WebRTC] Impolite peer (Host) ignoring colliding offer');
+          return;
         }
+        
+        if (offerCollision) {
+          console.log('[WebRTC] Polite peer (Guest) rolling back colliding offer');
+          await pc.setLocalDescription({ type: 'rollback' } as any).catch(console.warn);
+        }
+
+        await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
 
         // Drain pending ICE candidates
         while (pendingIceRef.current.length > 0) {
@@ -1097,10 +1116,6 @@ export const OnlineSessionPage: React.FC = () => {
     }
     navigate('/communicate');
   };
-
-  const isCreator = Boolean(
-    session?.creatorUserId === user?.id || incomingSettings.isHost
-  );
 
   const workspaceProps = {
     sessionId: sessionId || roomCode,

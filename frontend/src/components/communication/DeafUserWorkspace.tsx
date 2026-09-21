@@ -154,6 +154,12 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
     };
   }, [resetCameraControlsTimer]);
 
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(roomCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   // Keep controls open if device menus are active
   useEffect(() => {
     if (showMicDevices || showCameraDevices) {
@@ -163,12 +169,6 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
       resetCameraControlsTimer();
     }
   }, [showMicDevices, showCameraDevices, resetCameraControlsTimer]);
-
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(roomCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const avatarCanvasRef = useRef<ISLAvatarCanvasRef | null>(null);
   const [modelPath] = useState('/models/ybot.glb');
@@ -350,13 +350,50 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
         {/* ========================================================= */}
         {/* RIGHT COLUMN: Video Camera Arena & Self View              */}
         {/* ========================================================= */}
-        <section
-          ref={videoParentRef}
-          onMouseMove={resetCameraControlsTimer}
-          onMouseEnter={resetCameraControlsTimer}
-          onTouchStart={resetCameraControlsTimer}
-          className="lg:col-span-6 bg-[#030813] rounded-2xl border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col relative overflow-hidden h-full min-h-0 group"
-        >
+        <div className="lg:col-span-6 flex flex-col gap-2.5 h-full min-h-0">
+          {/* Top Room Code & Connection Banner */}
+          <div className="bg-white dark:bg-[#1a202c] px-4 py-2 rounded-2xl border border-[#e0e3e5] dark:border-[#2d3133] flex items-center justify-between shadow-sm flex-shrink-0">
+            <div className="flex items-center gap-2.5">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#45474c] dark:text-[#828796]">
+                Room Code
+              </span>
+              <span className="font-mono text-base font-black text-[#fe9832] tracking-widest">
+                {roomCode}
+              </span>
+              <button
+                type="button"
+                onClick={handleCopyCode}
+                className="px-2.5 py-1 bg-[#f1f4f6] dark:bg-[#2d3133] hover:bg-[#e0e3e5] text-[#030813] dark:text-white rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 active:scale-95 cursor-pointer"
+                aria-label="Copy Room Code"
+              >
+                <span className="material-symbols-outlined text-[14px]">{copied ? 'check' : 'content_copy'}</span>
+                <span>{copied ? 'Copied' : 'Copy'}</span>
+              </button>
+            </div>
+
+            {/* Connection Indicator */}
+            <div className="flex items-center gap-2">
+              <span
+                className={`w-2.5 h-2.5 rounded-full ${
+                  connectionState === LkConnectionState.Connected
+                    ? 'bg-green-500 animate-pulse'
+                    : 'bg-amber-500'
+                }`}
+                aria-hidden="true"
+              />
+              <span className="text-xs font-bold text-[#030813] dark:text-white">
+                {getConnectionStatusText()}
+              </span>
+            </div>
+          </div>
+
+          <section
+            ref={videoParentRef}
+            onMouseMove={resetCameraControlsTimer}
+            onMouseEnter={resetCameraControlsTimer}
+            onTouchStart={resetCameraControlsTimer}
+            className="flex-1 bg-[#030813] rounded-2xl border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col relative overflow-hidden h-full min-h-0 group"
+          >
 
           {primaryRemoteTrack ? (
             <VideoTrack trackRef={primaryRemoteTrack as any} className="w-full h-full object-cover" data-remote="true" />
@@ -657,6 +694,7 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
             )}
           </footer>
         </section>
+        </div>
 
       </div>
 
