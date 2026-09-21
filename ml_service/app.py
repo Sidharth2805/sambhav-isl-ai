@@ -2,6 +2,8 @@ import os
 import json
 import base64
 import tempfile
+import asyncio
+from collections import deque, Counter
 from datetime import datetime
 import numpy as np
 import cv2
@@ -157,10 +159,9 @@ def normalize_sequence(sequence_126: np.ndarray) -> np.ndarray:
     seq = np.asarray(sequence_126, dtype=np.float32)
     if seq.shape != (SEQUENCE_LENGTH, NUM_FEATURES):
         raise ValueError(f"Expected ({SEQUENCE_LENGTH}, {NUM_FEATURES}), got {seq.shape}")
-    mask = (seq != 0).any(axis=1, keepdims=True)
     m = mean_vec.reshape(NUM_FEATURES)
     s = std_vec.reshape(NUM_FEATURES)
-    return np.where(mask, (seq - m) / s, 0.0).astype(np.float32)
+    return ((seq - m) / s).astype(np.float32)
 
 def extract_landmarks_from_cv2_frame(frame: np.ndarray):
     landmarks = np.zeros((2, 21, 3), dtype=np.float32)
@@ -809,6 +810,201 @@ async def websocket_stream_endpoint(websocket: WebSocket):
         print('[Sambhav ML] WebSocket client disconnected.')
     except Exception as e:
         print(f'[Sambhav ML] WebSocket error: {e}')
+        try:
+            await websocket.close()
+        except Exception:
+            pass
+
+@app.websocket('/ws/realtime')
+async def realtime_websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    print('[Sambhav ML] /ws/realtime client connected.')
+
+    frame_buffer = deque(maxlen=SEQUENCE_LENGTH)
+    detection_buffer = deque(maxlen=SEQUENCE_LENGTH)
+    prediction_history = deque(maxlen=3)
+
+    frames_since_prediction = 0
+    sign_locked = False
+    consecutive_no_hand_frames = 0
+    last_emitted_label = ""
+    realtime_sign_frames = 0
+
+    try:
+        await websocket.send_json({
+            "type": "status",
+            "frames": 0,
+            "required": 60,
+            "latest_prediction": "",
+            "isl_gloss": "",
+            "english_sentence": "",
+            "message": "Waiting for camera frames."
+        })
+
+        while True:
+            message = await websocket.receive()
+            if message.get("type") == "websocket.disconnect":
+                break
+
+            frame = None
+            text_data = message.get("text")
+
+            if text_data is not None:
+                try:
+                    command = json.loads(text_data)
+                except Exception:
+                    command = None
+
+                if isinstance(command, dict) and command.get("action") == "reset":
+                    frame_buffer.clear()
+                    detection_buffer.clear()
+                    prediction_history.clear()
+                    frames_since_prediction = 0
+                    sign_locked = False
+                    consecutive_no_hand_frames = 0
+                    last_emitted_label = ""
+                    realtime_sign_frames = 0
+
+                    await websocket.send_json({
+                        "type": "reset",
+                        "frames": 0,
+                        "required": 60,
+                        "message": "Realtime recognition reset."
+                    })
+                    continue
+
+                if not text_data.startswith("data:image"):
+                    continue
+
+                try:
+                    if "," in text_data:
+                        _, encoded = text_data.split(",", 1)
+                    else:
+                        encoded = text_data
+                    image_bytes = base64.b64decode(encoded)
+                    image_array = np.frombuffer(image_bytes, dtype=np.uint8)
+                    frame = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+                except Exception as e:
+                    continue
+
+            binary_data = message.get("bytes")
+            if frame is None and binary_data:
+                try:
+                    image_array = np.frombuffer(binary_data, dtype=np.uint8)
+                    frame = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+                except Exception:
+                    continue
+
+            if frame is None:
+                continue
+
+            try:
+                landmarks, detected = extract_landmarks_from_cv2_frame(frame)
+            except Exception:
+                continue
+
+            frame_buffer.append(landmarks)
+            detection_buffer.append(detected)
+            realtime_sign_frames += 1
+
+            if detected:
+                consecutive_no_hand_frames = 0
+            else:
+                consecutive_no_hand_frames += 1
+
+            if sign_locked and consecutive_no_hand_frames >= 8:
+                sign_locked = False
+                prediction_history.clear()
+                last_emitted_label = ""
+                frames_since_prediction = 0
+                realtime_sign_frames = 0
+
+            if len(frame_buffer) < SEQUENCE_LENGTH:
+                if realtime_sign_frames % 5 == 0:
+                    await websocket.send_json({
+                        "type": "status",
+                        "frames": len(frame_buffer),
+                        "required": SEQUENCE_LENGTH,
+                        "latest_prediction": "",
+                        "isl_gloss": "",
+                        "english_sentence": "",
+                        "message": f"Buffering gesture: {len(frame_buffer)}/{SEQUENCE_LENGTH}"
+                    })
+                continue
+
+            frames_since_prediction += 1
+            if frames_since_prediction < 6:
+                continue
+            frames_since_prediction = 0
+
+            hand_count = sum(1 for d in detection_buffer if d)
+            if hand_count < 12:
+                prediction_history.clear()
+                if not sign_locked:
+                    await websocket.send_json({
+                        "type": "status",
+                        "frames": len(frame_buffer),
+                        "required": SEQUENCE_LENGTH,
+                        "latest_prediction": "",
+                        "isl_gloss": "",
+                        "english_sentence": "",
+                        "message": "Show hand sign clearly."
+                    })
+                continue
+
+            if sign_locked:
+                continue
+
+            sequence = np.asarray(frame_buffer, dtype=np.float32)
+            if sequence.shape != (SEQUENCE_LENGTH, NUM_FEATURES):
+                continue
+
+            result = run_bilstm_inference(sequence)
+            predicted_label = result.get("label", "")
+            confidence = result.get("confidence", 0.0)
+            confidence_pct = confidence * 100.0
+
+            if confidence < 0.45 or predicted_label in ("NO_ACTIVE_SIGN", "NO_HANDS", "UNKNOWN"):
+                prediction_history.clear()
+                continue
+
+            prediction_history.append(predicted_label)
+            counts = Counter(prediction_history)
+            stable_label = ""
+            if counts:
+                candidate, count = counts.most_common(1)[0]
+                if count >= 2:
+                    stable_label = candidate
+
+            if not stable_label or stable_label == last_emitted_label:
+                if stable_label == last_emitted_label:
+                    sign_locked = True
+                continue
+
+            last_emitted_label = stable_label
+            sign_locked = True
+
+            formatted_phrase = result.get("phrase") or format_class_name(stable_label)
+            english_sentence = convert_gloss_to_english(stable_label)
+
+            save_history(stable_label, english_sentence)
+
+            await websocket.send_json({
+                "type": "sign",
+                "label": stable_label,
+                "word": formatted_phrase,
+                "confidence": round(confidence, 4),
+                "confidence_percentage": round(confidence_pct, 2),
+                "isl_gloss": stable_label,
+                "english_sentence": english_sentence,
+                "top_predictions": result.get("top_3", []),
+                "message": f"Recognized: {formatted_phrase}"
+            })
+
+    except WebSocketDisconnect:
+        print('[Sambhav ML] /ws/realtime client disconnected.')
+    except Exception as e:
+        print(f'[Sambhav ML] /ws/realtime error: {e}')
         try:
             await websocket.close()
         except Exception:
