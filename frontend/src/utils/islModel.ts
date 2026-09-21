@@ -516,13 +516,8 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
     const averageMotion = bufLen > 1 ? totalDisplacement / (bufLen - 1) : 0.0;
     const currentHandCount = (hasLeftHand ? 1 : 0) + (hasRightHand ? 1 : 0);
 
-    // Active gesture gating:
-    // Requires intentional active signing window (activeFrameCount >= 15, activeSpan >= 15 frames)
-    // AND spatial landmark variance >= 0.0015 (strictly rejects static resting hand jitter ~0.0001 while preserving real signs)
-    // AND genuine dynamic stroke (averageMotion >= 0.002 OR maxDisplacement >= 0.008)
-    const hasSufficientMotion = (maxDisplacement >= 0.008 && motionFrameRatio >= 0.05) || (averageMotion >= 0.002);
-    const hasVariance = landmarkVariance >= 0.0015;
-    const gatePassed = activeFrameCount >= 15 && activeSpan >= 15 && hasVariance && hasSufficientMotion;
+    // Active gesture gating: Hand presence check (at least 8 active frames in buffer)
+    const gatePassed = activeFrameCount >= 8;
 
     const telemetry: ISLActivityTelemetry = {
       activeFrameRatio,
@@ -534,9 +529,9 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
       rejectionReason: !gatePassed ? 'INSUFFICIENT_ACTIVITY' : undefined
     };
 
-    if (!gatePassed || activeSpan < 15) {
+    if (!gatePassed) {
       if (reqId !== undefined) {
-        console.log(`[Recognition] cycle=${cycleId} req=${reqId} gate=FAIL reason=INSUFFICIENT_ACTIVITY activeCount=${activeFrameCount} activeSpan=${activeSpan} motionRatio=${motionFrameRatio.toFixed(2)} maxDisp=${maxDisplacement.toFixed(3)} avgMotion=${averageMotion.toFixed(4)} var=${landmarkVariance.toFixed(5)} request=NO committed=NO`);
+        console.log(`[Recognition] cycle=${cycleId} req=${reqId} gate=FAIL reason=INSUFFICIENT_ACTIVITY activeCount=${activeFrameCount}`);
       }
       return {
         gesture: '',
@@ -552,9 +547,9 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
       };
     }
 
-    // 3. Resample the genuine active signing stroke into exactly 60 frames matching model training
+    // 3. Resample the active signing sequence into exactly 60 frames matching model training
     let sequenceToSend: number[][];
-    if (activeSpan >= 18 && firstActive !== -1 && lastActive !== -1) {
+    if (activeSpan >= 8 && firstActive !== -1 && lastActive !== -1) {
       const activeSlice = this.landmarkBuffer.slice(firstActive, lastActive + 1);
       sequenceToSend = resampleSequence(activeSlice, 60);
     } else {

@@ -321,58 +321,24 @@ export function useISLRecognition(classifier: ISLClassifier = defaultSaanketClas
           if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
             const numHands = Math.min(results.multiHandLandmarks.length, 2);
             
-            if (numHands === 2) {
-              const hand0 = results.multiHandLandmarks[0];
+            // Primary hand (index 0) always maps to Slot 0 (features 0..62)
+            const hand0 = results.multiHandLandmarks[0];
+            const pts0: ISLLandmark[] = hand0.map((p: any) => ({ x: p.x, y: p.y, z: p.z }));
+            landmarksPayload.leftHand = pts0; // Slot 0
+
+            // Secondary hand (index 1) maps to Slot 1 (features 63..125) if present
+            if (numHands >= 2) {
               const hand1 = results.multiHandLandmarks[1];
-              const handedness0 = results.multiHandedness?.[0];
-              const handedness1 = results.multiHandedness?.[1];
-
-              const label0 = handedness0?.label || handedness0?.displayName || handedness0?.classification?.[0]?.label || 'Left';
-              const label1 = handedness1?.label || handedness1?.displayName || handedness1?.classification?.[0]?.label || 'Right';
-
-              const pts0: ISLLandmark[] = hand0.map((p: any) => ({ x: p.x, y: p.y, z: p.z }));
               const pts1: ISLLandmark[] = hand1.map((p: any) => ({ x: p.x, y: p.y, z: p.z }));
-
-              if (label0 !== label1) {
-                if (label0 === 'Left') {
-                  landmarksPayload.leftHand = pts0;
-                  landmarksPayload.rightHand = pts1;
-                } else {
-                  landmarksPayload.rightHand = pts0;
-                  landmarksPayload.leftHand = pts1;
-                }
-              } else {
-                // If both hands have the same label, split by horizontal position
-                const x0 = hand0[0]?.x ?? 0.5;
-                const x1 = hand1[0]?.x ?? 0.5;
-                if (x0 <= x1) {
-                  landmarksPayload.rightHand = pts0;
-                  landmarksPayload.leftHand = pts1;
-                } else {
-                  landmarksPayload.leftHand = pts0;
-                  landmarksPayload.rightHand = pts1;
-                }
-              }
-            } else if (numHands === 1) {
-              const rawLandmarks = results.multiHandLandmarks[0];
-              const handednessObj = results.multiHandedness?.[0];
-              const handLabel = handednessObj?.label || handednessObj?.displayName || handednessObj?.classification?.[0]?.label || handednessObj?.categories?.[0]?.categoryName || 'Left';
-              const handPoints: ISLLandmark[] = rawLandmarks.map((p: any) => ({ x: p.x, y: p.y, z: p.z }));
-
-              // Exact match with dataset: 'Left' -> Left Hand (slot 0), 'Right' -> Right Hand (slot 1)
-              if (handLabel === 'Left') {
-                landmarksPayload.leftHand = handPoints;
-              } else {
-                landmarksPayload.rightHand = handPoints;
-              }
+              landmarksPayload.rightHand = pts1; // Slot 1
             }
 
             if (ctx && canvas) {
-              if (landmarksPayload.rightHand && landmarksPayload.rightHand.length > 0) {
-                drawHandSkeleton(ctx, landmarksPayload.rightHand, (canvas as HTMLCanvasElement).width, (canvas as HTMLCanvasElement).height, '#059669'); // Green for Right Hand
-              }
               if (landmarksPayload.leftHand && landmarksPayload.leftHand.length > 0) {
-                drawHandSkeleton(ctx, landmarksPayload.leftHand, (canvas as HTMLCanvasElement).width, (canvas as HTMLCanvasElement).height, '#fe9832');  // Orange for Left Hand
+                drawHandSkeleton(ctx, landmarksPayload.leftHand, (canvas as HTMLCanvasElement).width, (canvas as HTMLCanvasElement).height, '#fe9832');  // Hand 1 (Primary)
+              }
+              if (landmarksPayload.rightHand && landmarksPayload.rightHand.length > 0) {
+                drawHandSkeleton(ctx, landmarksPayload.rightHand, (canvas as HTMLCanvasElement).width, (canvas as HTMLCanvasElement).height, '#059669'); // Hand 2 (Secondary)
               }
             }
           }
@@ -421,8 +387,9 @@ export function useISLRecognition(classifier: ISLClassifier = defaultSaanketClas
                     return;
                   }
 
-                  const isConfidenceValid = (inf?.confidence || 0) >= 0.45;
-                  const isMarginValid = (inf?.margin ?? 1.0) >= 0.08;
+                  // 169 classes: uniform is 0.59%. Valid threshold >= 0.08 (14x chance)
+                  const isConfidenceValid = (inf?.confidence || 0) >= 0.08;
+                  const isMarginValid = (inf?.margin ?? 1.0) >= 0.01;
                   const isGestureValid = !!inf?.gesture &&
                     inf.gesture !== 'G_UNKNOWN' &&
                     inf.gesture !== 'NO_HANDS' &&

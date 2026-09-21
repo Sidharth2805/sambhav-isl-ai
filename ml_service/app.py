@@ -153,7 +153,7 @@ FRIENDLY_PHRASES = {
     for v in LABEL_MAPPING.values()
 }
 
-MIN_CONFIDENCE_THRESHOLD = 0.35
+MIN_CONFIDENCE_THRESHOLD = 0.08
 
 def normalize_sequence(sequence_126: np.ndarray) -> np.ndarray:
     seq = np.asarray(sequence_126, dtype=np.float32)
@@ -174,29 +174,10 @@ def extract_landmarks_from_cv2_frame(frame: np.ndarray):
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
     detection_result = hand_detector.detect(mp_image)
 
-    if detection_result.hand_landmarks:
+    if detection_result.hand_landmarks and len(detection_result.hand_landmarks) > 0:
         has_hand = True
-        num_hands = len(detection_result.hand_landmarks)
-        if num_hands >= 2:
-            h0 = detection_result.hand_landmarks[0]
-            h1 = detection_result.hand_landmarks[1]
-            x0 = h0[0].x if len(h0) > 0 else 0.5
-            x1 = h1[0].x if len(h1) > 0 else 0.5
-            right_h = h0 if x0 <= x1 else h1
-            left_h = h1 if x0 <= x1 else h0
-            for lm_idx, lm in enumerate(left_h):
-                landmarks[0, lm_idx, 0] = lm.x
-                landmarks[0, lm_idx, 1] = lm.y
-                landmarks[0, lm_idx, 2] = lm.z
-            for lm_idx, lm in enumerate(right_h):
-                landmarks[1, lm_idx, 0] = lm.x
-                landmarks[1, lm_idx, 1] = lm.y
-                landmarks[1, lm_idx, 2] = lm.z
-        elif num_hands == 1:
-            h = detection_result.hand_landmarks[0]
-            wrist_x = h[0].x if len(h) > 0 else 0.5
-            hand_idx = 1 if wrist_x < 0.45 else 0
-            for lm_idx, lm in enumerate(h):
+        for hand_idx, hand in enumerate(detection_result.hand_landmarks[:2]):
+            for lm_idx, lm in enumerate(hand):
                 landmarks[hand_idx, lm_idx, 0] = lm.x
                 landmarks[hand_idx, lm_idx, 1] = lm.y
                 landmarks[hand_idx, lm_idx, 2] = lm.z
@@ -242,10 +223,10 @@ def run_bilstm_inference(sequence_input: np.ndarray) -> dict:
     if seq_arr.shape != (SEQUENCE_LENGTH, NUM_FEATURES):
         raise ValueError(f'Expected ({SEQUENCE_LENGTH}, {NUM_FEATURES}), got {seq_arr.shape}')
 
-    # Activity & Variance Gating: Reject zero or static resting sequences before softmax
+    # Activity & Variance Gating: Reject zero or empty sequences before softmax
     active_mask = (seq_arr != 0).any(axis=1)
     active_count = int(np.sum(active_mask))
-    if active_count < 15:
+    if active_count < 8:
         return {
             'gesture': 'NO_ACTIVE_SIGN',
             'label': 'NO_ACTIVE_SIGN',
@@ -260,7 +241,8 @@ def run_bilstm_inference(sequence_input: np.ndarray) -> dict:
 
     active_frames = seq_arr[active_mask]
     var_sum = float(np.sum(np.var(active_frames, axis=0)))
-    if var_sum < 0.0015:
+    # Non-blocking threshold allowing static alphabet letter holds
+    if var_sum < 0.00005:
         return {
             'gesture': 'NO_ACTIVE_SIGN',
             'label': 'NO_ACTIVE_SIGN',
