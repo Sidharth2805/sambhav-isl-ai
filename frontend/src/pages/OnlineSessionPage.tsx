@@ -16,10 +16,31 @@ const ICE_SERVERS: RTCConfiguration = {
   ],
 };
 
-function getSignalingUrl(): string {
-  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const host = window.location.hostname || 'localhost';
-  return `${wsProtocol}//${host}:8080/ws/webrtc`;
+export function getSignalingUrl(): string {
+  if (import.meta.env.VITE_WS_URL) {
+    return import.meta.env.VITE_WS_URL;
+  }
+  if (import.meta.env.VITE_SIGNALING_URL) {
+    return import.meta.env.VITE_SIGNALING_URL;
+  }
+
+  const backendHttpUrl =
+    import.meta.env.VITE_API_URL ||
+    import.meta.env.VITE_API_BASE_URL ||
+    (import.meta.env.DEV ? 'http://localhost:8080' : 'https://signbridge-backend-k4k5.onrender.com');
+
+  try {
+    const parsed = new URL(backendHttpUrl);
+    const wsProto = parsed.protocol === 'https:' ? 'wss:' : 'ws:';
+    const hostWithPort = parsed.port ? `${parsed.hostname}:${parsed.port}` : parsed.host;
+    return `${wsProto}//${hostWithPort}/ws/webrtc`;
+  } catch {
+    const isDev = import.meta.env.DEV || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (isDev) {
+      return `ws://${window.location.hostname || 'localhost'}:8080/ws/webrtc`;
+    }
+    return `wss://signbridge-backend-k4k5.onrender.com/ws/webrtc`;
+  }
 }
 
 export const OnlineSessionPage: React.FC = () => {
