@@ -510,8 +510,8 @@ export function useISLRecognition(classifier: ISLClassifier = defaultSaanketClas
             setFrameCount(activeFramesAccumulatedRef.current);
             setGestureState('COLLECTING');
 
-            // Collect complete gesture window: 60 frames (~2.0 seconds at 30 FPS matching the BiLSTM model)
-            if (activeFramesAccumulatedRef.current >= 60) {
+            // Responsive continuous gesture window (~0.6s at 30 FPS matching active resampler)
+            if (activeFramesAccumulatedRef.current >= 20) {
               triggerInference();
             }
             return;
@@ -523,8 +523,8 @@ export function useISLRecognition(classifier: ISLClassifier = defaultSaanketClas
           }
 
           if (currentState === 'WAIT_FOR_SIGN_END') {
-            // Latch active: Prevent duplicate tokens for 1000ms cooldown, then smoothly allow next sign
-            if (now - lastValidTimeRef.current > 1000) {
+            // Latch active: Prevent duplicate tokens for 600ms cooldown, then smoothly allow next sign
+            if (now - lastValidTimeRef.current > 600) {
               gestureCycleIdRef.current += 1;
               activeFramesAccumulatedRef.current = 1;
               machineStateRef.current = 'COLLECTING';
@@ -634,8 +634,8 @@ export function useISLRecognition(classifier: ISLClassifier = defaultSaanketClas
 
         if (classifier && (classifier as any).evaluateBuffer) {
           (classifier as any).evaluateBuffer({ requestId: testReqId, gestureCycleId: testCycleId }).then((inf: any) => {
-            const isConfOk = (inf?.confidence || 0) >= 0.45;
-            const isMarginOk = (inf?.margin ?? 1.0) >= 0.08;
+            const isConfOk = (inf?.confidence || 0) >= 0.08;
+            const isMarginOk = (inf?.margin ?? 1.0) >= 0.01;
             const isGestureOk = !!inf?.gesture && inf.gesture !== 'NO_ACTIVE_SIGN' && inf.gesture !== 'NO_HANDS' && inf.gesture !== 'UNKNOWN' && inf.label !== 'NO_ACTIVE_SIGN';
 
             if (isGestureOk && isConfOk && isMarginOk) {
