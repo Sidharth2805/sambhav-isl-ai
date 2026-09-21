@@ -13,7 +13,27 @@ const ICE_SERVERS: RTCConfiguration = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'stun:stun4.l.google.com:19302' },
+    { urls: 'stun:stun.services.mozilla.com' },
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelay',
+      credential: 'openrelay',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelay',
+      credential: 'openrelay',
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelay',
+      credential: 'openrelay',
+    },
   ],
+  iceCandidatePoolSize: 10,
 };
 
 export function getSignalingUrl(): string {
@@ -386,7 +406,7 @@ export const OnlineSessionPage: React.FC = () => {
     const pc = new RTCPeerConnection(ICE_SERVERS);
     peerConnectionRef.current = pc;
 
-    // Send ICE candidates ONLY through WebSocket signaling
+    // Send ICE candidates through WebSocket signaling
     pc.onicecandidate = (event) => {
       if (event.candidate && signalWsRef.current?.readyState === WebSocket.OPEN) {
         signalWsRef.current.send(
@@ -429,20 +449,24 @@ export const OnlineSessionPage: React.FC = () => {
       wireDataChannel(event.channel);
     };
 
-    pc.onconnectionstatechange = () => {
-      const state = pc.connectionState;
-      console.log('[WebRTC] Connection state:', state);
-      if (state === 'connected') {
+    const updateConnectionState = () => {
+      const cState = pc.connectionState;
+      const iceState = pc.iceConnectionState;
+      console.log('[WebRTC] Connection state:', cState, 'ICE state:', iceState);
+      if (cState === 'connected' || iceState === 'connected' || iceState === 'completed') {
         setConnectionState(LkConnectionState.Connected);
         setRemoteLeftNotice(false);
-      } else if (state === 'connecting') {
+      } else if (cState === 'connecting' || iceState === 'checking') {
         setConnectionState(LkConnectionState.Connecting);
-      } else if (state === 'disconnected' || state === 'failed') {
+      } else if (cState === 'disconnected' || cState === 'failed' || iceState === 'failed' || iceState === 'disconnected') {
         setConnectionState(LkConnectionState.Disconnected);
-      } else if (state === 'closed') {
+      } else if (cState === 'closed' || iceState === 'closed') {
         setConnectionState(LkConnectionState.Disconnected);
       }
     };
+
+    pc.onconnectionstatechange = updateConnectionState;
+    pc.oniceconnectionstatechange = updateConnectionState;
 
     return pc;
   }, [wireDataChannel]);
@@ -485,6 +509,10 @@ export const OnlineSessionPage: React.FC = () => {
   // Handle Signaling Messages from WebSocket
   const handleSignalMessage = useCallback(async (msg: any) => {
     if (!msg) return;
+
+    if (msg.type === 'pong') {
+      return;
+    }
 
     if (msg.type === 'joined') {
       console.log(`[WebRTC Signaling] Joined room=${msg.roomId}, peers=${msg.peerCount}`);
@@ -629,13 +657,59 @@ export const OnlineSessionPage: React.FC = () => {
   const handleSignalMessageRef = useRef(handleSignalMessage);
   handleSignalMessageRef.current = handleSignalMessage;
 
-  // Single Authoritative Media Capture and WebRTC Initialization
+  // Authoritative WebRTC Connection & Media Capture
   useEffect(() => {
     let localStream: MediaStream | null = null;
     let ws: WebSocket | null = null;
+    let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
     let isCleanedUp = false;
 
-    const startCall = async () => {
+    // 1. Establish Signaling WebSocket immediately
+    const sigUrl = getSignalingUrl();
+    console.log('[WebRTC Signaling] Connecting to signaling server:', sigUrl);
+    ws = new WebSocket(sigUrl);
+    signalWsRef.current = ws;
+
+    ws.onopen = () => {
+      if (ws?.readyState === WebSocket.OPEN) {
+        console.log(`[WebRTC Signaling] WS connected, joining room ${roomCodeRef.current} as ${userRoleRef.current}`);
+        ws.send(
+          JSON.stringify({
+            type: 'join',
+            roomId: roomCodeRef.current,
+            role: userRoleRef.current,
+          })
+        );
+
+        // Keep connection alive with 20s heartbeat ping (prevents Render/Cloudflare 55s proxy timeout)
+        heartbeatTimer = setInterval(() => {
+          if (ws?.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'ping' }));
+          }
+        }, 20000);
+      }
+    };
+
+    ws.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        handleSignalMessageRef.current(data);
+      } catch (err) {
+        console.error('Signaling message parse error:', err);
+      }
+    };
+
+    ws.onerror = (err) => {
+      console.warn('Signaling WebSocket error on:', sigUrl, err);
+    };
+
+    ws.onclose = () => {
+      console.log('[WebRTC Signaling] WS closed');
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+    };
+
+    // 2. Parallel Local Media Capture
+    const setupMedia = async () => {
       try {
         localStream = await navigator.mediaDevices.getUserMedia({
           video: true,
@@ -657,55 +731,23 @@ export const OnlineSessionPage: React.FC = () => {
         const pc = createPeerConnection();
         const senders = pc.getSenders();
         localStream.getTracks().forEach((track) => {
-          const hasSender = senders.some((s) => s.track?.id === track.id || s.track?.kind === track.kind);
-          if (!hasSender) {
+          const existingSender = senders.find((s) => s.track?.kind === track.kind || (s as any).kind === track.kind);
+          if (existingSender) {
+            existingSender.replaceTrack(track).catch(console.warn);
+          } else {
             pc.addTrack(track, localStream!);
           }
         });
-
-        // Connect WebSocket Signaling
-        const sigUrl = getSignalingUrl();
-        ws = new WebSocket(sigUrl);
-        signalWsRef.current = ws;
-
-        ws.onopen = () => {
-          if (ws?.readyState === WebSocket.OPEN) {
-            ws.send(
-              JSON.stringify({
-                type: 'join',
-                roomId: roomCodeRef.current,
-                role: userRoleRef.current,
-              })
-            );
-          }
-        };
-
-        ws.onmessage = (e) => {
-          try {
-            const data = JSON.parse(e.data);
-            handleSignalMessageRef.current(data);
-          } catch (err) {
-            console.error('Signaling message parse error:', err);
-          }
-        };
-
-        ws.onerror = () => {
-          console.warn('Signaling WebSocket error on:', sigUrl);
-        };
-
-        ws.onclose = () => {
-          setConnectionState(LkConnectionState.Disconnected);
-        };
       } catch (err) {
-        console.warn('Media capture error:', err);
-        setConnectionState(LkConnectionState.Disconnected);
+        console.warn('Media capture warning (call continues with text/ISL):', err);
       }
     };
 
-    startCall();
+    setupMedia();
 
     return () => {
       isCleanedUp = true;
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
       if (localStream) {
         localStream.getTracks().forEach((t) => t.stop());
       }

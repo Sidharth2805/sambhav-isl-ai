@@ -38,7 +38,10 @@ public class WebRtcSignalingWebSocketHandler extends TextWebSocketHandler {
 
             String type = root.path("type").asText("");
 
-            if ("join".equalsIgnoreCase(type)) {
+            if ("ping".equalsIgnoreCase(type)) {
+                sendJson(session, Map.of("type", "pong", "timestamp", System.currentTimeMillis()));
+                return;
+            } else if ("join".equalsIgnoreCase(type)) {
                 handleJoin(session, root);
             } else if ("signal".equalsIgnoreCase(type)) {
                 handleSignal(session, root, payload);
