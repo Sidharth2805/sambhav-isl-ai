@@ -64,12 +64,18 @@ export class SambhavModel2InferenceEngine {
     }
   }
 
-  public async checkHealth(): Promise<boolean> {
+  public getEndpoint(): string {
+    return this.endpoint;
+  }
+
+  public async checkHealth(): Promise<{ ok: boolean; latencyMs: number }> {
+    const start = performance.now();
     try {
       const res = await fetch(`${this.endpoint}/health`, { method: 'GET' });
-      return res.ok;
+      const latencyMs = Math.round(performance.now() - start);
+      return { ok: res.ok, latencyMs };
     } catch {
-      return false;
+      return { ok: false, latencyMs: 0 };
     }
   }
 }

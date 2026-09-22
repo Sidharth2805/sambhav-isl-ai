@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useTextToSpeech } from '../hooks/useTextToSpeech';
 import { ISLAvatarCanvas, type ISLAvatarCanvasRef } from '../components/cultural/ISLAvatarCanvas';
-import { useISLRecognition } from '../hooks/useISLRecognition';
+import { useSambhavModel2 } from '../WEBRTC';
 import { ISLMessageComposer } from '../components/communication/ISLMessageComposer';
 import { useAccessibility } from '../hooks/useAccessibility';
 import { ScanModal } from '../components/translate/ScanModal';
@@ -79,7 +79,7 @@ export const TranslatePage: React.FC = () => {
     }
   }, []);
 
-  // Real-Time ISL Neural Model Recognition Hook
+  // Real-Time SAMBHAV MODEL 2 Recognition Hook (169 ISL Classes)
   const {
     isRecognizing: isISLRecognizing,
     currentGesture: recognizedSign,
@@ -97,7 +97,7 @@ export const TranslatePage: React.FC = () => {
     start5sCapture,
     startRecognition: startISLRecognition,
     stopRecognition: stopISLRecognition,
-  } = useISLRecognition();
+  } = useSambhavModel2();
 
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [showDebugHUD, setShowDebugHUD] = useState(true);

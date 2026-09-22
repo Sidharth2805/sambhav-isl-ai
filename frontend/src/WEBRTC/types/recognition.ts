@@ -36,3 +36,23 @@ export interface SambhavCommittedEvent {
   timestamp: number;
   eventId: string;
 }
+
+export interface SambhavTelemetry {
+  cameraActive: boolean;
+  handsDetected: number;
+  bufferedFrames: number;
+  featureVectorDim: number;
+  slot0Features: number;
+  slot1Features: number;
+  minVal: number;
+  maxVal: number;
+  meanVal: number;
+  requestStatus: 'IDLE' | 'SENT' | 'RECEIVED' | 'REJECTED';
+  lastLatencyMs: number;
+  recognitionSource: 'BiLSTM' | 'Geometric Fallback' | 'None';
+  top1Label: string;
+  top1Confidence: number;
+  top2Label: string;
+  top2Confidence: number;
+  margin: number;
+}
