@@ -8,6 +8,10 @@ public class CommunicationSessionResponse {
     private UUID id;
     private UUID creatorUserId;
     private String creatorName;
+    private String creatorAccountType;
+    private UUID participantUserId;
+    private String participantName;
+    private String participantAccountType;
     private String mode;
     private String status;
     private String roomCode;
@@ -30,9 +34,32 @@ public class CommunicationSessionResponse {
             LocalDateTime endedAt, 
             LocalDateTime updatedAt
     ) {
+        this(id, creatorUserId, creatorName, null, null, null, null, mode, status, roomCode, createdAt, startedAt, endedAt, updatedAt);
+    }
+
+    public CommunicationSessionResponse(
+            UUID id, 
+            UUID creatorUserId, 
+            String creatorName,
+            String creatorAccountType,
+            UUID participantUserId,
+            String participantName,
+            String participantAccountType,
+            String mode, 
+            String status, 
+            String roomCode, 
+            LocalDateTime createdAt, 
+            LocalDateTime startedAt, 
+            LocalDateTime endedAt, 
+            LocalDateTime updatedAt
+    ) {
         this.id = id;
         this.creatorUserId = creatorUserId;
         this.creatorName = creatorName;
+        this.creatorAccountType = creatorAccountType;
+        this.participantUserId = participantUserId;
+        this.participantName = participantName;
+        this.participantAccountType = participantAccountType;
         this.mode = mode;
         this.status = status;
         this.roomCode = roomCode;
@@ -64,6 +91,38 @@ public class CommunicationSessionResponse {
 
     public void setCreatorName(String creatorName) {
         this.creatorName = creatorName;
+    }
+
+    public String getCreatorAccountType() {
+        return creatorAccountType;
+    }
+
+    public void setCreatorAccountType(String creatorAccountType) {
+        this.creatorAccountType = creatorAccountType;
+    }
+
+    public UUID getParticipantUserId() {
+        return participantUserId;
+    }
+
+    public void setParticipantUserId(UUID participantUserId) {
+        this.participantUserId = participantUserId;
+    }
+
+    public String getParticipantName() {
+        return participantName;
+    }
+
+    public void setParticipantName(String participantName) {
+        this.participantName = participantName;
+    }
+
+    public String getParticipantAccountType() {
+        return participantAccountType;
+    }
+
+    public void setParticipantAccountType(String participantAccountType) {
+        this.participantAccountType = participantAccountType;
     }
 
     public String getMode() {

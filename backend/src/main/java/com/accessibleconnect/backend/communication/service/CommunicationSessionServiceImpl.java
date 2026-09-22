@@ -9,6 +9,7 @@ import com.accessibleconnect.backend.communication.exception.InvalidSessionState
 import com.accessibleconnect.backend.communication.exception.SessionNotFoundException;
 import com.accessibleconnect.backend.communication.exception.UnauthorizedSessionAccessException;
 import com.accessibleconnect.backend.communication.repository.CommunicationSessionRepository;
+import com.accessibleconnect.backend.user.entity.AccountType;
 import com.accessibleconnect.backend.user.entity.User;
 import com.accessibleconnect.backend.user.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,7 +66,7 @@ public class CommunicationSessionServiceImpl implements CommunicationSessionServ
         }
 
         CommunicationSession saved = sessionRepository.save(session);
-        auditService.logEvent(userEmail, "SESSION_CREATION", saved.getId(), "SUCCESS", "Mode: " + saved.getMode().name(), null);
+        auditService.logEvent(userEmail, "SESSION_CREATION", saved.getId(), "SUCCESS", "Mode: " + saved.getMode().name() + ", RoomCode: " + saved.getRoomCode(), null);
         return mapToResponse(saved);
     }
 
@@ -85,8 +86,20 @@ public class CommunicationSessionServiceImpl implements CommunicationSessionServ
 
     @Override
     @Transactional(readOnly = true)
+    public CommunicationSessionResponse getSessionByIdentifier(String identifier, String userEmail) {
+        CommunicationSession session = resolveSession(identifier);
+
+        if (session.getMode() == CommunicationMode.OFFLINE && !session.getCreator().getEmail().equals(userEmail)) {
+            throw new UnauthorizedSessionAccessException("Unauthorized access to offline session details.");
+        }
+
+        return mapToResponse(session);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public CommunicationSessionResponse getSessionByRoomCode(String roomCode, String userEmail) {
-        CommunicationSession session = sessionRepository.findByRoomCode(roomCode.toUpperCase())
+        CommunicationSession session = sessionRepository.findByRoomCode(roomCode.trim().toUpperCase())
                 .orElseThrow(() -> new SessionNotFoundException("Session not found with room code: " + roomCode));
 
         if (session.getMode() == CommunicationMode.OFFLINE && !session.getCreator().getEmail().equals(userEmail)) {
@@ -94,6 +107,56 @@ public class CommunicationSessionServiceImpl implements CommunicationSessionServ
         }
 
         return mapToResponse(session);
+    }
+
+    @Override
+    public CommunicationSessionResponse joinSessionByRoomCode(String roomCode, String userEmail) {
+        User user = userRepository.findByEmail(userEmail)
+                .orElseThrow(() -> new IllegalArgumentException("Authenticated user not found: " + userEmail));
+
+        CommunicationSession session = sessionRepository.findByRoomCode(roomCode.trim().toUpperCase())
+                .orElseThrow(() -> new SessionNotFoundException("Session not found with room code: " + roomCode));
+
+        if (session.getMode() != CommunicationMode.ONLINE) {
+            throw new InvalidSessionStateException("Cannot join an OFFLINE session via room code.");
+        }
+
+        if (session.getStatus() == CommunicationSessionStatus.ENDED || 
+            session.getStatus() == CommunicationSessionStatus.CANCELLED) {
+            throw new InvalidSessionStateException("Cannot join an ended or cancelled session.");
+        }
+
+        // Check if user is the creator
+        if (session.getCreator().getId().equals(user.getId())) {
+            return mapToResponse(session);
+        }
+
+        // Enforce strict account type pairing: COMMON_USER <-> ACCESSIBILITY_USER
+        AccountType creatorType = session.getCreator().getAccountType();
+        AccountType joinerType = user.getAccountType();
+
+        if (creatorType != AccountType.ADMIN && joinerType != AccountType.ADMIN) {
+            if (creatorType == joinerType) {
+                throw new InvalidSessionStateException(
+                    "Invalid account pairing: Video calls must be between a Common User and an Accessibility User. Both participants cannot be " + joinerType.name() + "."
+                );
+            }
+        }
+
+        // Enforce room capacity (1 creator + 1 participant)
+        if (session.getParticipant() != null && !session.getParticipant().getId().equals(user.getId()) && joinerType != AccountType.ADMIN) {
+            throw new InvalidSessionStateException("This room is already full (maximum 2 participants).");
+        }
+
+        // Assign participant
+        session.setParticipant(user);
+        if (session.getStatus() == CommunicationSessionStatus.CREATED) {
+            session.setStatus(CommunicationSessionStatus.WAITING);
+        }
+
+        CommunicationSession saved = sessionRepository.save(session);
+        auditService.logEvent(userEmail, "SESSION_JOIN", saved.getId(), "SUCCESS", "Room: " + saved.getRoomCode() + ", Participant: " + user.getName(), null);
+        return mapToResponse(saved);
     }
 
     @Override
@@ -110,7 +173,7 @@ public class CommunicationSessionServiceImpl implements CommunicationSessionServ
         CommunicationSession session = sessionRepository.findById(id)
                 .orElseThrow(() -> new SessionNotFoundException("Session not found: " + id));
 
-        validateCreatorOrAdmin(session, userEmail);
+        validateParticipantOrAdmin(session, userEmail);
 
         if (session.getStatus() != CommunicationSessionStatus.CREATED && 
             session.getStatus() != CommunicationSessionStatus.WAITING) {
@@ -121,7 +184,7 @@ public class CommunicationSessionServiceImpl implements CommunicationSessionServ
         session.setStartedAt(LocalDateTime.now());
 
         if (session.getMode() == CommunicationMode.ONLINE) {
-            // Future real-time WebRTC orchestration hooks
+            // Online WebRTC/LiveKit session started
         } else {
             offlineService.initializeSession(session);
         }
@@ -132,13 +195,20 @@ public class CommunicationSessionServiceImpl implements CommunicationSessionServ
     }
 
     @Override
+    public CommunicationSessionResponse startSessionByIdentifier(String identifier, String userEmail) {
+        CommunicationSession session = resolveSession(identifier);
+        return startSession(session.getId(), userEmail);
+    }
+
+    @Override
     public CommunicationSessionResponse endSession(UUID id, String userEmail) {
         CommunicationSession session = sessionRepository.findById(id)
                 .orElseThrow(() -> new SessionNotFoundException("Session not found: " + id));
 
-        validateCreatorOrAdmin(session, userEmail);
+        validateParticipantOrAdmin(session, userEmail);
 
-        if (session.getStatus() != CommunicationSessionStatus.ACTIVE) {
+        if (session.getStatus() != CommunicationSessionStatus.ACTIVE &&
+            session.getStatus() != CommunicationSessionStatus.WAITING) {
             throw new InvalidSessionStateException("Cannot end session in status: " + session.getStatus());
         }
 
@@ -151,11 +221,17 @@ public class CommunicationSessionServiceImpl implements CommunicationSessionServ
     }
 
     @Override
+    public CommunicationSessionResponse endSessionByIdentifier(String identifier, String userEmail) {
+        CommunicationSession session = resolveSession(identifier);
+        return endSession(session.getId(), userEmail);
+    }
+
+    @Override
     public CommunicationSessionResponse cancelSession(UUID id, String userEmail) {
         CommunicationSession session = sessionRepository.findById(id)
                 .orElseThrow(() -> new SessionNotFoundException("Session not found: " + id));
 
-        validateCreatorOrAdmin(session, userEmail);
+        validateParticipantOrAdmin(session, userEmail);
 
         if (session.getStatus() != CommunicationSessionStatus.CREATED && 
             session.getStatus() != CommunicationSessionStatus.WAITING) {
@@ -170,15 +246,40 @@ public class CommunicationSessionServiceImpl implements CommunicationSessionServ
         return mapToResponse(saved);
     }
 
-    private void validateCreatorOrAdmin(CommunicationSession session, String userEmail) {
-        if (session.getCreator().getEmail().equals(userEmail)) {
+    @Override
+    public CommunicationSessionResponse cancelSessionByIdentifier(String identifier, String userEmail) {
+        CommunicationSession session = resolveSession(identifier);
+        return cancelSession(session.getId(), userEmail);
+    }
+
+    private CommunicationSession resolveSession(String identifier) {
+        if (identifier == null || identifier.trim().isEmpty()) {
+            throw new SessionNotFoundException("Session identifier cannot be blank.");
+        }
+        String clean = identifier.trim();
+        try {
+            UUID uuid = UUID.fromString(clean);
+            return sessionRepository.findById(uuid)
+                    .orElseGet(() -> sessionRepository.findByRoomCode(clean.toUpperCase())
+                            .orElseThrow(() -> new SessionNotFoundException("Session not found with ID: " + clean)));
+        } catch (IllegalArgumentException e) {
+            return sessionRepository.findByRoomCode(clean.toUpperCase())
+                    .orElseThrow(() -> new SessionNotFoundException("Session not found with room code: " + clean));
+        }
+    }
+
+    private void validateParticipantOrAdmin(CommunicationSession session, String userEmail) {
+        if (session.getCreator().getEmail().equalsIgnoreCase(userEmail)) {
+            return;
+        }
+        if (session.getParticipant() != null && session.getParticipant().getEmail().equalsIgnoreCase(userEmail)) {
             return;
         }
         User user = userRepository.findByEmail(userEmail).orElse(null);
-        if (user != null && user.getAccountType() == com.accessibleconnect.backend.user.entity.AccountType.ADMIN) {
+        if (user != null && user.getAccountType() == AccountType.ADMIN) {
             return; // Admin bypass allowed
         }
-        throw new UnauthorizedSessionAccessException("User is not the creator of this session.");
+        throw new UnauthorizedSessionAccessException("User is not an authorized participant of this session.");
     }
 
     private CommunicationSessionResponse mapToResponse(CommunicationSession session) {
@@ -186,6 +287,10 @@ public class CommunicationSessionServiceImpl implements CommunicationSessionServ
                 session.getId(),
                 session.getCreator().getId(),
                 session.getCreator().getName(),
+                session.getCreator().getAccountType() != null ? session.getCreator().getAccountType().name() : null,
+                session.getParticipant() != null ? session.getParticipant().getId() : null,
+                session.getParticipant() != null ? session.getParticipant().getName() : null,
+                session.getParticipant() != null && session.getParticipant().getAccountType() != null ? session.getParticipant().getAccountType().name() : null,
                 session.getMode().name(),
                 session.getStatus().name(),
                 session.getRoomCode(),

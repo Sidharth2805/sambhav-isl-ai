@@ -16,6 +16,10 @@ public class CommunicationSession {
     @JoinColumn(name = "creator_user_id", nullable = false)
     private User creator;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "participant_user_id")
+    private User participant;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private CommunicationMode mode;
@@ -71,6 +75,14 @@ public class CommunicationSession {
 
     public void setCreator(User creator) {
         this.creator = creator;
+    }
+
+    public User getParticipant() {
+        return participant;
+    }
+
+    public void setParticipant(User participant) {
+        this.participant = participant;
     }
 
     public CommunicationMode getMode() {

@@ -13,7 +13,6 @@ import org.springframework.beans.factory.annotation.Value;
 import java.security.Principal;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/communication/sessions")
@@ -39,13 +38,23 @@ public class CommunicationSessionController {
         return ResponseEntity.ok(responses);
     }
 
+    @PostMapping("/join/{roomCode}")
+    public ResponseEntity<CommunicationSessionResponse> joinSession(
+            @PathVariable String roomCode,
+            Principal principal
+    ) {
+        String email = principal.getName();
+        CommunicationSessionResponse response = sessionService.joinSessionByRoomCode(roomCode, email);
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/by-code/{roomCode}")
     public ResponseEntity<CommunicationSessionResponse> getSessionByRoomCode(
             @PathVariable String roomCode,
             Principal principal
     ) {
         String email = principal.getName();
-        CommunicationSessionResponse response = sessionService.getSessionByRoomCode(roomCode, email);
+        CommunicationSessionResponse response = sessionService.joinSessionByRoomCode(roomCode, email);
         return ResponseEntity.ok(response);
     }
 
@@ -55,12 +64,7 @@ public class CommunicationSessionController {
             Principal principal
     ) {
         String email = principal.getName();
-        try {
-            UUID uuid = UUID.fromString(id);
-            return ResponseEntity.ok(sessionService.getSession(uuid, email));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.ok(sessionService.getSessionByRoomCode(id, email));
-        }
+        return ResponseEntity.ok(sessionService.getSessionByIdentifier(id, email));
     }
 
     @PostMapping("/{id}/start")
@@ -69,14 +73,7 @@ public class CommunicationSessionController {
             Principal principal
     ) {
         String email = principal.getName();
-        UUID uuid;
-        try {
-            uuid = UUID.fromString(id);
-        } catch (IllegalArgumentException e) {
-            CommunicationSessionResponse resp = sessionService.getSessionByRoomCode(id, email);
-            uuid = resp.getId();
-        }
-        CommunicationSessionResponse response = sessionService.startSession(uuid, email);
+        CommunicationSessionResponse response = sessionService.startSessionByIdentifier(id, email);
         return ResponseEntity.ok(response);
     }
 
@@ -86,14 +83,7 @@ public class CommunicationSessionController {
             Principal principal
     ) {
         String email = principal.getName();
-        UUID uuid;
-        try {
-            uuid = UUID.fromString(id);
-        } catch (IllegalArgumentException e) {
-            CommunicationSessionResponse resp = sessionService.getSessionByRoomCode(id, email);
-            uuid = resp.getId();
-        }
-        CommunicationSessionResponse response = sessionService.endSession(uuid, email);
+        CommunicationSessionResponse response = sessionService.endSessionByIdentifier(id, email);
         return ResponseEntity.ok(response);
     }
 
@@ -103,14 +93,7 @@ public class CommunicationSessionController {
             Principal principal
     ) {
         String email = principal.getName();
-        UUID uuid;
-        try {
-            uuid = UUID.fromString(id);
-        } catch (IllegalArgumentException e) {
-            CommunicationSessionResponse resp = sessionService.getSessionByRoomCode(id, email);
-            uuid = resp.getId();
-        }
-        CommunicationSessionResponse response = sessionService.cancelSession(uuid, email);
+        CommunicationSessionResponse response = sessionService.cancelSessionByIdentifier(id, email);
         return ResponseEntity.ok(response);
     }
 

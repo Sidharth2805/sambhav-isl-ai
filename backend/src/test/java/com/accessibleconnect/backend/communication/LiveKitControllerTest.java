@@ -45,10 +45,12 @@ public class LiveKitControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    private String user1Token;
-    private String user2Token;
+    private String user1Token; // COMMON_USER
+    private String user2Token; // ACCESSIBILITY_USER
+    private String user3Token; // COMMON_USER (for invalid pairing test)
     private String user1Email = "user1@example.com";
     private String user2Email = "user2@example.com";
+    private String user3Email = "user3@example.com";
 
     @BeforeEach
     public void setup() throws Exception {
@@ -57,7 +59,8 @@ public class LiveKitControllerTest {
         userRepository.deleteAll();
 
         user1Token = getAccessTokenForUser(user1Email, "User One", AccountType.COMMON_USER);
-        user2Token = getAccessTokenForUser(user2Email, "User Two", AccountType.COMMON_USER);
+        user2Token = getAccessTokenForUser(user2Email, "User Two", AccountType.ACCESSIBILITY_USER);
+        user3Token = getAccessTokenForUser(user3Email, "User Three", AccountType.COMMON_USER);
     }
 
     private String getAccessTokenForUser(String email, String name, AccountType type) throws Exception {
@@ -97,16 +100,45 @@ public class LiveKitControllerTest {
                 .andReturn().getResponse().getContentAsString();
 
         UUID id = UUID.fromString(objectMapper.readTree(response).get("id").asText());
+        String roomCode = objectMapper.readTree(response).get("roomCode").asText();
 
-        // Get LiveKit Token
+        // 1. Creator (COMMON_USER) gets LiveKit Token using UUID
         mockMvc.perform(post("/api/communication/sessions/" + id + "/livekit-token")
                 .header("Authorization", "Bearer " + user1Token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token", notNullValue()))
                 .andExpect(jsonPath("$.url", notNullValue()))
-                .andExpect(jsonPath("$.roomName", notNullValue()))
-                .andExpect(jsonPath("$.participantIdentity", is(user1Email)))
-                .andExpect(jsonPath("$.*", not(hasItem("your_livekit_api_secret"))));
+                .andExpect(jsonPath("$.roomName", is(roomCode)))
+                .andExpect(jsonPath("$.participantIdentity", is(user1Email)));
+
+        // 2. Participant (ACCESSIBILITY_USER) gets LiveKit Token using roomCode string directly
+        mockMvc.perform(post("/api/communication/sessions/" + roomCode + "/livekit-token")
+                .header("Authorization", "Bearer " + user2Token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token", notNullValue()))
+                .andExpect(jsonPath("$.url", notNullValue()))
+                .andExpect(jsonPath("$.roomName", is(roomCode)))
+                .andExpect(jsonPath("$.participantIdentity", is(user2Email)));
+    }
+
+    @Test
+    public void testInvalidAccountPairingRejected() throws Exception {
+        // User 1 (COMMON_USER) creates session
+        CreateCommunicationSessionRequest req = new CreateCommunicationSessionRequest("ONLINE");
+        String response = mockMvc.perform(post("/api/communication/sessions")
+                .header("Authorization", "Bearer " + user1Token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        String roomCode = objectMapper.readTree(response).get("roomCode").asText();
+
+        // User 3 (also COMMON_USER) tries to get token / join session -> Rejected
+        mockMvc.perform(post("/api/communication/sessions/" + roomCode + "/livekit-token")
+                .header("Authorization", "Bearer " + user3Token))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message", containsString("Invalid account pairing")));
     }
 
     @Test

@@ -4,6 +4,10 @@ export interface CommunicationSessionDto {
   id: string;
   creatorUserId: string;
   creatorName: string;
+  creatorAccountType?: 'COMMON_USER' | 'ACCESSIBILITY_USER' | 'ADMIN';
+  participantUserId?: string;
+  participantName?: string;
+  participantAccountType?: 'COMMON_USER' | 'ACCESSIBILITY_USER' | 'ADMIN';
   mode: 'ONLINE' | 'OFFLINE';
   status: 'CREATED' | 'WAITING' | 'ACTIVE' | 'ENDED' | 'CANCELLED';
   roomCode?: string;
@@ -18,6 +22,14 @@ export async function createSession(mode: 'ONLINE' | 'OFFLINE', token: string | 
     console.log('[SignBridge Debug] createSession() api called. Mode:', mode);
   }
   return await apiRequest('/api/communication/sessions', 'POST', { mode }, token);
+}
+
+export async function joinSession(roomCode: string, token: string | null): Promise<CommunicationSessionDto> {
+  const cleanCode = roomCode.trim().toUpperCase();
+  if (import.meta.env.DEV) {
+    console.log('[SignBridge Debug] joinSession() api called. RoomCode:', cleanCode);
+  }
+  return await apiRequest(`/api/communication/sessions/join/${cleanCode}`, 'POST', null, token);
 }
 
 export async function getSession(id: string, token: string | null): Promise<CommunicationSessionDto> {

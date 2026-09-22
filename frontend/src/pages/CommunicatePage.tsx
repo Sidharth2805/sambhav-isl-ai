@@ -4,8 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useAccessibility } from '../hooks/useAccessibility';
 import {
   createSession,
-  getSessionByRoomCode,
-  startSession,
+  joinSession,
   getSessions,
   type CommunicationSessionDto,
 } from '../utils/communicationApi';
@@ -23,7 +22,12 @@ export const CommunicatePage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Role Selection for WebRTC 2-way communication
-  const isDeafUser = (user as any)?.disabilityType === 'DEAF' || (user as any)?.disabilityType === 'DEAF_MUTE' || (user as any)?.disabilityType === 'MUTE';
+  const isDeafUser =
+    (user as any)?.disabilityType === 'DEAF' ||
+    (user as any)?.disabilityType === 'DEAF_MUTE' ||
+    (user as any)?.disabilityType === 'MUTE' ||
+    user?.accountType === 'ACCESSIBILITY_USER';
+
   const [userRole, setUserRole] = useState<'normal' | 'deaf'>(() => {
     const roleParam = searchParams.get('role');
     if (roleParam === 'deaf' || roleParam === 'normal') return roleParam;
@@ -302,19 +306,27 @@ export const CommunicatePage: React.FC = () => {
 
       let targetId = cleanCode;
       try {
-        const session = await getSessionByRoomCode(cleanCode, accessToken);
+        const session = await joinSession(cleanCode, accessToken);
         if (session) {
           targetId = (session.roomCode || session.id).toUpperCase();
-          if (session.status === 'CREATED' || session.status === 'WAITING') {
-            try {
-              await startSession(session.id, accessToken);
-            } catch (startErr) {
-              console.warn('Session start note:', startErr);
-            }
-          }
         }
-      } catch (lookupErr) {
-        console.warn('Backend room lookup note (connecting directly via WebRTC code):', lookupErr);
+      } catch (lookupErr: any) {
+        console.warn('Backend room lookup note:', lookupErr);
+        const msg = lookupErr?.message || '';
+        if (
+          msg.includes('Account type') ||
+          msg.includes('pairing') ||
+          msg.includes('cannot join') ||
+          msg.includes('ended') ||
+          msg.includes('cancelled') ||
+          msg.includes('already has two participants') ||
+          msg.includes('400') ||
+          msg.includes('409')
+        ) {
+          setError(msg);
+          setLoading(false);
+          return;
+        }
       }
 
       navigate(`/communicate/online/${targetId}?role=${userRole}`, {

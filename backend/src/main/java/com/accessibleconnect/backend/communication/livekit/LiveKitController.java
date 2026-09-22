@@ -5,7 +5,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/communication/sessions")
@@ -16,7 +15,7 @@ public class LiveKitController {
 
     @PostMapping("/{sessionId}/livekit-token")
     public ResponseEntity<LiveKitTokenResponse> getLiveKitToken(
-            @PathVariable UUID sessionId,
+            @PathVariable String sessionId,
             Principal principal
     ) {
         String email = principal.getName();

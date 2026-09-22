@@ -8,9 +8,14 @@ import java.util.UUID;
 public interface CommunicationSessionService {
     CommunicationSessionResponse createSession(CreateCommunicationSessionRequest request, String userEmail);
     CommunicationSessionResponse getSession(UUID id, String userEmail);
+    CommunicationSessionResponse getSessionByIdentifier(String identifier, String userEmail);
     CommunicationSessionResponse getSessionByRoomCode(String roomCode, String userEmail);
+    CommunicationSessionResponse joinSessionByRoomCode(String roomCode, String userEmail);
     List<CommunicationSessionResponse> getSessionsForUser(String userEmail);
     CommunicationSessionResponse startSession(UUID id, String userEmail);
+    CommunicationSessionResponse startSessionByIdentifier(String identifier, String userEmail);
     CommunicationSessionResponse endSession(UUID id, String userEmail);
+    CommunicationSessionResponse endSessionByIdentifier(String identifier, String userEmail);
     CommunicationSessionResponse cancelSession(UUID id, String userEmail);
+    CommunicationSessionResponse cancelSessionByIdentifier(String identifier, String userEmail);
 }
