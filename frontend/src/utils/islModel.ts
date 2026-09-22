@@ -27,6 +27,14 @@ export interface ISLActivityTelemetry {
   inferenceDurationMs?: number;
 }
 
+export interface ISLVectorStats {
+  slot0Count: number;
+  slot1Count: number;
+  minVal: number;
+  maxVal: number;
+  meanVal: number;
+}
+
 /**
  * Result returned by the classification engine.
  */
@@ -39,9 +47,11 @@ export interface ISLInferenceResult {
   label?: string;
   phrase?: string;
   isRealModel?: boolean;
+  source?: 'BiLSTM' | 'Geometric Fallback' | 'None';
   frameCount?: number;
   rejectionReason?: string;
   activityTelemetry?: ISLActivityTelemetry;
+  vectorStats?: ISLVectorStats;
   requestId?: number;
   gestureCycleId?: number;
   top_3?: Array<{ class_id: number; label: string; confidence: number }>;
@@ -556,6 +566,39 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
       sequenceToSend = resampleSequence(this.landmarkBuffer, 60);
     }
 
+    // Compute feature vector telemetry on the latest frame
+    const latestFrame = this.landmarkBuffer[this.landmarkBuffer.length - 1] || [];
+    let slot0NonZero = 0;
+    let slot1NonZero = 0;
+    let minCoord = 0;
+    let maxCoord = 0;
+    let sumCoord = 0;
+    let totalNonZero = 0;
+
+    for (let i = 0; i < latestFrame.length; i++) {
+      const v = latestFrame[i];
+      if (i < 63 && v !== 0) slot0NonZero++;
+      if (i >= 63 && i < 126 && v !== 0) slot1NonZero++;
+      if (v !== 0) {
+        if (totalNonZero === 0) {
+          minCoord = v;
+          maxCoord = v;
+        } else {
+          if (v < minCoord) minCoord = v;
+          if (v > maxCoord) maxCoord = v;
+        }
+        sumCoord += v;
+        totalNonZero++;
+      }
+    }
+    const vectorStats: ISLVectorStats = {
+      slot0Count: slot0NonZero,
+      slot1Count: slot1NonZero,
+      minVal: minCoord,
+      maxVal: maxCoord,
+      meanVal: totalNonZero > 0 ? sumCoord / totalNonZero : 0
+    };
+
     // 4. Invoke BiLSTM neural inference on the complete 60-frame sequence (ONE request)
     const urlsToTry = [this.activeUrl, ...this.candidateUrls.filter(u => u !== this.activeUrl)];
 
@@ -583,8 +626,10 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
               label: formattedText,
               phrase: formattedText,
               isRealModel: true,
+              source: 'BiLSTM',
               frameCount: this.landmarkBuffer.length,
               activityTelemetry: telemetry,
+              vectorStats,
               requestId: reqId,
               gestureCycleId: cycleId,
               top_3: result.top_3
@@ -596,9 +641,11 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
               label: 'NO_ACTIVE_SIGN',
               phrase: '',
               isRealModel: true,
+              source: 'None',
               frameCount: this.landmarkBuffer.length,
               rejectionReason: 'NO_ACTIVE_SIGN',
               activityTelemetry: telemetry,
+              vectorStats,
               requestId: reqId,
               gestureCycleId: cycleId
             };
@@ -618,8 +665,10 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
         label: geometricResult.gesture,
         phrase: geometricResult.phrase || formatISLLabel(geometricResult.gesture),
         isRealModel: true,
+        source: 'Geometric Fallback',
         frameCount: this.landmarkBuffer.length,
         activityTelemetry: telemetry,
+        vectorStats,
         requestId: reqId,
         gestureCycleId: cycleId,
         top_3: [
@@ -634,8 +683,10 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
       label: '',
       phrase: '',
       isRealModel: false,
+      source: 'None',
       frameCount: this.landmarkBuffer.length,
       activityTelemetry: telemetry,
+      vectorStats,
       requestId: reqId,
       gestureCycleId: cycleId
     };

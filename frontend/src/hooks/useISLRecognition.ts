@@ -79,6 +79,26 @@ export interface CommittedSignEvent {
   timestamp: number;
 }
 
+export interface ISLTelemetry {
+  cameraActive: boolean;
+  handsDetected: number;
+  bufferedFrames: number;
+  featureVectorDim: number;
+  slot0Features: number;
+  slot1Features: number;
+  minVal: number;
+  maxVal: number;
+  meanVal: number;
+  requestStatus: 'IDLE' | 'SENT' | 'RECEIVED' | 'REJECTED';
+  lastLatencyMs: number;
+  recognitionSource: 'BiLSTM' | 'Geometric Fallback' | 'None';
+  top1Label: string;
+  top1Confidence: number;
+  top2Label: string;
+  top2Confidence: number;
+  margin: number;
+}
+
 export function useISLRecognition(classifier: ISLClassifier = defaultSaanketClassifier) {
   const [isRecognizing, setIsRecognizing] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -96,6 +116,25 @@ export function useISLRecognition(classifier: ISLClassifier = defaultSaanketClas
   const [handsDetectedCount, setHandsDetectedCount] = useState<number>(0);
   const [gestureState, setGestureState] = useState<GestureCaptureState>('IDLE');
   const [isCapturingManual, setIsCapturingManual] = useState<boolean>(false);
+  const [telemetry, setTelemetry] = useState<ISLTelemetry>({
+    cameraActive: false,
+    handsDetected: 0,
+    bufferedFrames: 0,
+    featureVectorDim: 126,
+    slot0Features: 0,
+    slot1Features: 0,
+    minVal: 0,
+    maxVal: 0,
+    meanVal: 0,
+    requestStatus: 'IDLE',
+    lastLatencyMs: 0,
+    recognitionSource: 'None',
+    top1Label: '',
+    top1Confidence: 0,
+    top2Label: '',
+    top2Confidence: 0,
+    margin: 0
+  });
 
   const streamRef = useRef<MediaStream | null>(null);
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
@@ -347,11 +386,18 @@ export function useISLRecognition(classifier: ISLClassifier = defaultSaanketClas
             (classifier as any).addFrame(landmarksPayload);
           }
 
+          const currentBufLen = (classifier as any)?.getLatestBuffer?.()?.length ?? 0;
+          setTelemetry((prev) => ({
+            ...prev,
+            cameraActive: true,
+            handsDetected: detectedCount,
+            bufferedFrames: currentBufLen,
+          }));
+
           const now = performance.now();
           if (now - lastMediaPipeLogTimeRef.current >= 2000) {
             lastMediaPipeLogTimeRef.current = now;
             const lmCount = (landmarksPayload.leftHand?.length || 0) + (landmarksPayload.rightHand?.length || 0);
-            const currentBufLen = (classifier as any)?.getLatestBuffer?.()?.length ?? 0;
             console.log(`[ISL Recognition] MediaPipe results received handsDetected=${detectedCount} landmarks=${lmCount} buffer=${currentBufLen}/60 state=${machineStateRef.current}`);
           }
 
@@ -374,6 +420,9 @@ export function useISLRecognition(classifier: ISLClassifier = defaultSaanketClas
 
             const thisReqId = ++currentRequestIdRef.current;
             const thisCycleId = gestureCycleIdRef.current;
+            const infStartTime = performance.now();
+
+            setTelemetry((prev) => ({ ...prev, requestStatus: 'SENT' }));
 
             console.log(`[ISL Recognition] INFERENCE START inputShape=[1,60,126] cycle=${thisCycleId} req=${thisReqId}`);
 
@@ -387,6 +436,8 @@ export function useISLRecognition(classifier: ISLClassifier = defaultSaanketClas
                     return;
                   }
 
+                  const infLatency = Math.round(performance.now() - infStartTime);
+
                   // 169 classes: uniform is 0.59%. Valid threshold >= 0.08 (14x chance)
                   const isConfidenceValid = (inf?.confidence || 0) >= 0.08;
                   const isMarginValid = (inf?.margin ?? 1.0) >= 0.01;
@@ -397,9 +448,28 @@ export function useISLRecognition(classifier: ISLClassifier = defaultSaanketClas
                     inf.gesture !== 'NO_ACTIVE_SIGN' &&
                     inf.label !== 'NO_ACTIVE_SIGN';
 
-                  console.log(`[ISL Recognition] INFERENCE RESULT top1=${inf?.label || inf?.gesture} conf=${(inf?.confidence || 0).toFixed(4)} margin=${(inf?.margin || 0).toFixed(4)} isRealModel=${inf?.isRealModel} gate=${isGestureValid && isConfidenceValid && isMarginValid ? 'PASS' : 'REJECT'}`);
+                  const isGatePassed = isGestureValid && isConfidenceValid && isMarginValid && inf.isRealModel;
 
-                  if (isGestureValid && isConfidenceValid && isMarginValid && inf.isRealModel) {
+                  setTelemetry((prev) => ({
+                    ...prev,
+                    requestStatus: isGatePassed ? 'RECEIVED' : 'REJECTED',
+                    lastLatencyMs: infLatency,
+                    recognitionSource: inf?.source || (isGatePassed ? 'BiLSTM' : 'None'),
+                    slot0Features: inf?.vectorStats?.slot0Count ?? prev.slot0Features,
+                    slot1Features: inf?.vectorStats?.slot1Count ?? prev.slot1Features,
+                    minVal: inf?.vectorStats?.minVal ?? prev.minVal,
+                    maxVal: inf?.vectorStats?.maxVal ?? prev.maxVal,
+                    meanVal: inf?.vectorStats?.meanVal ?? prev.meanVal,
+                    top1Label: inf?.label || inf?.gesture || '',
+                    top1Confidence: typeof inf?.confidence === 'number' ? inf.confidence : 0,
+                    top2Label: inf?.top2Label || '',
+                    top2Confidence: typeof inf?.top2Confidence === 'number' ? inf.top2Confidence : 0,
+                    margin: typeof inf?.margin === 'number' ? inf.margin : 0
+                  }));
+
+                  console.log(`[ISL Recognition] INFERENCE RESULT top1=${inf?.label || inf?.gesture} conf=${(inf?.confidence || 0).toFixed(4)} margin=${(inf?.margin || 0).toFixed(4)} isRealModel=${inf?.isRealModel} source=${inf?.source} gate=${isGatePassed ? 'PASS' : 'REJECT'}`);
+
+                  if (isGatePassed) {
                     lastValidTimeRef.current = performance.now();
                     setUnrecognizedNotice(null);
 
@@ -415,7 +485,7 @@ export function useISLRecognition(classifier: ISLClassifier = defaultSaanketClas
                     const smoothedLabel = Object.keys(counts).reduce((a, b) => (counts[a] >= counts[b] ? a : b), label);
                     const phrase = inf.phrase || ISL_VOCABULARY[smoothedLabel] || smoothedLabel;
 
-                    console.log(`[ISL Recognition] cycle=${thisCycleId} req=${thisReqId} gate=PASS top1=${smoothedLabel} conf=${(inf.confidence || 0).toFixed(2)} top2=${inf.top2Label || ''} margin=${(inf.margin || 0).toFixed(2)} committed=YES`);
+                    console.log(`[ISL Recognition] cycle=${thisCycleId} req=${thisReqId} gate=PASS top1=${smoothedLabel} conf=${(inf.confidence || 0).toFixed(2)} top2=${inf.top2Label || ''} margin=${(inf.margin || 0).toFixed(2)} source=${inf.source} committed=YES`);
 
                     // Emit ONE committedSign event
                     const detectedConfidence = typeof inf.confidence === 'number' ? inf.confidence : 0.0;
@@ -688,6 +758,8 @@ export function useISLRecognition(classifier: ISLClassifier = defaultSaanketClas
     pingLatencyMs,
     isCapturingManual,
     captureCountdown,
+    telemetry,
+    recognitionSource: telemetry.recognitionSource,
     start5sCapture,
     start3sCapture: start5sCapture,
     start5sTestCapture: start5sCapture,

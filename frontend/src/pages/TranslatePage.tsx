@@ -93,12 +93,14 @@ export const TranslatePage: React.FC = () => {
     gestureState,
     isCapturingManual,
     captureCountdown,
+    telemetry,
     start5sCapture,
     startRecognition: startISLRecognition,
     stopRecognition: stopISLRecognition,
   } = useISLRecognition();
 
   const [showGuideModal, setShowGuideModal] = useState(false);
+  const [showDebugHUD, setShowDebugHUD] = useState(true);
 
   // Speech & Captions State
   const [isListening, setIsListening] = useState(false);
@@ -1282,6 +1284,19 @@ export const TranslatePage: React.FC = () => {
                         <span className="material-symbols-outlined text-[14px]">menu_book</span>
                         <span>{t('translate.islGuide', 'ISL Guide')}</span>
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowDebugHUD((prev) => !prev)}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-xs border ${
+                          showDebugHUD
+                            ? 'bg-amber-500/20 border-amber-500/40 text-amber-700 dark:text-amber-300'
+                            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700'
+                        }`}
+                        title="Toggle real-time ISL debug telemetry HUD"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">analytics</span>
+                        <span>Debug HUD</span>
+                      </button>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       {/* Sambhav Model 2 6-Second Video Capture Button */}
@@ -1400,6 +1415,84 @@ export const TranslatePage: React.FC = () => {
                         </div>
                       )}
                     </div>
+
+                    {/* Top Right Live Recognition Telemetry Debug Panel */}
+                    {showDebugHUD && (
+                      <div className="absolute top-3 right-3 bg-black/90 backdrop-blur-md p-2.5 rounded-xl border border-white/20 text-white font-mono text-[10px] sm:text-[11px] w-64 z-20 shadow-2xl space-y-1 select-none pointer-events-auto">
+                        <div className="flex items-center justify-between border-b border-white/20 pb-1 font-bold text-amber-400">
+                          <span className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[13px]">analytics</span>
+                            DEBUG TELEMETRY HUD
+                          </span>
+                          <button 
+                            type="button"
+                            onClick={() => setShowDebugHUD(false)} 
+                            className="text-gray-400 hover:text-white px-1 font-bold cursor-pointer"
+                            title="Close HUD"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Camera:</span>
+                          <span className={telemetry.cameraActive ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
+                            {telemetry.cameraActive ? 'ACTIVE' : 'INACTIVE'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Hands detected:</span>
+                          <span className="text-white font-bold">{telemetry.handsDetected} / 2</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Frames buffered:</span>
+                          <span className="text-white font-bold">{telemetry.bufferedFrames} / 60</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Feature vector:</span>
+                          <span className="text-white font-bold">{telemetry.featureVectorDim} dim</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Slot 0 / Slot 1:</span>
+                          <span className="text-cyan-300 font-bold">{telemetry.slot0Features} / {telemetry.slot1Features}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Coords (Min/Max):</span>
+                          <span className="text-gray-300">{telemetry.minVal.toFixed(2)} .. {telemetry.maxVal.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Prediction request:</span>
+                          <span className={`font-bold ${telemetry.requestStatus === 'RECEIVED' ? 'text-emerald-400' : telemetry.requestStatus === 'SENT' ? 'text-amber-300 animate-pulse' : 'text-gray-400'}`}>
+                            {telemetry.requestStatus} {telemetry.lastLatencyMs > 0 ? `(${telemetry.lastLatencyMs}ms)` : ''}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Recognition source:</span>
+                          <span className={`font-bold ${telemetry.recognitionSource === 'BiLSTM' ? 'text-purple-300' : telemetry.recognitionSource === 'Geometric Fallback' ? 'text-teal-300' : 'text-gray-400'}`}>
+                            {telemetry.recognitionSource}
+                          </span>
+                        </div>
+                        <div className="flex justify-between border-t border-white/15 pt-1">
+                          <span className="text-gray-400">Prediction:</span>
+                          <span className="text-emerald-400 font-bold">{recognizedSign || telemetry.top1Label || '—'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Confidence:</span>
+                          <span className="text-amber-400 font-bold">
+                            {telemetry.top1Confidence > 0 
+                              ? `${(telemetry.top1Confidence * 100).toFixed(1)}%` 
+                              : signConfidence > 0 
+                              ? `${(signConfidence * 100).toFixed(1)}%` 
+                              : '0.0%'}
+                          </span>
+                        </div>
+                        {telemetry.top2Label ? (
+                          <div className="flex justify-between text-[9px] text-gray-400">
+                            <span>Top 2:</span>
+                            <span>{telemetry.top2Label} ({(telemetry.top2Confidence * 100).toFixed(1)}%)</span>
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
 
                     {/* Live 6-Second Recording Central HUD Overlay */}
                     {isVideoRecording && (
