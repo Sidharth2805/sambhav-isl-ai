@@ -20,7 +20,7 @@ export const Track = {
 import DraggableSelfView from './DraggableSelfView';
 import type { TranscriptEvent } from '../../types/transcript';
 import { ISLAvatarCanvas, type ISLAvatarCanvasRef } from '../cultural/ISLAvatarCanvas';
-import { useISLRecognition } from '../../hooks/useISLRecognition';
+import { useSambhavModel2 } from '../../WEBRTC';
 import { naturalSpeech } from '../../utils/naturalSpeech';
 import { ISLMessageComposer } from './ISLMessageComposer';
 import { getSentencePattern } from '../../services/avatar/Services/sentencePatterns';
@@ -177,7 +177,7 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
   const speedOptions = [0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0];
   const [activeReadingMessageId, setActiveReadingMessageId] = useState<string | null>(null);
 
-  // Real-time Neural BiLSTM Sign Recognition Hook (169 ISL Classes for letters & words)
+  // Real-time SAMBHAV MODEL 2 Sign Recognition Hook (169 ISL Classes for letters & words)
   const {
     currentGesture: recognizedSign,
     confidence: signConfidence,
@@ -187,7 +187,7 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
     gestureState,
     startRecognition,
     stopRecognition,
-  } = useISLRecognition();
+  } = useSambhavModel2();
 
   // Auto-start ISL gesture recognition strictly on the local camera
   const hasLocalTrack = !!localTrack;

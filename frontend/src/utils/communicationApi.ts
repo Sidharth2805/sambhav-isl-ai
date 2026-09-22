@@ -74,20 +74,6 @@ export async function cancelSession(id: string, token: string | null): Promise<C
   return await apiRequest(`/api/communication/sessions/${id}/cancel`, 'POST', null, token);
 }
 
-export interface LiveKitTokenResponseDto {
-  url: string;
-  token: string;
-  roomName: string;
-  participantIdentity: string;
-}
-
-export async function getLiveKitToken(sessionId: string, token: string | null): Promise<LiveKitTokenResponseDto> {
-  if (import.meta.env.DEV) {
-    console.log('[SignBridge Debug] getLiveKitToken() api called. SessionId:', sessionId);
-  }
-  return await apiRequest(`/api/communication/sessions/${sessionId}/livekit-token`, 'POST', null, token);
-}
-
 export async function sendFinalTranscript(
   sessionId: string,
   event: any,

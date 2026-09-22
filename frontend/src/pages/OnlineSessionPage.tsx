@@ -2,83 +2,13 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getSession, endSession, startSession, getLiveKitToken } from '../utils/communicationApi';
+import { getSession, endSession, startSession } from '../utils/communicationApi';
 import type { CommunicationSessionDto } from '../utils/communicationApi';
 import type { TranscriptEvent } from '../types/transcript';
 import { HearingUserWorkspace, LkConnectionState } from '../components/communication/HearingUserWorkspace';
 import { DeafUserWorkspace } from '../components/communication/DeafUserWorkspace';
 import { SpeechToTextService } from '../services/SpeechToTextService';
-import {
-  Room,
-  RoomEvent,
-  Track,
-  ConnectionState as LiveKitConnState,
-} from 'livekit-client';
-
-const ICE_SERVERS: RTCConfiguration = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'stun:stun3.l.google.com:19302' },
-    { urls: 'stun:stun4.l.google.com:19302' },
-    { urls: 'stun:stun.services.mozilla.com' },
-    { urls: 'stun:global.stun.twilio.com:3478' },
-    {
-      urls: 'turn:openrelay.metered.ca:80',
-      username: 'openrelay',
-      credential: 'openrelay',
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443',
-      username: 'openrelay',
-      credential: 'openrelay',
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-      username: 'openrelay',
-      credential: 'openrelay',
-    },
-    {
-      urls: 'turns:openrelay.metered.ca:443?transport=tcp',
-      username: 'openrelay',
-      credential: 'openrelay',
-    },
-    {
-      urls: 'turns:openrelay.metered.ca:443',
-      username: 'openrelay',
-      credential: 'openrelay',
-    },
-  ],
-  iceCandidatePoolSize: 10,
-};
-
-export function getSignalingUrl(): string {
-  if (import.meta.env.VITE_WS_URL) {
-    return import.meta.env.VITE_WS_URL;
-  }
-  if (import.meta.env.VITE_SIGNALING_URL) {
-    return import.meta.env.VITE_SIGNALING_URL;
-  }
-
-  const backendHttpUrl =
-    import.meta.env.VITE_API_URL ||
-    import.meta.env.VITE_API_BASE_URL ||
-    (import.meta.env.DEV ? 'http://localhost:8080' : 'https://signbridge-backend-k4k5.onrender.com');
-
-  try {
-    const parsed = new URL(backendHttpUrl);
-    const wsProto = parsed.protocol === 'https:' ? 'wss:' : 'ws:';
-    const hostWithPort = parsed.port ? `${parsed.hostname}:${parsed.port}` : parsed.host;
-    return `${wsProto}//${hostWithPort}/ws/webrtc`;
-  } catch {
-    const isDev = import.meta.env.DEV || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    if (isDev) {
-      return `ws://${window.location.hostname || 'localhost'}:8080/ws/webrtc`;
-    }
-    return `wss://signbridge-backend-k4k5.onrender.com/ws/webrtc`;
-  }
-}
+import { useWebRTC, CallConnectionState } from '../WEBRTC';
 
 export const OnlineSessionPage: React.FC = () => {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -120,63 +50,24 @@ export const OnlineSessionPage: React.FC = () => {
       ? incomingSettings.isHost
       : isHostParam || (session ? (session as any).creatorUserId === user?.id || (session as any).initiatorId === user?.id : false)
   );
-  const isCreatorRef = useRef<boolean>(isCreator);
-  isCreatorRef.current = isCreator;
 
   const isDeafWorkspace = userRole === 'deaf';
 
-  // Call Settings UI State
-  const [micState, setMicState] = useState<boolean>(
-    incomingSettings.initialAudio !== undefined ? incomingSettings.initialAudio : true
-  );
-  const [cameraState, setCameraState] = useState<boolean>(
-    incomingSettings.initialVideo !== undefined ? incomingSettings.initialVideo : true
-  );
-  const [screenShareState, setScreenShareState] = useState<boolean>(false);
+  // UI state
   const [speakerVolume, setSpeakerVolume] = useState<number>(
     incomingSettings.initialSpeaker !== undefined ? incomingSettings.initialSpeaker : 80
   );
-
-  // Device selectors state
-  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
-  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
-  const [speakerDevices, setSpeakerDevices] = useState<MediaDeviceInfo[]>([]);
-  const [activeAudioDeviceId, setActiveAudioDeviceId] = useState<string>('');
-  const [activeVideoDeviceId, setActiveVideoDeviceId] = useState<string>('');
-  const [activeSpeakerDeviceId, setActiveSpeakerDeviceId] = useState<string>('');
   const [showMicDevices, setShowMicDevices] = useState(false);
   const [showCameraDevices, setShowCameraDevices] = useState(false);
   const [showSpeakerDevices, setShowSpeakerDevices] = useState(false);
-
-  // Connection states
-  const [connectionState, setConnectionState] = useState<LkConnectionState>(LkConnectionState.Connecting);
   const [showEndModal, setShowEndModal] = useState<boolean>(false);
-  const [remoteLeftNotice, setRemoteLeftNotice] = useState<boolean>(false);
 
-  // Transcripts and Sequence logs
+  // Transcripts & Avatar triggers
   const [finalTranscripts, setFinalTranscripts] = useState<TranscriptEvent[]>([]);
   const [interimTranscripts, setInterimTranscripts] = useState<Record<string, string>>({});
-  const captionsEndRef = useRef<HTMLDivElement | null>(null);
-
-  // LiveKit Client Ref
-  const livekitRoomRef = useRef<Room | null>(null);
-  const livekitConnectedRef = useRef<boolean>(false);
-
-  // WebRTC P2P Refs & Streams (Fallback)
-  const localStreamRef = useRef<MediaStream | null>(null);
-  const remoteMediaStreamRef = useRef<MediaStream>(new MediaStream());
-  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
-  const signalWsRef = useRef<WebSocket | null>(null);
-  const dataChannelRef = useRef<RTCDataChannel | null>(null);
-  const pendingIceRef = useRef<RTCIceCandidateInit[]>([]);
-  const makingOfferRef = useRef<boolean>(false);
-
-  const [localTrackObj, setLocalTrackObj] = useState<any>(null);
-  const [primaryRemoteTrack, setPrimaryRemoteTrack] = useState<any>(null);
-  const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
-
-  // Avatar animation triggers
   const [avatarTriggerText, setAvatarTriggerText] = useState<string>('');
+  const captionsEndRef = useRef<HTMLDivElement | null>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
   const processedEventIdsRef = useRef<Set<string>>(new Set());
 
   // Fetch Session details from API if available
@@ -188,20 +79,8 @@ export const OnlineSessionPage: React.FC = () => {
           setSession(data);
           if (data.roomCode) {
             const upperCode = data.roomCode.toUpperCase();
-            const prevRoom = roomCodeRef.current;
             setRoomCode(upperCode);
             roomCodeRef.current = upperCode;
-
-            if (upperCode !== prevRoom && signalWsRef.current?.readyState === WebSocket.OPEN) {
-              console.log(`[WebRTC Signaling] Switching WS room from ${prevRoom} to ${upperCode}`);
-              signalWsRef.current.send(
-                JSON.stringify({
-                  type: 'join',
-                  roomId: upperCode,
-                  role: userRoleRef.current,
-                })
-              );
-            }
           }
           if (data.status === 'CREATED' || data.status === 'WAITING') {
             startSession(data.id || sessionId, accessToken).catch(() => {});
@@ -212,32 +91,6 @@ export const OnlineSessionPage: React.FC = () => {
         console.warn('Session API note:', e);
       });
   }, [sessionId, accessToken]);
-
-  // Enumerate Media Devices
-  useEffect(() => {
-    navigator.mediaDevices?.enumerateDevices().then((devices) => {
-      setAudioDevices(devices.filter((d) => d.kind === 'audioinput'));
-      setVideoDevices(devices.filter((d) => d.kind === 'videoinput'));
-      setSpeakerDevices(devices.filter((d) => d.kind === 'audiooutput'));
-    }).catch(() => {});
-  }, []);
-
-  // Sync volume with audio elements
-  useEffect(() => {
-    document.querySelectorAll('audio').forEach((audio) => {
-      audio.volume = speakerVolume / 100;
-    });
-  }, [speakerVolume]);
-
-  // Attach remote stream to hidden audio element to ensure audio plays
-  useEffect(() => {
-    if (remoteAudioRef.current && primaryRemoteTrack) {
-      if (primaryRemoteTrack instanceof MediaStream) {
-        remoteAudioRef.current.srcObject = primaryRemoteTrack;
-        remoteAudioRef.current.play().catch(() => {});
-      }
-    }
-  }, [primaryRemoteTrack]);
 
   // Add Transcript Event Helper
   const addTranscriptEvent = useCallback((event: TranscriptEvent) => {
@@ -265,13 +118,8 @@ export const OnlineSessionPage: React.FC = () => {
   const addTranscriptEventRef = useRef(addTranscriptEvent);
   addTranscriptEventRef.current = addTranscriptEvent;
 
-  // Auto-scroll conversation transcript stream to the most recent message
-  useEffect(() => {
-    captionsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [finalTranscripts, interimTranscripts]);
-
-  // Unified Data Message Processor
-  const processIncomingMessage = useCallback((payload: Record<string, any>, senderRole?: string) => {
+  // Handle incoming data channel messages from remote peer
+  const handleDataChannelMessage = useCallback((payload: Record<string, any>) => {
     if (!payload) return;
     const eventId = payload.eventId || payload.event?.id;
     if (eventId) {
@@ -295,8 +143,8 @@ export const OnlineSessionPage: React.FC = () => {
           id: payload.eventId || `av-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
           sessionId: sessionId || roomCodeRef.current,
           senderId: 'remote',
-          senderName: senderRole === 'deaf' ? 'Deaf Participant' : 'Hearing Participant',
-          senderType: senderRole === 'deaf' ? 'ACCESSIBILITY_USER' : 'COMMON_USER',
+          senderName: 'Hearing Participant',
+          senderType: 'COMMON_USER',
           text: text,
           timestamp: payload.timestamp || Date.now(),
           isFinal: true,
@@ -329,78 +177,61 @@ export const OnlineSessionPage: React.FC = () => {
     }
   }, [sessionId]);
 
-  const processIncomingMessageRef = useRef(processIncomingMessage);
-  processIncomingMessageRef.current = processIncomingMessage;
+  // Hook into Native WebRTC client
+  const {
+    localStream,
+    remoteStream,
+    connectionState,
+    micState,
+    cameraState,
+    screenShareState,
+    remoteLeftNotice,
+    audioDevices,
+    videoDevices,
+    speakerDevices,
+    activeAudioDeviceId,
+    activeVideoDeviceId,
+    activeSpeakerDeviceId,
+    toggleMic,
+    toggleCamera,
+    toggleScreen,
+    switchAudioDevice,
+    switchVideoDevice,
+    switchSpeakerDevice,
+    sendAppData,
+    disconnect,
+  } = useWebRTC({
+    roomId: roomCode,
+    role: userRole,
+    isCreator,
+    initialVideo: incomingSettings.initialVideo !== undefined ? incomingSettings.initialVideo : true,
+    initialAudio: incomingSettings.initialAudio !== undefined ? incomingSettings.initialAudio : true,
+    onDataMessage: handleDataChannelMessage,
+    onRemoteLeave: () => {
+      setInterimTranscripts({});
+      setAvatarTriggerText('');
+    },
+  });
 
-  // Send Application Data over LiveKit SFU or RTCDataChannel or WebSocket fallback
-  const sendAppData = useCallback((payload: Record<string, any>) => {
-    const raw = JSON.stringify(payload);
-    let sent = false;
-
-    // 1. LiveKit Data Channel
-    if (livekitRoomRef.current && livekitRoomRef.current.state === LiveKitConnState.Connected) {
-      try {
-        const encoded = new TextEncoder().encode(raw);
-        livekitRoomRef.current.localParticipant.publishData(encoded, { reliable: true });
-        sent = true;
-      } catch (e) {
-        console.warn('[LiveKit DataChannel] Send error:', e);
-      }
+  // Attach remote stream to hidden audio playback element
+  useEffect(() => {
+    if (remoteAudioRef.current && remoteStream) {
+      remoteAudioRef.current.srcObject = remoteStream;
+      remoteAudioRef.current.play().catch(() => {});
     }
+  }, [remoteStream]);
 
-    // 2. WebRTC P2P DataChannel fallback
-    if (!sent && dataChannelRef.current && dataChannelRef.current.readyState === 'open') {
-      try {
-        dataChannelRef.current.send(raw);
-        sent = true;
-      } catch (e) {
-        console.warn('[WebRTC DataChannel] Send error:', e);
-      }
-    }
+  // Sync speaker volume
+  useEffect(() => {
+    document.querySelectorAll('audio').forEach((audio) => {
+      audio.volume = speakerVolume / 100;
+    });
+  }, [speakerVolume]);
 
-    // 3. Fallback over WebSocket app-message
-    if (!sent && signalWsRef.current && signalWsRef.current.readyState === WebSocket.OPEN) {
-      try {
-        signalWsRef.current.send(
-          JSON.stringify({
-            type: 'app-message',
-            roomId: roomCodeRef.current,
-            fromRole: userRoleRef.current,
-            payload: payload,
-          })
-        );
-      } catch (e) {
-        console.warn('[WS Signaling] app-message relay error:', e);
-      }
-    }
-  }, []);
-
-  // Send Transcript / Message
-  const handleSendTextMessage = useCallback((text: string) => {
-    const clean = text.trim();
-    if (!clean) return;
-
-    const eventId = `tx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
-    const event: TranscriptEvent = {
-      id: eventId,
-      sessionId: sessionId || roomCodeRef.current,
-      senderId: user?.id || user?.email || 'self',
-      senderName: (user as any)?.fullName || (user as any)?.name || 'You',
-      senderType: isDeafWorkspace ? 'ACCESSIBILITY_USER' : 'COMMON_USER',
-      text: clean,
-      timestamp: Date.now(),
-      isFinal: true,
-      confidence: 1.0,
-    };
-
-    addTranscriptEventRef.current(event);
-
-    if (isDeafWorkspace) {
-      sendAppData({ type: 'ISL_SIGN', sign: clean, text: clean, eventId, timestamp: Date.now(), event });
-    } else {
-      sendAppData({ type: 'avatar-sign', text: clean, eventId, timestamp: Date.now(), event });
-    }
-  }, [isDeafWorkspace, sendAppData, sessionId, user]);
+  // Auto-scroll captions
+  useEffect(() => {
+    captionsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [finalTranscripts, interimTranscripts]);
 
   // Live Microphone Audio Recognition (Web Speech STT)
   useEffect(() => {
@@ -409,7 +240,7 @@ export const OnlineSessionPage: React.FC = () => {
     const mySenderName = (user as any)?.fullName || (user as any)?.name || 'You';
     const mySenderType = isDeafWorkspace ? 'ACCESSIBILITY_USER' : 'COMMON_USER';
 
-    if (micState && connectionState === LkConnectionState.Connected) {
+    if (micState && connectionState === CallConnectionState.Connected) {
       stt.startRecording(
         sessionId || roomCodeRef.current,
         mySenderId,
@@ -445,774 +276,42 @@ export const OnlineSessionPage: React.FC = () => {
     };
   }, [micState, connectionState, sessionId, user, isDeafWorkspace, sendAppData]);
 
-  // Wire DataChannel Event Listeners for WebRTC P2P
-  const wireDataChannel = useCallback((dc: RTCDataChannel) => {
-    dc.onopen = () => {
-      console.log('[WebRTC DataChannel] Open');
-    };
-    dc.onclose = () => {
-      console.log('[WebRTC DataChannel] Closed');
-    };
-    dc.onerror = (err) => {
-      console.warn('[WebRTC DataChannel] Error:', err);
-    };
-    dc.onmessage = (e) => {
-      try {
-        const msg = JSON.parse(e.data);
-        processIncomingMessageRef.current(msg);
-      } catch (err) {
-        console.error('[WebRTC DataChannel] Parse error:', err);
-      }
-    };
-  }, []);
+  // Send Transcript / Message
+  const handleSendTextMessage = useCallback((text: string) => {
+    const clean = text.trim();
+    if (!clean) return;
 
-  // Create RTCPeerConnection Instance (WebRTC Fallback)
-  const createPeerConnection = useCallback((): RTCPeerConnection => {
-    if (peerConnectionRef.current) {
-      return peerConnectionRef.current;
-    }
-
-    const pc = new RTCPeerConnection(ICE_SERVERS);
-    peerConnectionRef.current = pc;
-
-    try {
-      const transceivers = pc.getTransceivers();
-      const hasAudio = transceivers.some((t) => t.receiver.track.kind === 'audio');
-      const hasVideo = transceivers.some((t) => t.receiver.track.kind === 'video');
-
-      const audioTrack = localStreamRef.current?.getAudioTracks()[0];
-      const videoTrack = localStreamRef.current?.getVideoTracks()[0];
-
-      if (!hasAudio) {
-        if (audioTrack && localStreamRef.current) {
-          pc.addTransceiver(audioTrack, { direction: 'sendrecv', streams: [localStreamRef.current] });
-        } else {
-          pc.addTransceiver('audio', { direction: 'sendrecv' });
-        }
-      }
-      if (!hasVideo) {
-        if (videoTrack && localStreamRef.current) {
-          pc.addTransceiver(videoTrack, { direction: 'sendrecv', streams: [localStreamRef.current] });
-        } else {
-          pc.addTransceiver('video', { direction: 'sendrecv' });
-        }
-      }
-    } catch (e) {
-      console.warn('[WebRTC] Transceiver setup note:', e);
-    }
-
-    if (localStreamRef.current) {
-      const audioTrack = localStreamRef.current.getAudioTracks()[0];
-      const videoTrack = localStreamRef.current.getVideoTracks()[0];
-      const transceivers = pc.getTransceivers();
-      const audioTransceiver = transceivers.find(
-        (t) => t.receiver.track.kind === 'audio' || t.sender.track?.kind === 'audio'
-      );
-      const videoTransceiver = transceivers.find(
-        (t) => t.receiver.track.kind === 'video' || t.sender.track?.kind === 'video'
-      );
-
-      if (audioTrack && audioTransceiver) {
-        audioTransceiver.sender.replaceTrack(audioTrack).catch(console.warn);
-      }
-      if (videoTrack && videoTransceiver) {
-        videoTransceiver.sender.replaceTrack(videoTrack).catch(console.warn);
-      }
-    }
-
-    pc.onicecandidate = (event) => {
-      if (event.candidate && signalWsRef.current?.readyState === WebSocket.OPEN) {
-        signalWsRef.current.send(
-          JSON.stringify({
-            type: 'signal',
-            roomId: roomCodeRef.current,
-            data: {
-              type: 'candidate',
-              candidate: event.candidate,
-            },
-          })
-        );
-      }
+    const eventId = `tx-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+    const event: TranscriptEvent = {
+      id: eventId,
+      sessionId: sessionId || roomCodeRef.current,
+      senderId: user?.id || user?.email || 'self',
+      senderName: (user as any)?.fullName || (user as any)?.name || 'You',
+      senderType: isDeafWorkspace ? 'ACCESSIBILITY_USER' : 'COMMON_USER',
+      text: clean,
+      timestamp: Date.now(),
+      isFinal: true,
+      confidence: 1.0,
     };
 
-    pc.ontrack = (event) => {
-      console.log('[WebRTC] Remote track received:', event.track.kind, event.track.id);
-      if (!remoteMediaStreamRef.current) {
-        remoteMediaStreamRef.current = new MediaStream();
-      }
-      if (event.streams && event.streams[0]) {
-        event.streams[0].getTracks().forEach((track) => {
-          if (!remoteMediaStreamRef.current.getTracks().some((t) => t.id === track.id)) {
-            remoteMediaStreamRef.current.addTrack(track);
-          }
-        });
-      }
-      if (event.track && !remoteMediaStreamRef.current.getTracks().some((t) => t.id === event.track.id)) {
-        remoteMediaStreamRef.current.addTrack(event.track);
-      }
+    addTranscriptEventRef.current(event);
 
-      const newStream = new MediaStream(remoteMediaStreamRef.current.getTracks());
-      setPrimaryRemoteTrack(newStream);
-      setConnectionState(LkConnectionState.Connected);
-
-      event.track.onunmute = () => {
-        console.log('[WebRTC] Remote track unmuted:', event.track.kind);
-        const activeStream = new MediaStream(remoteMediaStreamRef.current?.getTracks() || [event.track]);
-        setPrimaryRemoteTrack(activeStream);
-        setConnectionState(LkConnectionState.Connected);
-      };
-
-      if (remoteAudioRef.current) {
-        remoteAudioRef.current.srcObject = newStream;
-        remoteAudioRef.current.play().catch(() => {});
-      }
-    };
-
-    pc.ondatachannel = (event) => {
-      console.log('[WebRTC] Inbound DataChannel received');
-      dataChannelRef.current = event.channel;
-      wireDataChannel(event.channel);
-    };
-
-    pc.onnegotiationneeded = async () => {
-      console.log('[WebRTC] onnegotiationneeded triggered');
-      try {
-        if (signalWsRef.current?.readyState === WebSocket.OPEN && pc.signalingState === 'stable') {
-          await makeOffer();
-        }
-      } catch (err) {
-        console.warn('[WebRTC] Error during onnegotiationneeded:', err);
-      }
-    };
-
-    const updateConnectionState = () => {
-      const cState = pc.connectionState;
-      const iceState = pc.iceConnectionState;
-      console.log('[WebRTC] Connection state:', cState, 'ICE state:', iceState);
-      if (cState === 'connected' || iceState === 'connected' || iceState === 'completed') {
-        setConnectionState(LkConnectionState.Connected);
-        setRemoteLeftNotice(false);
-      } else if (cState === 'connecting' || iceState === 'checking') {
-        setConnectionState(LkConnectionState.Connecting);
-      } else if (cState === 'disconnected' || cState === 'failed' || iceState === 'failed' || iceState === 'disconnected') {
-        setConnectionState(LkConnectionState.Disconnected);
-      } else if (cState === 'closed' || iceState === 'closed') {
-        setConnectionState(LkConnectionState.Disconnected);
-      }
-    };
-
-    pc.onconnectionstatechange = updateConnectionState;
-    pc.oniceconnectionstatechange = updateConnectionState;
-
-    return pc;
-  }, [wireDataChannel]);
-
-  // Send SDP Offer via WebSocket Signaling
-  const makeOffer = useCallback(async () => {
-    const pc = createPeerConnection();
-    try {
-      makingOfferRef.current = true;
-      if (!dataChannelRef.current || dataChannelRef.current.readyState === 'closed') {
-        const dc = pc.createDataChannel('main');
-        dataChannelRef.current = dc;
-        wireDataChannel(dc);
-      }
-
-      const offer = await pc.createOffer({
-        offerToReceiveAudio: true,
-        offerToReceiveVideo: true,
-      });
-      if (pc.signalingState !== 'stable') return;
-      await pc.setLocalDescription(offer);
-
-      if (signalWsRef.current?.readyState === WebSocket.OPEN) {
-        signalWsRef.current.send(
-          JSON.stringify({
-            type: 'signal',
-            roomId: roomCodeRef.current,
-            data: {
-              type: 'offer',
-              sdp: offer,
-            },
-          })
-        );
-        console.log('[WebRTC Signaling] Dispatched SDP offer');
-      }
-    } catch (err) {
-      console.error('[WebRTC] Error creating SDP offer:', err);
-    } finally {
-      makingOfferRef.current = false;
+    if (isDeafWorkspace) {
+      sendAppData({ type: 'ISL_SIGN', sign: clean, text: clean, eventId, timestamp: Date.now(), event });
+    } else {
+      sendAppData({ type: 'avatar-sign', text: clean, eventId, timestamp: Date.now(), event });
     }
-  }, [createPeerConnection, wireDataChannel]);
-
-  // Handle Signaling Messages from WebSocket
-  const handleSignalMessage = useCallback(async (msg: any) => {
-    if (!msg) return;
-
-    if (msg.type === 'pong') {
-      return;
-    }
-
-    if (msg.type === 'joined') {
-      console.log(`[WebRTC Signaling] Joined room=${msg.roomId}, peers=${msg.peerCount}`);
-      if (msg.peerCount > 1) {
-        setConnectionState(LkConnectionState.Connecting);
-      }
-    }
-
-    if (msg.type === 'peer-joined') {
-      console.log(`[WebRTC Signaling] Peer joined. Initiator=${msg.initiator}`);
-      setRemoteLeftNotice(false);
-      setInterimTranscripts({});
-      setAvatarTriggerText('');
-      processedEventIdsRef.current.clear();
-      if (msg.initiator) {
-        await makeOffer();
-      }
-    }
-
-    if (msg.type === 'peer-left') {
-      console.log('[WebRTC Signaling] Remote peer left room');
-      setRemoteLeftNotice(true);
-      if (remoteMediaStreamRef.current) {
-        remoteMediaStreamRef.current.getTracks().forEach((t) => t.stop());
-      }
-      remoteMediaStreamRef.current = new MediaStream();
-      setPrimaryRemoteTrack(null);
-      setInterimTranscripts({});
-      setAvatarTriggerText('');
-      processedEventIdsRef.current.clear();
-    }
-
-    if (msg.type === 'signal') {
-      const data = msg.data || {};
-      const pc = createPeerConnection();
-
-      if (data.type === 'offer') {
-        console.log('[WebRTC Signaling] Received SDP offer, evaluating negotiation state');
-        const isPolite = !isCreatorRef.current;
-        const offerCollision = makingOfferRef.current || pc.signalingState !== 'stable';
-        
-        if (offerCollision && !isPolite) {
-          console.log('[WebRTC] Impolite peer (Host) ignoring colliding offer');
-          return;
-        }
-        
-        if (offerCollision) {
-          console.log('[WebRTC] Polite peer (Guest) rolling back colliding offer');
-          await pc.setLocalDescription({ type: 'rollback' } as any).catch(console.warn);
-        }
-
-        await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-
-        while (pendingIceRef.current.length > 0) {
-          const c = pendingIceRef.current.shift();
-          if (c) {
-            try {
-              await pc.addIceCandidate(new RTCIceCandidate(c));
-            } catch (e) {
-              console.warn('[WebRTC] Error adding queued ICE candidate:', e);
-            }
-          }
-        }
-
-        const answer = await pc.createAnswer({
-          offerToReceiveAudio: true,
-          offerToReceiveVideo: true,
-        });
-        await pc.setLocalDescription(answer);
-
-        if (signalWsRef.current?.readyState === WebSocket.OPEN) {
-          signalWsRef.current.send(
-            JSON.stringify({
-              type: 'signal',
-              roomId: roomCodeRef.current,
-              data: {
-                type: 'answer',
-                sdp: answer,
-              },
-            })
-          );
-        }
-      }
-
-      if (data.type === 'answer') {
-        console.log('[WebRTC Signaling] Received SDP answer');
-        await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-        while (pendingIceRef.current.length > 0) {
-          const c = pendingIceRef.current.shift();
-          if (c) {
-            try {
-              await pc.addIceCandidate(new RTCIceCandidate(c));
-            } catch (e) {
-              console.warn('[WebRTC] Error adding queued ICE candidate:', e);
-            }
-          }
-        }
-      }
-
-      if (data.type === 'candidate' && data.candidate) {
-        if (pc.remoteDescription && pc.remoteDescription.type) {
-          try {
-            await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-          } catch (e) {
-            console.warn('[WebRTC] Error adding ICE candidate:', e);
-          }
-        } else {
-          pendingIceRef.current.push(data.candidate);
-        }
-      }
-    }
-
-    if (msg.type === 'app-message') {
-      processIncomingMessageRef.current(msg.payload || {}, msg.fromRole);
-    }
-  }, [createPeerConnection, makeOffer]);
-
-  const handleSignalMessageRef = useRef(handleSignalMessage);
-  handleSignalMessageRef.current = handleSignalMessage;
-
-  // Authoritative Connection Lifecycle (LiveKit SFU with Seamless WebRTC Fallback)
-  useEffect(() => {
-    let localStream: MediaStream | null = null;
-    let ws: WebSocket | null = null;
-    let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
-    let isCleanedUp = false;
-    let lkRoom: Room | null = null;
-
-    const initializeConnection = async () => {
-      // 1. First attempt to connect via LiveKit SFU if server token is available
-      try {
-        const tokenData = await getLiveKitToken(sessionId || roomCodeRef.current, accessToken);
-        if (tokenData && tokenData.token && tokenData.url && !isCleanedUp) {
-          console.log('[LiveKit] Acquired token, connecting to SFU:', tokenData.url);
-          lkRoom = new Room({
-            adaptiveStream: true,
-            dynacast: true,
-          });
-          livekitRoomRef.current = lkRoom;
-
-          lkRoom
-            .on(RoomEvent.Connected, () => {
-              console.log('[LiveKit] Connected to room:', tokenData.roomName || roomCodeRef.current);
-              livekitConnectedRef.current = true;
-              setConnectionState(LkConnectionState.Connected);
-              setRemoteLeftNotice(false);
-
-              // Check for already connected remote participants (late joiner fix)
-              lkRoom?.remoteParticipants.forEach((participant) => {
-                participant.videoTrackPublications.forEach((pub) => {
-                  if (pub.isSubscribed && pub.track) {
-                    setPrimaryRemoteTrack(pub);
-                    setRemoteLeftNotice(false);
-                  }
-                });
-                participant.audioTrackPublications.forEach((pub) => {
-                  if (pub.isSubscribed && pub.track && remoteAudioRef.current) {
-                    pub.track.attach(remoteAudioRef.current);
-                  }
-                });
-              });
-            })
-            .on(RoomEvent.Disconnected, () => {
-              console.log('[LiveKit] Disconnected from room');
-              livekitConnectedRef.current = false;
-              setConnectionState(LkConnectionState.Disconnected);
-            })
-            .on(RoomEvent.Reconnecting, () => {
-              setConnectionState(LkConnectionState.Reconnecting);
-            })
-            .on(RoomEvent.Reconnected, () => {
-              setConnectionState(LkConnectionState.Connected);
-            })
-            .on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
-              console.log('[LiveKit] Track subscribed:', track.kind, track.source, participant.identity);
-              if (track.kind === Track.Kind.Video) {
-                setPrimaryRemoteTrack(publication || track);
-                setConnectionState(LkConnectionState.Connected);
-                setRemoteLeftNotice(false);
-              } else if (track.kind === Track.Kind.Audio) {
-                if (remoteAudioRef.current) {
-                  track.attach(remoteAudioRef.current);
-                }
-              }
-            })
-            .on(RoomEvent.TrackUnsubscribed, (track, _publication, participant) => {
-              console.log('[LiveKit] Track unsubscribed:', track.kind, participant.identity);
-              if (track.kind === Track.Kind.Video) {
-                let remainingVideo: any = null;
-                lkRoom?.remoteParticipants.forEach((p) => {
-                  p.videoTrackPublications.forEach((pub) => {
-                    if (pub.isSubscribed && pub.track) {
-                      remainingVideo = pub;
-                    }
-                  });
-                });
-                setPrimaryRemoteTrack(remainingVideo);
-              }
-            })
-            .on(RoomEvent.ParticipantConnected, (participant) => {
-              console.log('[LiveKit] Participant joined:', participant.identity);
-              setRemoteLeftNotice(false);
-              setInterimTranscripts({});
-              setAvatarTriggerText('');
-              processedEventIdsRef.current.clear();
-            })
-            .on(RoomEvent.ParticipantDisconnected, (participant) => {
-              console.log('[LiveKit] Participant left:', participant.identity);
-              if (lkRoom && lkRoom.remoteParticipants.size === 0) {
-                setPrimaryRemoteTrack(null);
-                setRemoteLeftNotice(true);
-              }
-            })
-            .on(RoomEvent.DataReceived, (payload: Uint8Array, participant) => {
-              try {
-                const text = new TextDecoder().decode(payload);
-                const msg = JSON.parse(text);
-                processIncomingMessageRef.current(msg, participant?.identity);
-              } catch (e) {
-                console.warn('[LiveKit] Data message parse error:', e);
-              }
-            });
-
-          await lkRoom.connect(tokenData.url, tokenData.token);
-
-          // Enable local media tracks in LiveKit room
-          if (cameraState) {
-            await lkRoom.localParticipant.setCameraEnabled(true);
-          }
-          if (micState) {
-            await lkRoom.localParticipant.setMicrophoneEnabled(true);
-          }
-
-          // Publish local video stream to self-view
-          const localVideoPub = Array.from(lkRoom.localParticipant.videoTrackPublications.values())[0];
-          if (localVideoPub?.track?.mediaStreamTrack) {
-            setLocalTrackObj(new MediaStream([localVideoPub.track.mediaStreamTrack]));
-          }
-
-          return; // LiveKit successfully initialized
-        }
-      } catch (lkErr) {
-        console.info('[LiveKit] SFU unavailable or unconfigured, engaging WebRTC WebSocket signaling fallback:', lkErr);
-      }
-
-      if (isCleanedUp) return;
-
-      // 2. WebRTC P2P WebSocket Signaling Fallback
-      const sigUrl = getSignalingUrl();
-      console.log('[WebRTC Signaling] Connecting to signaling server:', sigUrl);
-      ws = new WebSocket(sigUrl);
-      signalWsRef.current = ws;
-
-      ws.onopen = () => {
-        if (ws?.readyState === WebSocket.OPEN) {
-          console.log(`[WebRTC Signaling] WS connected, joining room ${roomCodeRef.current} as ${userRoleRef.current}`);
-          ws.send(
-            JSON.stringify({
-              type: 'join',
-              roomId: roomCodeRef.current,
-              role: userRoleRef.current,
-            })
-          );
-
-          heartbeatTimer = setInterval(() => {
-            if (ws?.readyState === WebSocket.OPEN) {
-              ws.send(JSON.stringify({ type: 'ping' }));
-            }
-          }, 20000);
-        }
-      };
-
-      ws.onmessage = (e) => {
-        try {
-          const data = JSON.parse(e.data);
-          handleSignalMessageRef.current(data);
-        } catch (err) {
-          console.error('Signaling message parse error:', err);
-        }
-      };
-
-      ws.onerror = (err) => {
-        console.warn('Signaling WebSocket error on:', sigUrl, err);
-      };
-
-      ws.onclose = () => {
-        console.log('[WebRTC Signaling] WS closed');
-        if (heartbeatTimer) clearInterval(heartbeatTimer);
-      };
-
-      // 3. Parallel Local Media Capture for WebRTC
-      try {
-        localStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true,
-        });
-
-        if (isCleanedUp) {
-          localStream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-
-        localStreamRef.current = localStream;
-        localStream.getAudioTracks().forEach((t) => (t.enabled = micState));
-        localStream.getVideoTracks().forEach((t) => (t.enabled = cameraState));
-
-        setLocalTrackObj(localStream);
-
-        const pc = createPeerConnection();
-        const audioTrack = localStream.getAudioTracks()[0];
-        const videoTrack = localStream.getVideoTracks()[0];
-        const transceivers = pc.getTransceivers();
-
-        const audioTransceiver = transceivers.find(
-          (t) => t.receiver.track.kind === 'audio' || t.sender.track?.kind === 'audio'
-        );
-        const videoTransceiver = transceivers.find(
-          (t) => t.receiver.track.kind === 'video' || t.sender.track?.kind === 'video'
-        );
-
-        if (audioTrack) {
-          if (audioTransceiver) {
-            await audioTransceiver.sender.replaceTrack(audioTrack).catch(console.warn);
-          } else {
-            pc.addTransceiver(audioTrack, { direction: 'sendrecv', streams: [localStream] });
-          }
-        }
-        if (videoTrack) {
-          if (videoTransceiver) {
-            await videoTransceiver.sender.replaceTrack(videoTrack).catch(console.warn);
-          } else {
-            pc.addTransceiver(videoTrack, { direction: 'sendrecv', streams: [localStream] });
-          }
-        }
-
-        if (signalWsRef.current?.readyState === WebSocket.OPEN && pc.signalingState === 'stable') {
-          console.log('[WebRTC] Local media ready, dispatching renegotiation offer');
-          await makeOffer();
-        }
-      } catch (err) {
-        console.warn('Media capture warning (call continues with text/ISL):', err);
-      }
-    };
-
-    initializeConnection();
-
-    return () => {
-      isCleanedUp = true;
-      if (heartbeatTimer) clearInterval(heartbeatTimer);
-      if (lkRoom) {
-        lkRoom.disconnect();
-        livekitRoomRef.current = null;
-        livekitConnectedRef.current = false;
-      }
-      if (localStream) {
-        localStream.getTracks().forEach((t) => t.stop());
-      }
-      if (remoteMediaStreamRef.current) {
-        remoteMediaStreamRef.current.getTracks().forEach((t) => t.stop());
-      }
-      remoteMediaStreamRef.current = new MediaStream();
-      if (ws) {
-        if (ws.readyState === WebSocket.OPEN) {
-          try {
-            ws.send(JSON.stringify({ type: 'leave', roomId: roomCodeRef.current }));
-          } catch (_) {}
-        }
-        ws.close();
-      }
-      if (peerConnectionRef.current) {
-        peerConnectionRef.current.close();
-        peerConnectionRef.current = null;
-      }
-    };
-  }, [accessToken, createPeerConnection, makeOffer, sessionId]);
-
-  // Toggle Controls Handlers
-  const handleToggleMic = async () => {
-    const next = !micState;
-    setMicState(next);
-
-    if (livekitRoomRef.current && livekitRoomRef.current.state === LiveKitConnState.Connected) {
-      try {
-        await livekitRoomRef.current.localParticipant.setMicrophoneEnabled(next);
-      } catch (e) {
-        console.warn('[LiveKit] Mic toggle note:', e);
-      }
-    }
-    localStreamRef.current?.getAudioTracks().forEach((t) => (t.enabled = next));
-  };
-
-  const handleToggleCamera = async () => {
-    const next = !cameraState;
-    setCameraState(next);
-
-    if (livekitRoomRef.current && livekitRoomRef.current.state === LiveKitConnState.Connected) {
-      try {
-        await livekitRoomRef.current.localParticipant.setCameraEnabled(next);
-        const localPubs = Array.from(livekitRoomRef.current.localParticipant.videoTrackPublications.values());
-        if (localPubs[0]?.track?.mediaStreamTrack) {
-          setLocalTrackObj(new MediaStream([localPubs[0].track.mediaStreamTrack]));
-        }
-      } catch (e) {
-        console.warn('[LiveKit] Camera toggle note:', e);
-      }
-    }
-    localStreamRef.current?.getVideoTracks().forEach((t) => (t.enabled = next));
-  };
-
-  // Device switching handlers
-  const handleSelectAudioDevice = async (deviceId: string) => {
-    setActiveAudioDeviceId(deviceId);
-    try {
-      if (livekitRoomRef.current && livekitRoomRef.current.state === LiveKitConnState.Connected) {
-        await livekitRoomRef.current.switchActiveDevice('audioinput', deviceId);
-      }
-      const newStream = await navigator.mediaDevices.getUserMedia({
-        audio: { deviceId: { exact: deviceId } },
-      });
-      const newTrack = newStream.getAudioTracks()[0];
-      if (newTrack && localStreamRef.current) {
-        const oldTrack = localStreamRef.current.getAudioTracks()[0];
-        if (oldTrack) {
-          localStreamRef.current.removeTrack(oldTrack);
-          oldTrack.stop();
-        }
-        localStreamRef.current.addTrack(newTrack);
-        newTrack.enabled = micState;
-
-        if (peerConnectionRef.current) {
-          const transceivers = peerConnectionRef.current.getTransceivers();
-          const audioTransceiver = transceivers.find(
-            (t) => t.receiver.track.kind === 'audio' || t.sender.track?.kind === 'audio'
-          );
-          if (audioTransceiver) {
-            await audioTransceiver.sender.replaceTrack(newTrack);
-          }
-          if (signalWsRef.current?.readyState === WebSocket.OPEN && peerConnectionRef.current.signalingState === 'stable') {
-            await makeOffer();
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('Error changing audio device:', err);
-    }
-  };
-
-  const handleSelectVideoDevice = async (deviceId: string) => {
-    setActiveVideoDeviceId(deviceId);
-    try {
-      if (livekitRoomRef.current && livekitRoomRef.current.state === LiveKitConnState.Connected) {
-        await livekitRoomRef.current.switchActiveDevice('videoinput', deviceId);
-      }
-      const newStream = await navigator.mediaDevices.getUserMedia({
-        video: { deviceId: { exact: deviceId } },
-      });
-      const newTrack = newStream.getVideoTracks()[0];
-      if (newTrack && localStreamRef.current) {
-        const oldTrack = localStreamRef.current.getVideoTracks()[0];
-        if (oldTrack) {
-          localStreamRef.current.removeTrack(oldTrack);
-          oldTrack.stop();
-        }
-        localStreamRef.current.addTrack(newTrack);
-        newTrack.enabled = cameraState;
-        setLocalTrackObj(new MediaStream(localStreamRef.current.getTracks()));
-
-        if (peerConnectionRef.current) {
-          const transceivers = peerConnectionRef.current.getTransceivers();
-          const videoTransceiver = transceivers.find(
-            (t) => t.receiver.track.kind === 'video' || t.sender.track?.kind === 'video'
-          );
-          if (videoTransceiver) {
-            await videoTransceiver.sender.replaceTrack(newTrack);
-          }
-          if (signalWsRef.current?.readyState === WebSocket.OPEN && peerConnectionRef.current.signalingState === 'stable') {
-            await makeOffer();
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('Error changing video device:', err);
-    }
-  };
-
-  const handleToggleScreen = async () => {
-    const next = !screenShareState;
-    if (livekitRoomRef.current && livekitRoomRef.current.state === LiveKitConnState.Connected) {
-      try {
-        await livekitRoomRef.current.localParticipant.setScreenShareEnabled(next);
-        setScreenShareState(next);
-        return;
-      } catch (e) {
-        console.warn('[LiveKit] Screen share note:', e);
-      }
-    }
-
-    try {
-      if (!screenShareState) {
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-        const screenTrack = screenStream.getVideoTracks()[0];
-        if (peerConnectionRef.current && screenTrack) {
-          const transceivers = peerConnectionRef.current.getTransceivers();
-          const videoTransceiver = transceivers.find(
-            (t) => t.receiver.track.kind === 'video' || t.sender.track?.kind === 'video'
-          );
-          if (videoTransceiver) {
-            await videoTransceiver.sender.replaceTrack(screenTrack);
-          }
-          if (signalWsRef.current?.readyState === WebSocket.OPEN && peerConnectionRef.current.signalingState === 'stable') {
-            await makeOffer();
-          }
-        }
-        screenTrack.onended = () => {
-          setScreenShareState(false);
-          const localVideo = localStreamRef.current?.getVideoTracks()[0];
-          if (peerConnectionRef.current && localVideo) {
-            const transceivers = peerConnectionRef.current.getTransceivers();
-            const videoTransceiver = transceivers.find(
-              (t) => t.receiver.track.kind === 'video' || t.sender.track?.kind === 'video'
-            );
-            if (videoTransceiver) {
-              videoTransceiver.sender.replaceTrack(localVideo).then(() => {
-                if (signalWsRef.current?.readyState === WebSocket.OPEN && peerConnectionRef.current?.signalingState === 'stable') {
-                  makeOffer();
-                }
-              }).catch(console.warn);
-            }
-          }
-        };
-        setScreenShareState(true);
-      } else {
-        setScreenShareState(false);
-        const localVideo = localStreamRef.current?.getVideoTracks()[0];
-        if (peerConnectionRef.current && localVideo) {
-          const transceivers = peerConnectionRef.current.getTransceivers();
-          const videoTransceiver = transceivers.find(
-            (t) => t.receiver.track.kind === 'video' || t.sender.track?.kind === 'video'
-          );
-          if (videoTransceiver) {
-            await videoTransceiver.sender.replaceTrack(localVideo);
-            if (signalWsRef.current?.readyState === WebSocket.OPEN && peerConnectionRef.current.signalingState === 'stable') {
-              await makeOffer();
-            }
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('Screen share toggle note:', e);
-    }
-  };
+  }, [isDeafWorkspace, sendAppData, sessionId, user]);
 
   const getConnectionStatusText = () => {
     switch (connectionState) {
-      case LkConnectionState.Connected:
+      case CallConnectionState.Connected:
         return 'Connected';
-      case LkConnectionState.Connecting:
+      case CallConnectionState.Connecting:
         return 'Connecting...';
-      case LkConnectionState.Reconnecting:
+      case CallConnectionState.Reconnecting:
         return 'Reconnecting...';
-      case LkConnectionState.Disconnected:
+      case CallConnectionState.Disconnected:
         return 'Disconnected';
       default:
         return 'Connected';
@@ -1228,6 +327,7 @@ export const OnlineSessionPage: React.FC = () => {
     setInterimTranscripts({});
     setAvatarTriggerText('');
     processedEventIdsRef.current.clear();
+    disconnect();
 
     if (sessionId && accessToken) {
       try {
@@ -1247,24 +347,30 @@ export const OnlineSessionPage: React.FC = () => {
     onLeaveCall: handleOpenEndModal,
     user,
 
-    connectionState,
+    connectionState: connectionState as LkConnectionState,
     getConnectionStatusText,
     micState,
     cameraState,
     screenShareState,
-    handleToggleMic,
-    handleToggleCamera,
-    handleToggleScreen,
+    handleToggleMic: async () => {
+      await toggleMic();
+    },
+    handleToggleCamera: async () => {
+      await toggleCamera();
+    },
+    handleToggleScreen: async () => {
+      await toggleScreen();
+    },
 
     audioDevices,
     activeAudioDeviceId,
-    setActiveAudioDevice: handleSelectAudioDevice,
+    setActiveAudioDevice: switchAudioDevice,
     videoDevices,
     activeVideoDeviceId,
-    setActiveVideoDevice: handleSelectVideoDevice,
+    setActiveVideoDevice: switchVideoDevice,
     speakerDevices,
     activeSpeakerDeviceId,
-    setActiveSpeakerDevice: setActiveSpeakerDeviceId,
+    setActiveSpeakerDevice: switchSpeakerDevice,
     showMicDevices,
     setShowMicDevices,
     showCameraDevices,
@@ -1274,8 +380,8 @@ export const OnlineSessionPage: React.FC = () => {
     speakerVolume,
     setSpeakerVolume,
 
-    localTrack: localTrackObj,
-    primaryRemoteTrack: primaryRemoteTrack,
+    localTrack: localStream,
+    primaryRemoteTrack: remoteStream,
 
     finalTranscripts,
     interimTranscripts,
