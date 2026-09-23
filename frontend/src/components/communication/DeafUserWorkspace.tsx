@@ -185,6 +185,8 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
     committedSign,
     isModelOnline,
     gestureState,
+    signingCountdown,
+    signingProgress,
     startRecognition,
     stopRecognition,
   } = useSambhavModel2();
@@ -443,7 +445,7 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
           {/* Live ISL Gesture Recognition HUD Overlay */}
           {cameraState && (
             <div className="absolute top-2.5 right-3 z-30 flex items-center gap-2">
-              {gestureState === 'COMMITTED' || (recognizedSign && gestureState !== 'IDLE') ? (
+              {gestureState === 'COMMITTED' || (recognizedSign && gestureState !== 'IDLE' && gestureState !== 'COLLECTING' && gestureState !== 'INFERENCE') ? (
                 <div className="bg-black/85 backdrop-blur-md px-3 py-1 rounded-xl border border-emerald-500/50 text-white flex items-center gap-2 shadow-xl animate-scaleUp">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
                   <span className="text-xs font-black text-emerald-400 uppercase tracking-wide">
@@ -453,25 +455,23 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
                     {Math.round(signConfidence * 100)}%
                   </span>
                 </div>
-              ) : gestureState === 'VALIDATING' ? (
-                <div className="bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-xl border border-blue-400/50 text-blue-300 text-[10px] font-bold flex items-center gap-1.5 animate-pulse">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
-                  <span>Validating sign...</span>
+              ) : gestureState === 'INFERENCE' ? (
+                <div className="bg-black/85 backdrop-blur-md px-3 py-1 rounded-xl border border-indigo-400/60 text-indigo-300 text-[10px] font-bold flex items-center gap-2 shadow-lg animate-pulse">
+                  <span className="w-2 h-2 rounded-full bg-indigo-400 animate-spin" />
+                  <span>Analyzing with Sambhav Model 2...</span>
                 </div>
-              ) : gestureState === 'COLLECTING' || gestureState === 'SIGN_DETECTED' ? (
-                <div className="bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-xl border border-[#fe9832]/50 text-[#fe9832] text-[10px] font-bold flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#fe9832] animate-ping" />
-                  <span>Capturing gesture...</span>
-                </div>
-              ) : gestureState === 'WAIT_FOR_SIGN_END' ? (
-                <div className="bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-xl border border-amber-400/50 text-amber-300 text-[10px] font-bold flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
-                  <span>Release hand to sign again</span>
+              ) : gestureState === 'COLLECTING' ? (
+                <div className="bg-black/85 backdrop-blur-md px-3 py-1 rounded-xl border border-amber-400/60 text-amber-300 text-[10px] font-bold flex items-center gap-2 shadow-lg">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                  <span>Signing ({signingCountdown ?? 3}s)...</span>
+                  <div className="w-12 h-1.5 bg-white/20 rounded-full overflow-hidden">
+                    <div className="h-full bg-amber-400 transition-all duration-100" style={{ width: `${signingProgress}%` }} />
+                  </div>
                 </div>
               ) : (
                 <div className="bg-black/65 backdrop-blur-md px-2.5 py-1 rounded-xl border border-white/15 text-white/80 text-[10px] font-bold flex items-center gap-1.5">
-                  <span className={`w-1.5 h-1.5 rounded-full ${isModelOnline ? 'bg-emerald-400 animate-ping' : 'bg-[#fe9832] animate-pulse'}`} />
-                  <span>{isModelOnline ? 'No sign detected • 169-Class Active' : 'AI Gesture Recognition (Offline)'}</span>
+                  <span className={`w-1.5 h-1.5 rounded-full ${isModelOnline ? 'bg-emerald-400' : 'bg-[#fe9832] animate-pulse'}`} />
+                  <span>{isModelOnline ? 'Ready to Sign (3s window)' : 'AI Gesture Recognition (Offline)'}</span>
                 </div>
               )}
             </div>

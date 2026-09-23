@@ -90,7 +90,8 @@ export const TranslatePage: React.FC = () => {
     pingLatencyMs,
     handsDetectedCount,
     gestureState,
-    telemetry,
+    signingCountdown,
+    signingProgress,
     startRecognition: startISLRecognition,
     stopRecognition: stopISLRecognition,
   } = useSambhavModel2();
@@ -1096,17 +1097,22 @@ export const TranslatePage: React.FC = () => {
                         </span>
                       </div>
                       {isISLRecognizing && (
-                        <div className="bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded text-[9px] text-gray-300 font-medium self-start flex items-center gap-1">
-                          <span className={`w-1.5 h-1.5 rounded-full ${gestureState === 'SIGN_DETECTED' || gestureState === 'COMMITTED' ? 'bg-emerald-400' : gestureState === 'COLLECTING' ? 'bg-amber-400 animate-pulse' : 'bg-indigo-400'}`} />
+                        <div className="bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded text-[9px] text-gray-300 font-medium self-start flex items-center gap-1.5">
+                          <span className={`w-1.5 h-1.5 rounded-full ${gestureState === 'SIGN_DETECTED' || gestureState === 'COMMITTED' ? 'bg-emerald-400' : gestureState === 'COLLECTING' ? 'bg-amber-400 animate-ping' : gestureState === 'INFERENCE' ? 'bg-indigo-400 animate-spin' : 'bg-gray-400'}`} />
                           <span>
                             Status: {gestureState === 'COLLECTING'
-                              ? `Collecting (${telemetry.bufferedFrames}/60 frames)`
+                              ? `Signing (${signingCountdown ?? 3}s)...`
+                              : gestureState === 'INFERENCE' || gestureState === 'DETECTING'
+                              ? 'Analyzing Gesture...'
                               : gestureState === 'SIGN_DETECTED' || gestureState === 'COMMITTED'
                               ? `Detected: ${recognizedSign || 'Active Sign'}`
-                              : gestureState === 'DETECTING'
-                              ? 'Analyzing Gesture...'
-                              : gestureState}
+                              : 'Ready to Sign'}
                           </span>
+                          {gestureState === 'COLLECTING' && (
+                            <div className="w-10 h-1 bg-white/20 rounded-full overflow-hidden ml-0.5">
+                              <div className="h-full bg-amber-400 transition-all duration-100" style={{ width: `${signingProgress}%` }} />
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

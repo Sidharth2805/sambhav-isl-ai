@@ -93,12 +93,17 @@ export function useSambhavModel2() {
   const [captureCountdown, setCaptureCountdown] = useState<number | null>(null);
   const [telemetry, setTelemetry] = useState<SambhavTelemetry>(defaultTelemetry);
 
+  const [signingCountdown, setSigningCountdown] = useState<number | null>(null);
+  const [signingProgress, setSigningProgress] = useState<number>(0);
+
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
   const animFrameIdRef = useRef<number | null>(null);
   const frameBufferRef = useRef<FrameLandmarks126[]>([]);
   const isProcessingRef = useRef<boolean>(false);
-  const lastInferenceTimeRef = useRef<number>(0);
-  const consecutivePredictionsRef = useRef<Map<string, number>>(new Map());
+  const isAnalyzingRef = useRef<boolean>(false);
+  const signingStartTimeRef = useRef<number | null>(null);
+  const cooldownUntilRef = useRef<number>(0);
+  const noHandCountRef = useRef<number>(0);
   const lastCommittedLabelRef = useRef<string>('');
   const lastCommitTimeRef = useRef<number>(0);
   const isCapturingManualRef = useRef<boolean>(false);
@@ -187,109 +192,145 @@ export function useSambhavModel2() {
       manualCaptureBufferRef.current.push(vector);
     }
 
+    const now = Date.now();
+
+    // 3. 3-Second Gesture Capture & Immediate Analysis State Machine
     if (hasHand) {
-      frameBufferRef.current.push(vector);
-      if (frameBufferRef.current.length > 90) {
-        frameBufferRef.current.shift();
+      noHandCountRef.current = 0;
+
+      // If currently within cooldown period from previous recognition, wait
+      if (now < cooldownUntilRef.current || isAnalyzingRef.current) {
+        return;
       }
-      if (frameBufferRef.current.length < 10) {
+
+      // Start 3-second signing collection window
+      if (signingStartTimeRef.current === null) {
+        signingStartTimeRef.current = now;
+        frameBufferRef.current = [];
         setGestureState('COLLECTING');
       }
-    } else {
-      if (frameBufferRef.current.length > 0) {
-        frameBufferRef.current.shift();
-      }
-      if (frameBufferRef.current.length === 0) {
-        setGestureState('IDLE');
-        setCurrentGesture(null);
-        setConfidence(0);
-        consecutivePredictionsRef.current.clear();
-      }
-    }
 
-    const currentBufferedCount = frameBufferRef.current.length;
+      frameBufferRef.current.push(vector);
 
-    // Update live telemetry
-    setTelemetry((prev) => ({
-      ...prev,
-      cameraActive: true,
-      handsDetected,
-      bufferedFrames: currentBufferedCount,
-      featureVectorDim: 126,
-      slot0Features: slot0HasData,
-      slot1Features: slot1HasData,
-      minVal,
-      maxVal,
-      meanVal,
-    }));
+      const elapsedMs = now - signingStartTimeRef.current;
+      const remainingSecs = Math.max(0, Math.ceil((3000 - elapsedMs) / 1000));
+      const progress = Math.min(100, Math.round((elapsedMs / 3000) * 100));
 
-    const now = Date.now();
-    // Run real-time sliding window inference every 100ms when at least 10 frames are collected
-    if (frameBufferRef.current.length >= 10 && now - lastInferenceTimeRef.current > 100) {
-      lastInferenceTimeRef.current = now;
+      setSigningCountdown(remainingSecs);
+      setSigningProgress(progress);
 
-      setTelemetry((prev) => ({ ...prev, requestStatus: 'SENT' }));
-      const startReq = performance.now();
-
-      const sequence60 = resampleSequenceTo60(frameBufferRef.current);
-      const prediction = await sambhavModel2Engine.predictSequence(sequence60);
-      const latencyMs = Math.round(performance.now() - startReq);
-
+      // Update live telemetry
       setTelemetry((prev) => ({
         ...prev,
-        requestStatus: prediction.isReliable ? 'RECEIVED' : 'REJECTED',
-        lastLatencyMs: latencyMs,
-        recognitionSource: 'BiLSTM',
-        top1Label: prediction.label !== 'NO_ACTIVE_SIGN' ? prediction.phrase || prediction.label : '',
-        top1Confidence: prediction.confidence,
-        top2Label: prediction.top2_label || '',
-        top2Confidence: prediction.top2_confidence || 0,
-        margin: prediction.margin || 0,
+        cameraActive: true,
+        handsDetected,
+        bufferedFrames: frameBufferRef.current.length,
+        featureVectorDim: 126,
+        slot0Features: slot0HasData,
+        slot1Features: slot1HasData,
+        minVal,
+        maxVal,
+        meanVal,
       }));
 
-      if (prediction.isReliable && prediction.label !== 'NO_ACTIVE_SIGN') {
-        const displaySign = prediction.phrase || prediction.label;
-        setCurrentGesture(displaySign);
-        setConfidence(prediction.confidence);
-        setTranslatedText(displaySign);
+      // When full 3.0-second window is reached and we have collected sufficient frames:
+      if (elapsedMs >= 3000 && frameBufferRef.current.length >= 15) {
+        isAnalyzingRef.current = true;
+        setGestureState('INFERENCE');
+        signingStartTimeRef.current = null;
+        setSigningCountdown(0);
+        setSigningProgress(100);
 
-        // Count consecutive occurrences for commit stability
-        const prevCount = consecutivePredictionsRef.current.get(prediction.label) || 0;
-        const newCount = prevCount + 1;
-        consecutivePredictionsRef.current.set(prediction.label, newCount);
+        const capturedFrames = [...frameBufferRef.current];
+        frameBufferRef.current = [];
 
-        // Commit if sustained over 2 consecutive windows and not duplicate within 1.0s
-        if (newCount >= 2) {
-          const isSameAsLast = lastCommittedLabelRef.current === prediction.label;
-          const timeSinceLastCommit = now - lastCommitTimeRef.current;
+        setTelemetry((prev) => ({ ...prev, requestStatus: 'SENT' }));
+        const startReq = performance.now();
 
-          if (!isSameAsLast || timeSinceLastCommit > 1000) {
+        // Resample 3-second accumulated sequence to standard 60 frames for BiLSTM
+        const sequence60 = resampleSequenceTo60(capturedFrames);
+
+        try {
+          const prediction = await sambhavModel2Engine.predictSequence(sequence60);
+          const latencyMs = Math.round(performance.now() - startReq);
+
+          setTelemetry((prev) => ({
+            ...prev,
+            requestStatus: prediction.isReliable ? 'RECEIVED' : 'REJECTED',
+            lastLatencyMs: latencyMs,
+            recognitionSource: 'BiLSTM',
+            top1Label: prediction.label !== 'NO_ACTIVE_SIGN' ? prediction.phrase || prediction.label : '',
+            top1Confidence: prediction.confidence,
+            top2Label: prediction.top2_label || '',
+            top2Confidence: prediction.top2_confidence || 0,
+            margin: prediction.margin || 0,
+          }));
+
+          if (prediction.isReliable && prediction.label !== 'NO_ACTIVE_SIGN') {
+            const displaySign = prediction.phrase || prediction.label;
+            setCurrentGesture(displaySign);
+            setConfidence(prediction.confidence);
+            setTranslatedText(displaySign);
+
             lastCommittedLabelRef.current = prediction.label;
-            lastCommitTimeRef.current = now;
+            lastCommitTimeRef.current = Date.now();
 
             const committed: SambhavCommittedEvent = {
               text: displaySign,
               confidence: prediction.confidence,
-              sequenceId: now,
-              timestamp: now,
-              eventId: `sambhav-${now}-${Math.random().toString(36).substring(2, 6)}`,
+              sequenceId: Date.now(),
+              timestamp: Date.now(),
+              eventId: `sambhav-3s-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
             };
             setCommittedSign(committed);
             setGestureState('COMMITTED');
+
+            // Brief 0.8s transition pause before allowing the next 3s sign to begin
+            cooldownUntilRef.current = Date.now() + 800;
+
+            setTimeout(() => {
+              setGestureState('IDLE');
+              setSigningCountdown(null);
+              setSigningProgress(0);
+            }, 1400);
           } else {
-            setGestureState('SIGN_DETECTED');
+            setGestureState('IDLE');
+            setSigningCountdown(null);
+            setSigningProgress(0);
+            cooldownUntilRef.current = Date.now() + 400;
           }
-        } else {
-          setGestureState('SIGN_DETECTED');
-        }
-      } else {
-        consecutivePredictionsRef.current.clear();
-        if (frameBufferRef.current.length >= 10) {
-          setGestureState('DETECTING');
+        } catch (err) {
+          console.error('[Sambhav Model 2] 3s Inference error:', err);
+          setGestureState('IDLE');
+          setSigningCountdown(null);
+          setSigningProgress(0);
+        } finally {
+          isAnalyzingRef.current = false;
         }
       }
+    } else {
+      // Hand not in view
+      noHandCountRef.current += 1;
+
+      // If hand is absent for ~0.5s (15 frames), reset the 3s signing window cleanly
+      if (noHandCountRef.current > 15 && !isAnalyzingRef.current) {
+        signingStartTimeRef.current = null;
+        frameBufferRef.current = [];
+        setSigningCountdown(null);
+        setSigningProgress(0);
+        if (gestureState === 'COLLECTING') {
+          setGestureState('IDLE');
+        }
+      }
+
+      setTelemetry((prev) => ({
+        ...prev,
+        cameraActive: true,
+        handsDetected: 0,
+        bufferedFrames: frameBufferRef.current.length,
+      }));
     }
-  }, []);
+  }, [gestureState]);
 
   const start5sCapture = useCallback(() => {
     if (isCapturingManualRef.current) return;
@@ -414,6 +455,8 @@ export function useSambhavModel2() {
     handsDetectedCount,
     isCapturingManual,
     captureCountdown,
+    signingCountdown,
+    signingProgress,
     telemetry,
     start5sCapture,
     startRecognition,
