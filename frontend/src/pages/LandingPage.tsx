@@ -5,6 +5,7 @@ import { useAccessibility } from '../hooks/useAccessibility';
 import { Chatbot } from '../components/chatbot/Chatbot';
 import { AccessibilityModal } from '../components/accessibility/AccessibilityModal';
 import { AccessibilityOverlays } from '../components/accessibility/AccessibilityOverlays';
+import { GallerySection } from '../components/landing/GallerySection';
 
 export const SAMBHAV_HERO_SLIDES = [
   {
@@ -392,6 +393,14 @@ export const LandingPage: React.FC = () => {
                 className="text-[#334155] dark:text-[#cbd5e1] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors cursor-pointer font-bold"
               >
                 {t('nav.features', 'Features')}
+              </button>
+              <button
+                type="button"
+                onClick={() => scrollTo('gallery-section')}
+                className="text-[#334155] dark:text-[#cbd5e1] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors cursor-pointer font-bold flex items-center gap-1.5 group"
+              >
+                <span>{t('nav.gallery', 'Gallery')}</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-[#fe9832] group-hover:scale-125 transition-transform animate-pulse" />
               </button>
               <button
                 type="button"
@@ -1294,6 +1303,11 @@ export const LandingPage: React.FC = () => {
         </section>
 
         {/* ------------------------------------------------------------------------- */}
+        {/* 9. VISUAL SHOWCASE & COMMUNITY GALLERY                                    */}
+        {/* ------------------------------------------------------------------------- */}
+        <GallerySection />
+
+        {/* ------------------------------------------------------------------------- */}
         {/* 10. FREQUENTLY ASKED QUESTIONS                                             */}
         {/* ------------------------------------------------------------------------- */}
         <section id="faq-section" className="py-12 sm:py-16 lg:py-20 bg-white dark:bg-[#0d121d] border-t border-[#e2e8f0] dark:border-[#2d3133] transition-colors">
@@ -1553,6 +1567,12 @@ export const LandingPage: React.FC = () => {
                 <li>
                   <button type="button" onClick={() => scrollTo('testimonials-section')} className="text-[#475569] dark:text-[#94a3b8] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors cursor-pointer text-left">
                     {t('footer.link.testimonials', 'Testimonials')}
+                  </button>
+                </li>
+                <li>
+                  <button type="button" onClick={() => scrollTo('gallery-section')} className="text-[#475569] dark:text-[#94a3b8] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors cursor-pointer text-left font-semibold flex items-center gap-1.5">
+                    <span>{t('footer.link.gallery', 'Visual Showcase & Gallery')}</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#fe9832]" />
                   </button>
                 </li>
                 <li>
