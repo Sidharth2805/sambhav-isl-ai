@@ -22,6 +22,7 @@ import { LearnISLPage } from './pages/LearnISLPage';
 import { HelpPage } from './pages/HelpPage';
 import { NewsPage } from './pages/NewsPage';
 import { CulturalISLPage } from './pages/CulturalISLPage';
+import { GalleryPage } from './pages/GalleryPage';
 import { ISLModelTestPage } from './pages/ISLModelTestPage';
 import { ISLModelDiagnosticPage } from './pages/ISLModelDiagnosticPage';
 
@@ -35,6 +36,8 @@ const App: React.FC = () => {
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<LandingPage />} />
+            <Route path="/gallery" element={<GalleryPage />} />
+            <Route path="/showcase" element={<GalleryPage />} />
             <Route path="/accessibility" element={<PlaceholderPage />} />
 
             {/* Anonymous Only Routes */}
@@ -94,6 +97,8 @@ const App: React.FC = () => {
                 <Route path="/explore" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/help" element={<HelpPage />} />
                 <Route path="/news" element={<NewsPage />} />
+                <Route path="/gallery" element={<GalleryPage />} />
+                <Route path="/showcase" element={<GalleryPage />} />
                 <Route path="/history" element={<Navigate to="/communicate?tab=history" replace />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/settings" element={<ProfilePage />} />
