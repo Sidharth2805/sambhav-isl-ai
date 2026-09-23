@@ -233,21 +233,18 @@ export function useSambhavModel2() {
         meanVal,
       }));
 
-      // When full 3.0-second window is reached and we have collected sufficient frames:
-      if (elapsedMs >= 3000 && frameBufferRef.current.length >= 15) {
+      // Helper to execute sequence prediction and committed sign lifecycle
+      const executeSequenceInference = async (capturedFrames: FrameLandmarks126[]) => {
         isAnalyzingRef.current = true;
         setGestureState('INFERENCE');
         signingStartTimeRef.current = null;
         setSigningCountdown(0);
         setSigningProgress(100);
 
-        const capturedFrames = [...frameBufferRef.current];
-        frameBufferRef.current = [];
-
         setTelemetry((prev) => ({ ...prev, requestStatus: 'SENT' }));
         const startReq = performance.now();
 
-        // Resample 3-second accumulated sequence to standard 60 frames for BiLSTM
+        // Resample accumulated gesture sequence to standard 60 frames for BiLSTM
         const sequence60 = resampleSequenceTo60(capturedFrames);
 
         try {
@@ -280,12 +277,12 @@ export function useSambhavModel2() {
               confidence: prediction.confidence,
               sequenceId: Date.now(),
               timestamp: Date.now(),
-              eventId: `sambhav-3s-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+              eventId: `sambhav-seq-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
             };
             setCommittedSign(committed);
             setGestureState('COMMITTED');
 
-            // Brief 0.8s transition pause before allowing the next 3s sign to begin
+            // Brief 0.8s transition pause before allowing the next sign to begin
             cooldownUntilRef.current = Date.now() + 800;
 
             setTimeout(() => {
@@ -300,20 +297,96 @@ export function useSambhavModel2() {
             cooldownUntilRef.current = Date.now() + 400;
           }
         } catch (err) {
-          console.error('[Sambhav Model 2] 3s Inference error:', err);
+          console.error('[Sambhav Model 2] Inference error:', err);
           setGestureState('IDLE');
           setSigningCountdown(null);
           setSigningProgress(0);
         } finally {
           isAnalyzingRef.current = false;
         }
+      };
+
+      // When full 3.0-second window is reached and we have collected sufficient frames:
+      if (elapsedMs >= 3000 && frameBufferRef.current.length >= 15) {
+        const capturedFrames = [...frameBufferRef.current];
+        frameBufferRef.current = [];
+        await executeSequenceInference(capturedFrames);
       }
     } else {
       // Hand not in view
       noHandCountRef.current += 1;
 
-      // If hand is absent for ~0.5s (15 frames), reset the 3s signing window cleanly
-      if (noHandCountRef.current > 15 && !isAnalyzingRef.current) {
+      // Natural gesture completion: If the user was signing and drops their hand after >=15 frames:
+      if (noHandCountRef.current >= 6 && frameBufferRef.current.length >= 15 && !isAnalyzingRef.current && gestureState === 'COLLECTING') {
+        const capturedFrames = [...frameBufferRef.current];
+        frameBufferRef.current = [];
+        isAnalyzingRef.current = true;
+        setGestureState('INFERENCE');
+        signingStartTimeRef.current = null;
+        setSigningCountdown(0);
+        setSigningProgress(100);
+
+        setTelemetry((prev) => ({ ...prev, requestStatus: 'SENT' }));
+        const startReq = performance.now();
+        const sequence60 = resampleSequenceTo60(capturedFrames);
+
+        try {
+          const prediction = await sambhavModel2Engine.predictSequence(sequence60);
+          const latencyMs = Math.round(performance.now() - startReq);
+
+          setTelemetry((prev) => ({
+            ...prev,
+            requestStatus: prediction.isReliable ? 'RECEIVED' : 'REJECTED',
+            lastLatencyMs: latencyMs,
+            recognitionSource: 'BiLSTM',
+            top1Label: prediction.label !== 'NO_ACTIVE_SIGN' ? prediction.phrase || prediction.label : '',
+            top1Confidence: prediction.confidence,
+            top2Label: prediction.top2_label || '',
+            top2Confidence: prediction.top2_confidence || 0,
+            margin: prediction.margin || 0,
+          }));
+
+          if (prediction.isReliable && prediction.label !== 'NO_ACTIVE_SIGN') {
+            const displaySign = prediction.phrase || prediction.label;
+            setCurrentGesture(displaySign);
+            setConfidence(prediction.confidence);
+            setTranslatedText(displaySign);
+
+            lastCommittedLabelRef.current = prediction.label;
+            lastCommitTimeRef.current = Date.now();
+
+            const committed: SambhavCommittedEvent = {
+              text: displaySign,
+              confidence: prediction.confidence,
+              sequenceId: Date.now(),
+              timestamp: Date.now(),
+              eventId: `sambhav-seq-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+            };
+            setCommittedSign(committed);
+            setGestureState('COMMITTED');
+            cooldownUntilRef.current = Date.now() + 800;
+
+            setTimeout(() => {
+              setGestureState('IDLE');
+              setSigningCountdown(null);
+              setSigningProgress(0);
+            }, 1400);
+          } else {
+            setGestureState('IDLE');
+            setSigningCountdown(null);
+            setSigningProgress(0);
+            cooldownUntilRef.current = Date.now() + 400;
+          }
+        } catch (err) {
+          console.error('[Sambhav Model 2] Natural completion inference error:', err);
+          setGestureState('IDLE');
+          setSigningCountdown(null);
+          setSigningProgress(0);
+        } finally {
+          isAnalyzingRef.current = false;
+        }
+      } else if (noHandCountRef.current > 15 && !isAnalyzingRef.current) {
+        // Hand absent for ~0.5s without active buffer: reset cleanly
         signingStartTimeRef.current = null;
         frameBufferRef.current = [];
         setSigningCountdown(null);

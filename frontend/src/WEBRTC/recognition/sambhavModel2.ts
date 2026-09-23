@@ -47,7 +47,8 @@ export class SambhavModel2InferenceEngine {
         const data = await response.json();
         const rawLabel = data.gesture || data.label || 'NO_ACTIVE_SIGN';
         const confidence = typeof data.confidence === 'number' ? data.confidence : 0;
-        const isReliable = confidence >= 0.20 && rawLabel !== 'NO_ACTIVE_SIGN';
+        const margin = typeof data.margin === 'number' ? data.margin : 0;
+        const isReliable = confidence >= 0.25 && margin >= 0.08 && rawLabel !== 'NO_ACTIVE_SIGN';
         this.endpoint = ep;
 
         if (import.meta.env.DEV) {
