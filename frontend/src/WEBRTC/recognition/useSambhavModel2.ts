@@ -341,10 +341,16 @@ export function useSambhavModel2() {
     }, 1000);
   }, []);
 
+  const isRecognizingRef = useRef<boolean>(false);
+
   const startRecognition = useCallback(
     async (videoElement: HTMLVideoElement | null) => {
       if (!videoElement) return;
+      if (videoElementRef.current === videoElement && isRecognizingRef.current) {
+        return; // Already actively recognizing this video element — preserve buffered frames!
+      }
       videoElementRef.current = videoElement;
+      isRecognizingRef.current = true;
       setIsRecognizing(true);
       frameBufferRef.current = [];
       setTelemetry((prev) => ({ ...prev, cameraActive: true }));
@@ -366,6 +372,8 @@ export function useSambhavModel2() {
   );
 
   const stopRecognition = useCallback((_reason?: string) => {
+    isRecognizingRef.current = false;
+    videoElementRef.current = null;
     setIsRecognizing(false);
     if (animFrameIdRef.current) {
       cancelAnimationFrame(animFrameIdRef.current);

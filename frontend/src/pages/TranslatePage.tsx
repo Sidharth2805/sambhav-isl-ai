@@ -87,20 +87,13 @@ export const TranslatePage: React.FC = () => {
     translatedText: recognizedSignPhrase,
     committedSign,
     isModelOnline,
-    activeEndpoint,
     pingLatencyMs,
     handsDetectedCount,
     gestureState,
-    isCapturingManual,
-    captureCountdown,
     telemetry,
-    start5sCapture,
     startRecognition: startISLRecognition,
     stopRecognition: stopISLRecognition,
   } = useSambhavModel2();
-
-  const [showGuideModal, setShowGuideModal] = useState(false);
-  const [showDebugHUD, setShowDebugHUD] = useState(true);
 
   // Speech & Captions State
   const [isListening, setIsListening] = useState(false);
@@ -123,16 +116,6 @@ export const TranslatePage: React.FC = () => {
   // ISL to Text Signed Conversation Feed
   const [signedMessages, setSignedMessages] = useState<{ id: string; sign: string; phrase: string; confidence: number; timestamp: string }[]>([]);
   const signedMessagesEndRef = useRef<HTMLDivElement | null>(null);
-
-  // Sambhav Model 2 Video Recording & Gloss-to-English State
-  const [glossWords, setGlossWords] = useState<string[]>([]);
-  const [englishSentence, setEnglishSentence] = useState<string>('');
-  const [isVideoRecording, setIsVideoRecording] = useState<boolean>(false);
-  const [isVideoProcessing, setIsVideoProcessing] = useState<boolean>(false);
-  const [recordingCountdown, setRecordingCountdown] = useState<number | null>(null);
-  const videoRecorderRef = useRef<MediaRecorder | null>(null);
-  const recordingTimerRef = useRef<any>(null);
-  const countdownIntervalRef = useRef<any>(null);
 
   // ISL Avatar Sequence State
   const [_currentSequence, setCurrentSequence] = useState<SignSequenceDto | null>(null);
@@ -237,222 +220,6 @@ export const TranslatePage: React.FC = () => {
       speak(trimmed);
     }
   }, [autoSpeakGestures, speak]);
-
-  // 6-Second Video Sign Capture using Sambhav Model 2 BiLSTM (POST /predict-video)
-  const captureSignVideo = useCallback(async () => {
-    if (isVideoRecording || isVideoProcessing) return;
-    const stream = mediaStreamRef.current || (gestureVideoRef.current?.srcObject as MediaStream);
-    if (!stream) {
-      alert('Camera stream not available. Please ensure camera is active.');
-      return;
-    }
-
-    let mimeType = '';
-    if (typeof MediaRecorder !== 'undefined') {
-      if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) mimeType = 'video/webm;codecs=vp9';
-      else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) mimeType = 'video/webm;codecs=vp8';
-      else if (MediaRecorder.isTypeSupported('video/webm')) mimeType = 'video/webm';
-      else if (MediaRecorder.isTypeSupported('video/mp4')) mimeType = 'video/mp4';
-    }
-
-    try {
-      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-      videoRecorderRef.current = recorder;
-      const chunks: Blob[] = [];
-
-      recorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) chunks.push(e.data);
-      };
-
-      recorder.onstop = async () => {
-        setIsVideoRecording(false);
-        setRecordingCountdown(null);
-        setIsVideoProcessing(true);
-
-        try {
-          if (chunks.length === 0) throw new Error('No video data was recorded.');
-          const videoBlob = new Blob(chunks, { type: mimeType || 'video/webm' });
-          const formData = new FormData();
-          formData.append('file', videoBlob, 'sign.webm');
-
-          const endpointsToTry = [
-            activeEndpoint || 'http://127.0.0.1:8000',
-            'http://localhost:8000',
-            'https://sambhav-ml.onrender.com'
-          ];
-
-          let success = false;
-          let resultData: any = null;
-
-          for (const ep of endpointsToTry) {
-            try {
-              const res = await fetch(`${ep}/predict-video`, {
-                method: 'POST',
-                body: formData,
-              });
-              if (res.ok) {
-                resultData = await res.json();
-                success = true;
-                break;
-              }
-            } catch {
-              // Try next endpoint
-            }
-          }
-
-          if (!success || !resultData) {
-            throw new Error('ML inference service is not reachable on port 8000.');
-          }
-
-          if (resultData.word === 'No hand detected' || resultData.success === false) {
-            alert('No hand detected during recording. Please make sure your hand is clearly visible in the camera frame.');
-            return;
-          }
-
-          const predictedWord = resultData.word || resultData.label;
-          const predictedConfidence = Number(resultData.confidence) || 0.95;
-
-          if (predictedWord) {
-            setGlossWords((prev) => [...prev, predictedWord]);
-            setEnglishSentence('');
-
-            const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            setSignedMessages((prev) => [
-              ...prev,
-              {
-                id: `video-sign-${Date.now()}`,
-                sign: predictedWord,
-                phrase: predictedWord,
-                confidence: predictedConfidence,
-                timestamp,
-              },
-            ]);
-
-            setSessionHistoryLogs((prev) => [
-              ...prev,
-              { mode: 'GESTURE', text: predictedWord, time: timestamp },
-            ]);
-
-            if (autoSpeakGestures) {
-              speak(predictedWord);
-            }
-          }
-        } catch (err: any) {
-          console.error('[Sambhav Model 2] Video prediction error:', err);
-          alert(`Video prediction note: ${err.message || 'Check ML service terminal.'}`);
-        } finally {
-          setIsVideoProcessing(false);
-        }
-      };
-
-      setIsVideoRecording(true);
-      setRecordingCountdown(6);
-      recorder.start(250);
-
-      let secs = 6;
-      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
-      countdownIntervalRef.current = setInterval(() => {
-        secs -= 1;
-        if (secs <= 0) {
-          clearInterval(countdownIntervalRef.current);
-          countdownIntervalRef.current = null;
-        } else {
-          setRecordingCountdown(secs);
-        }
-      }, 1000);
-
-      if (recordingTimerRef.current) clearTimeout(recordingTimerRef.current);
-      recordingTimerRef.current = setTimeout(() => {
-        if (recorder.state !== 'inactive') {
-          recorder.stop();
-        }
-      }, 6000);
-    } catch (err) {
-      console.error('MediaRecorder start error:', err);
-      setIsVideoRecording(false);
-      setRecordingCountdown(null);
-    }
-  }, [activeEndpoint, autoSpeakGestures, isVideoProcessing, isVideoRecording, speak]);
-
-  // Convert Accumulated ISL Gloss to English Grammar (POST /convert)
-  const convertGlossToEnglish = useCallback(async () => {
-    if (glossWords.length === 0) {
-      alert('Please perform or record at least one ISL sign first.');
-      return;
-    }
-
-    const glossText = glossWords.join(' ').trim();
-    const endpointsToTry = [
-      activeEndpoint || 'http://127.0.0.1:8000',
-      'http://localhost:8000',
-      'https://sambhav-ml.onrender.com'
-    ];
-
-    for (const ep of endpointsToTry) {
-      try {
-        const res = await fetch(`${ep}/convert`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ gloss: glossText }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const sentence = data.english || data.sentence || glossText;
-          setEnglishSentence(sentence);
-
-          const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          setSignedMessages((prev) => [
-            ...prev,
-            {
-              id: `english-conv-${Date.now()}`,
-              sign: 'ENGLISH',
-              phrase: sentence,
-              confidence: 1.0,
-              timestamp,
-            },
-          ]);
-
-          if (autoSpeakGestures) {
-            speak(sentence);
-          }
-          return;
-        }
-      } catch {
-        // Try next endpoint
-      }
-    }
-
-    // Client-side fallback rule engine
-    const fallbackSentence = glossText.charAt(0).toUpperCase() + glossText.slice(1) + '.';
-    setEnglishSentence(fallbackSentence);
-    if (autoSpeakGestures) {
-      speak(fallbackSentence);
-    }
-  }, [activeEndpoint, autoSpeakGestures, glossWords, speak]);
-
-  const [copiedSentence, setCopiedSentence] = useState(false);
-
-  const removeGlossWordAtIndex = useCallback((index: number) => {
-    setGlossWords((prev) => prev.filter((_, i) => i !== index));
-    setEnglishSentence('');
-  }, []);
-
-  const removeLastGlossWord = useCallback(() => {
-    setGlossWords((prev) => prev.slice(0, -1));
-    setEnglishSentence('');
-  }, []);
-
-  const clearGloss = useCallback(() => {
-    setGlossWords([]);
-    setEnglishSentence('');
-  }, []);
-
-  const handleCopyEnglishSentence = useCallback(() => {
-    if (!englishSentence) return;
-    navigator.clipboard.writeText(englishSentence);
-    setCopiedSentence(true);
-    setTimeout(() => setCopiedSentence(false), 2000);
-  }, [englishSentence]);
 
   // Fast Instant Sign Tokenizer & Sequencer
   const translateTextToSign = useCallback((text: string, messageId?: string) => {
@@ -1272,88 +1039,13 @@ export const TranslatePage: React.FC = () => {
               {activeMode === 'ISL_TO_TEXT' ? (
                 <>
                   {/* Full Camera Viewport Header */}
-                  <div className="flex flex-wrap items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-2 mb-2 shrink-0 z-10 gap-2">
+                  <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-2 mb-2 shrink-0 z-10">
                     <div className="flex items-center gap-2">
                       <span className="material-symbols-outlined text-[#fe9832] text-[20px]">videocam</span>
                       <h3 className="text-sm font-bold text-gray-950 dark:text-white drop-shadow-xs">{t('translate.cameraTitle', 'Full Sign Recognition Camera')}</h3>
-                      <button
-                        type="button"
-                        onClick={() => setShowGuideModal(true)}
-                        className="px-2.5 py-1 bg-indigo-50 dark:bg-indigo-500/20 hover:bg-indigo-100 text-indigo-900 dark:text-indigo-300 border border-indigo-400/30 rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-xs"
-                      >
-                        <span className="material-symbols-outlined text-[14px]">menu_book</span>
-                        <span>{t('translate.islGuide', 'ISL Guide')}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowDebugHUD((prev) => !prev)}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1 transition cursor-pointer shadow-xs border ${
-                          showDebugHUD
-                            ? 'bg-amber-500/20 border-amber-500/40 text-amber-700 dark:text-amber-300'
-                            : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700'
-                        }`}
-                        title="Toggle real-time ISL debug telemetry HUD"
-                      >
-                        <span className="material-symbols-outlined text-[14px]">analytics</span>
-                        <span>Debug HUD</span>
-                      </button>
                     </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {/* Sambhav Model 2 6-Second Video Capture Button */}
-                      <button
-                        type="button"
-                        onClick={captureSignVideo}
-                        disabled={isVideoRecording || isVideoProcessing}
-                        className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-md cursor-pointer border ${
-                          isVideoRecording
-                            ? 'bg-rose-600 text-white border-rose-400 animate-pulse'
-                            : isVideoProcessing
-                            ? 'bg-indigo-600 text-white border-indigo-400 animate-pulse'
-                            : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white border-emerald-400/50 hover:scale-[1.02] active:scale-95'
-                        }`}
-                        title="Record 6-second sign video clip and predict with Sambhav Model 2 BiLSTM"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">
-                          {isVideoRecording ? 'fiber_manual_record' : isVideoProcessing ? 'hourglass_top' : 'videocam'}
-                        </span>
-                        <span>
-                          {isVideoRecording
-                            ? `Recording (${recordingCountdown || 6}s)...`
-                            : isVideoProcessing
-                            ? 'AI Processing...'
-                            : '🎥 Record Sign (6s)'}
-                        </span>
-                      </button>
 
-                      {/* Convert Accumulated ISL Gloss to English Sentence Button */}
-                      <button
-                        type="button"
-                        onClick={convertGlossToEnglish}
-                        disabled={glossWords.length === 0 || isVideoRecording || isVideoProcessing}
-                        className="px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-md cursor-pointer border bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white border-indigo-400/50 disabled:opacity-40 disabled:pointer-events-none hover:scale-[1.02] active:scale-95"
-                        title="Convert accumulated ISL sign words into a grammatical English sentence"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">auto_fix_high</span>
-                        <span>Convert to English</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={start5sCapture}
-                        disabled={isCapturingManual || isVideoRecording}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-md cursor-pointer border ${
-                          captureCountdown !== null
-                            ? 'bg-rose-500 text-white border-rose-400 animate-pulse'
-                            : 'bg-gradient-to-r from-amber-500 to-[#fe9832] hover:from-amber-600 hover:to-[#e08328] text-gray-950 border-amber-300/50 hover:scale-[1.02] active:scale-95'
-                        }`}
-                        title="Record hand movement for 5 seconds and recognize gesture immediately"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">
-                          {captureCountdown !== null ? 'hourglass_top' : 'timer'}
-                        </span>
-                        <span>{captureCountdown !== null ? `Capturing (${captureCountdown}s)` : t('translate.test5sSign', 'Test 5s Sign')}</span>
-                      </button>
-
+                    <div className="flex items-center gap-2">
                       <span className={`text-[10px] px-2.5 py-1 rounded-full font-bold flex items-center gap-1.5 ${
                         isModelOnline
                           ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
@@ -1362,9 +1054,7 @@ export const TranslatePage: React.FC = () => {
                         <span className={`w-2 h-2 rounded-full ${isModelOnline ? 'bg-emerald-400 animate-ping' : 'bg-[#fe9832]'}`} />
                         <span>
                           {isModelOnline 
-                            ? (activeEndpoint.includes('127.0.0.1') || activeEndpoint.includes('localhost') 
-                                ? `Sambhav Model 2 (${pingLatencyMs || 15}ms)` 
-                                : t('translate.cloudMLLive', 'Sambhav ML Live'))
+                            ? `Sambhav Model 2 (${pingLatencyMs || 15}ms)` 
                             : t('translate.mlReconnecting', 'ML Reconnecting...')}
                         </span>
                       </span>
@@ -1376,12 +1066,9 @@ export const TranslatePage: React.FC = () => {
                     <video
                       ref={(el) => {
                         gestureVideoRef.current = el;
-                        if (el) {
-                          if (mediaStreamRef.current && el.srcObject !== mediaStreamRef.current) {
-                            el.srcObject = mediaStreamRef.current;
-                            el.play().catch(() => {});
-                          }
-                          startISLRecognition(el);
+                        if (el && mediaStreamRef.current && el.srcObject !== mediaStreamRef.current) {
+                          el.srcObject = mediaStreamRef.current;
+                          el.play().catch(() => {});
                         }
                       }}
                       autoPlay
@@ -1424,113 +1111,6 @@ export const TranslatePage: React.FC = () => {
                       )}
                     </div>
 
-                    {/* Top Right Live Recognition Telemetry Debug Panel */}
-                    {showDebugHUD && (
-                      <div className="absolute top-3 right-3 bg-black/90 backdrop-blur-md p-2.5 rounded-xl border border-white/20 text-white font-mono text-[10px] sm:text-[11px] w-64 z-20 shadow-2xl space-y-1 select-none pointer-events-auto">
-                        <div className="flex items-center justify-between border-b border-white/20 pb-1 font-bold text-amber-400">
-                          <span className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[13px]">analytics</span>
-                            DEBUG TELEMETRY HUD
-                          </span>
-                          <button 
-                            type="button"
-                            onClick={() => setShowDebugHUD(false)} 
-                            className="text-gray-400 hover:text-white px-1 font-bold cursor-pointer"
-                            title="Close HUD"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Camera:</span>
-                          <span className={telemetry.cameraActive ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
-                            {telemetry.cameraActive ? 'ACTIVE' : 'INACTIVE'}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Hands detected:</span>
-                          <span className="text-white font-bold">{telemetry.handsDetected} / 2</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Frames buffered:</span>
-                          <span className="text-white font-bold">{telemetry.bufferedFrames} / 60</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Feature vector:</span>
-                          <span className="text-white font-bold">{telemetry.featureVectorDim} dim</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Slot 0 / Slot 1:</span>
-                          <span className="text-cyan-300 font-bold">{telemetry.slot0Features} / {telemetry.slot1Features}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Coords (Min/Max):</span>
-                          <span className="text-gray-300">{telemetry.minVal.toFixed(2)} .. {telemetry.maxVal.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Prediction request:</span>
-                          <span className={`font-bold ${telemetry.requestStatus === 'RECEIVED' ? 'text-emerald-400' : telemetry.requestStatus === 'SENT' ? 'text-amber-300 animate-pulse' : 'text-gray-400'}`}>
-                            {telemetry.requestStatus} {telemetry.lastLatencyMs > 0 ? `(${telemetry.lastLatencyMs}ms)` : ''}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Recognition source:</span>
-                          <span className={`font-bold ${telemetry.recognitionSource === 'BiLSTM' ? 'text-purple-300' : telemetry.recognitionSource === 'Geometric Fallback' ? 'text-teal-300' : 'text-gray-400'}`}>
-                            {telemetry.recognitionSource}
-                          </span>
-                        </div>
-                        <div className="flex justify-between border-t border-white/15 pt-1">
-                          <span className="text-gray-400">Prediction:</span>
-                          <span className="text-emerald-400 font-bold">{recognizedSign || telemetry.top1Label || '—'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Confidence:</span>
-                          <span className="text-amber-400 font-bold">
-                            {telemetry.top1Confidence > 0 
-                              ? `${(telemetry.top1Confidence * 100).toFixed(1)}%` 
-                              : signConfidence > 0 
-                              ? `${(signConfidence * 100).toFixed(1)}%` 
-                              : '0.0%'}
-                          </span>
-                        </div>
-                        {telemetry.top2Label ? (
-                          <div className="flex justify-between text-[9px] text-gray-400">
-                            <span>Top 2:</span>
-                            <span>{telemetry.top2Label} ({(telemetry.top2Confidence * 100).toFixed(1)}%)</span>
-                          </div>
-                        ) : null}
-                      </div>
-                    )}
-
-                    {/* Live 6-Second Recording Central HUD Overlay */}
-                    {isVideoRecording && (
-                      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px] flex flex-col items-center justify-center gap-3 z-20 animate-fadeIn">
-                        <div className="relative flex items-center justify-center">
-                          <div className="w-20 h-20 rounded-full border-4 border-rose-500/30 border-t-rose-500 animate-spin" />
-                          <div className="absolute text-2xl font-black text-white font-mono">
-                            {recordingCountdown ?? 6}s
-                          </div>
-                        </div>
-                        <div className="bg-rose-600/90 text-white px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-lg animate-pulse border border-rose-400">
-                          <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
-                          <span>Recording ISL Sign Clip...</span>
-                        </div>
-                        <p className="text-[11px] text-white/80 font-medium">Perform your gesture clearly inside the frame</p>
-                      </div>
-                    )}
-
-                    {/* AI Inference Processing Overlay */}
-                    {isVideoProcessing && (
-                      <div className="absolute inset-0 bg-black/65 backdrop-blur-[2px] flex flex-col items-center justify-center gap-3 z-20 animate-fadeIn">
-                        <div className="w-12 h-12 rounded-2xl bg-indigo-600/80 text-white flex items-center justify-center shadow-xl animate-bounce">
-                          <span className="material-symbols-outlined text-[28px] animate-spin">psychology</span>
-                        </div>
-                        <div className="bg-indigo-600/90 text-white px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-lg border border-indigo-400">
-                          <span>Analyzing with Sambhav Model 2...</span>
-                        </div>
-                      </div>
-                    )}
-
                     {/* Bottom Floating Detected Sign Gauge */}
                     {recognizedSign && (
                       <div className="absolute bottom-3 left-3 right-3 bg-black/85 backdrop-blur-md p-3 rounded-xl border border-white/15 text-white flex items-center justify-between z-10 animate-scaleUp">
@@ -1561,86 +1141,6 @@ export const TranslatePage: React.FC = () => {
                       </div>
                     )}
                   </div>
-
-                  {/* Sambhav Model 2 Gloss & English Translation Display */}
-                  {(glossWords.length > 0 || englishSentence) && (
-                    <div className="my-2 p-3 bg-gray-50 dark:bg-black/60 rounded-xl border border-indigo-200 dark:border-indigo-900/60 flex flex-col gap-2 animate-fadeIn z-10 shrink-0">
-                      <div className="flex items-center justify-between text-[11px]">
-                        <span className="font-extrabold text-indigo-800 dark:text-indigo-300 flex items-center gap-1.5">
-                          <span className="material-symbols-outlined text-[15px]">sign_language</span>
-                          <span>ISL Sign Tokens ({glossWords.length}):</span>
-                        </span>
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={removeLastGlossWord}
-                            className="px-2 py-0.5 text-[10px] text-amber-800 dark:text-amber-300 bg-amber-100/80 dark:bg-amber-950/50 hover:bg-amber-200 dark:hover:bg-amber-900/60 rounded-md font-bold cursor-pointer transition border border-amber-300/50"
-                          >
-                            Remove Last
-                          </button>
-                          <button
-                            type="button"
-                            onClick={clearGloss}
-                            className="px-2 py-0.5 text-[10px] text-rose-800 dark:text-rose-300 bg-rose-100/80 dark:bg-rose-950/50 hover:bg-rose-200 dark:hover:bg-rose-900/60 rounded-md font-bold cursor-pointer transition border border-rose-300/50"
-                          >
-                            Clear All
-                          </button>
-                        </div>
-                      </div>
-
-                      {glossWords.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5">
-                          {glossWords.map((w, idx) => (
-                            <span
-                              key={idx}
-                              className="group inline-flex items-center gap-1 px-2.5 py-1 bg-indigo-100 dark:bg-indigo-950 text-indigo-900 dark:text-indigo-200 text-xs font-black rounded-lg border border-indigo-300 dark:border-indigo-700 shadow-2xs"
-                            >
-                              <span>{w}</span>
-                              <button
-                                type="button"
-                                onClick={() => removeGlossWordAtIndex(idx)}
-                                className="text-indigo-400 hover:text-rose-500 rounded p-0.5 transition cursor-pointer"
-                                title={`Remove "${w}"`}
-                              >
-                                <span className="material-symbols-outlined text-[12px]">close</span>
-                              </button>
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
-                      {englishSentence && (
-                        <div className="mt-1 pt-2 border-t border-indigo-200 dark:border-indigo-900 flex items-center justify-between gap-2">
-                          <div className="text-xs font-bold text-gray-950 dark:text-white flex items-center gap-1.5">
-                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800">
-                              English
-                            </span>
-                            <span>"{englishSentence}"</span>
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <button
-                              type="button"
-                              onClick={handleCopyEnglishSentence}
-                              className="p-1 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-white/10 rounded-md cursor-pointer transition"
-                              title="Copy English Sentence"
-                            >
-                              <span className="material-symbols-outlined text-[16px]">
-                                {copiedSentence ? 'check' : 'content_copy'}
-                              </span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => speak(englishSentence)}
-                              className="p-1 text-indigo-600 dark:text-[#fe9832] hover:bg-indigo-50 dark:hover:bg-white/10 rounded-md cursor-pointer transition"
-                              title="Speak English Sentence"
-                            >
-                              <span className="material-symbols-outlined text-[16px]">volume_up</span>
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
 
                   {/* Bottom Camera Toolbar */}
                   <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-800 mt-2 shrink-0 z-10">
@@ -2233,105 +1733,6 @@ export const TranslatePage: React.FC = () => {
               >
                 <span>{t('translate.doneCloseSession', 'Done (Close Session)')}</span>
                 <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* SCREEN 4: ISL SIGNING GUIDE & RECOGNITION TIPS MODAL                     */}
-      {/* ========================================================================= */}
-      {showGuideModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#1a202c] text-gray-900 dark:text-white rounded-[24px] max-w-2xl w-full p-6 shadow-2xl border border-[#e0e3e5] dark:border-[#2d3133] flex flex-col gap-4 max-h-[85vh] overflow-hidden animate-scaleUp">
-            
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-3 shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-[#fe9832]/20 text-[#fe9832] flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[22px]">school</span>
-                </div>
-                <div>
-                  <h2 className="text-lg font-black tracking-tight">{t('translate.guideModalTitle', 'Indian Sign Language (ISL) Recognition Guide')}</h2>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{t('translate.guideModalSubtitle', 'Tips for 90%+ recognition accuracy with Sambhav BiLSTM AI')}</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowGuideModal(false)}
-                className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-white transition cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
-            </div>
-
-            {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto space-y-4 pr-1 text-xs">
-              
-              {/* Tip 1: Whole-Word ISL Recognition */}
-              <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl p-3.5">
-                <div className="flex items-center gap-2 font-bold text-amber-900 dark:text-amber-300 text-sm mb-1.5">
-                  <span className="material-symbols-outlined text-[18px]">front_hand</span>
-                  <span>1. {t('translate.guideTip1Title', '169 ISL Classes (Sambhav Model 2)')}</span>
-                </div>
-                <p className="text-amber-800 dark:text-amber-200 leading-relaxed">
-                  {t('translate.guideTip1Desc', 'The AI recognizes full 169 Indian Sign Language (ISL) concepts and letters (A–Z) from Sambhav Model 2. Both single-handed and two-handed gestures are supported:')}
-                </p>
-                <ul className="list-disc list-inside mt-2 space-y-1 text-amber-900 dark:text-amber-100 font-medium">
-                  <li><strong>Single-Hand Signs & Letters:</strong> {t('translate.guideTip1A', 'Perform clearly with dominant hand in full camera view (e.g., A–Z, Hello, Good, Day).')}</li>
-                  <li><strong>Two-Hand Signs:</strong> {t('translate.guideTip1B', 'Frame both hands in view with green (Right) and orange (Left) skeleton tracking active.')}</li>
-                  <li><strong>Natural Transitions:</strong> {t('translate.guideTip1C', 'Lower hands to rest between signs to cleanly demarcate consecutive words.')}</li>
-                </ul>
-              </div>
-
-              {/* Tip 2: Dynamic Signs & 2.0 - 3.0 Second Motion Window */}
-              <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-xl p-3.5">
-                <div className="flex items-center gap-2 font-bold text-blue-900 dark:text-blue-300 text-sm mb-1.5">
-                  <span className="material-symbols-outlined text-[18px]">motion_photos_on</span>
-                  <span>2. {t('translate.guideTip2Title', 'Dynamic Gesture Timing (~0.6s – 2.0s Motion Window)')}</span>
-                </div>
-                <p className="text-blue-800 dark:text-blue-200 leading-relaxed">
-                  {t('translate.guideTip2Desc', 'The BiLSTM neural model processes 60-frame continuous windows with instant geometric letter recognition. Maintain fluent sign motion while performing your gesture.')}
-                </p>
-                <p className="text-blue-800 dark:text-blue-200 mt-1">
-                  {t('translate.guideTip2Footer', 'Start your sign clearly in front of the camera, perform the motion, and then drop hands to resting position to trigger instant recognition.')}
-                </p>
-              </div>
-
-              {/* Tip 3: Lighting & Hand Placement */}
-              <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl p-3.5">
-                <div className="flex items-center gap-2 font-bold text-emerald-900 dark:text-emerald-300 text-sm mb-1.5">
-                  <span className="material-symbols-outlined text-[18px]">lightbulb</span>
-                  <span>3. {t('translate.guideTip3Title', 'Lighting & Camera Distance')}</span>
-                </div>
-                <p className="text-emerald-800 dark:text-emerald-200 leading-relaxed">
-                  {t('translate.guideTip3Desc', 'Sit roughly 1.5 to 2.5 feet (0.5m – 0.8m) from your webcam so your torso and both hands are clearly framed. Ensure front-facing lighting so MediaPipe tracks all 21 joints on each hand without shadow distortion.')}
-                </p>
-              </div>
-
-              {/* Supported Vocabulary Summary */}
-              <div className="bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-750 rounded-xl p-3.5">
-                <h4 className="font-bold text-gray-900 dark:text-white mb-1.5 flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[16px] text-[#fe9832]">category</span>
-                  <span>{t('translate.guideVocabTitle', 'Trained Vocabulary (169 ISL Classes)')}</span>
-                </h4>
-                <p className="text-gray-600 dark:text-gray-300 text-[11px] leading-relaxed">
-                  {t('translate.guideVocabDesc', 'Trained on 169 Indian Sign Language classes from Sambhav Model 2, including Alphabets A-Z, Days of Week, Months, Family Relations, Common Actions, Emergency, Medical, and Daily Life Vocabulary.')}
-                </p>
-              </div>
-
-            </div>
-
-            {/* Close Button */}
-            <div className="pt-2 border-t border-gray-200 dark:border-gray-800 shrink-0">
-              <button
-                type="button"
-                onClick={() => setShowGuideModal(false)}
-                className="w-full py-2.5 bg-[#fe9832] hover:bg-[#e8872b] text-[#683700] font-black text-xs rounded-xl transition cursor-pointer shadow-sm"
-              >
-                {t('translate.guideGotIt', "Got It, Let's Sign!")}
               </button>
             </div>
 
