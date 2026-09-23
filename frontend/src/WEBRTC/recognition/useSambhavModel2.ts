@@ -89,8 +89,6 @@ export function useSambhavModel2() {
   const [activeEndpoint, setActiveEndpoint] = useState<string>(sambhavModel2Engine.getEndpoint());
   const [pingLatencyMs, setPingLatencyMs] = useState<number>(15);
   const [handsDetectedCount, setHandsDetectedCount] = useState<number>(0);
-  const [isCapturingManual, setIsCapturingManual] = useState<boolean>(false);
-  const [captureCountdown, setCaptureCountdown] = useState<number | null>(null);
   const [telemetry, setTelemetry] = useState<SambhavTelemetry>(defaultTelemetry);
 
   const [signingCountdown, setSigningCountdown] = useState<number | null>(null);
@@ -106,8 +104,6 @@ export function useSambhavModel2() {
   const noHandCountRef = useRef<number>(0);
   const lastCommittedLabelRef = useRef<string>('');
   const lastCommitTimeRef = useRef<number>(0);
-  const isCapturingManualRef = useRef<boolean>(false);
-  const manualCaptureBufferRef = useRef<FrameLandmarks126[]>([]);
 
   // Check health & measure latency periodically
   useEffect(() => {
@@ -186,10 +182,6 @@ export function useSambhavModel2() {
     }
     for (let i = 63; i < 126; i++) {
       if (vector[i] !== 0) { slot1HasData = 63; break; }
-    }
-
-    if (isCapturingManualRef.current) {
-      manualCaptureBufferRef.current.push(vector);
     }
 
     const now = Date.now();
@@ -405,56 +397,6 @@ export function useSambhavModel2() {
     }
   }, [gestureState]);
 
-  const start5sCapture = useCallback(() => {
-    if (isCapturingManualRef.current) return;
-    isCapturingManualRef.current = true;
-    setIsCapturingManual(true);
-    setCaptureCountdown(5);
-
-    manualCaptureBufferRef.current = [];
-
-    let remaining = 5;
-    const interval = setInterval(() => {
-      remaining -= 1;
-      if (remaining <= 0) {
-        clearInterval(interval);
-        setCaptureCountdown(null);
-        setIsCapturingManual(false);
-        isCapturingManualRef.current = false;
-
-        const captured = manualCaptureBufferRef.current.length > 0
-          ? manualCaptureBufferRef.current
-          : frameBufferRef.current;
-
-        if (captured.length > 0) {
-          const sequence60 = resampleSequenceTo60(captured);
-          setGestureState('INFERENCE');
-          sambhavModel2Engine.predictSequence(sequence60).then((prediction) => {
-            if (prediction.label && prediction.label !== 'NO_ACTIVE_SIGN') {
-              const displaySign = prediction.phrase || prediction.label;
-              setCurrentGesture(displaySign);
-              setConfidence(prediction.confidence);
-              setTranslatedText(displaySign);
-
-              const now = Date.now();
-              const committed: SambhavCommittedEvent = {
-                text: displaySign,
-                confidence: prediction.confidence,
-                sequenceId: now,
-                timestamp: now,
-                eventId: `sambhav-5s-${now}-${Math.random().toString(36).substring(2, 6)}`,
-              };
-              setCommittedSign(committed);
-              setGestureState('COMMITTED');
-            }
-          });
-        }
-      } else {
-        setCaptureCountdown(remaining);
-      }
-    }, 1000);
-  }, []);
-
   const isRecognizingRef = useRef<boolean>(false);
 
   const startRecognition = useCallback(
@@ -526,12 +468,9 @@ export function useSambhavModel2() {
     activeEndpoint,
     pingLatencyMs,
     handsDetectedCount,
-    isCapturingManual,
-    captureCountdown,
     signingCountdown,
     signingProgress,
     telemetry,
-    start5sCapture,
     startRecognition,
     stopRecognition,
   };
