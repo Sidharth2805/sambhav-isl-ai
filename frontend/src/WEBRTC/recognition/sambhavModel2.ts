@@ -69,14 +69,30 @@ export class SambhavModel2InferenceEngine {
   }
 
   public async checkHealth(): Promise<{ ok: boolean; latencyMs: number }> {
-    const start = performance.now();
-    try {
-      const res = await fetch(`${this.endpoint}/health`, { method: 'GET' });
-      const latencyMs = Math.round(performance.now() - start);
-      return { ok: res.ok, latencyMs };
-    } catch {
-      return { ok: false, latencyMs: 0 };
+    const candidates = [
+      this.endpoint,
+      'http://127.0.0.1:8000',
+      'http://localhost:8000',
+      'https://sambhav-ml.onrender.com',
+      'https://sambhav-isl-ml.onrender.com',
+    ];
+    const uniqueCandidates = Array.from(new Set(candidates));
+
+    for (const url of uniqueCandidates) {
+      const start = performance.now();
+      try {
+        const res = await fetch(`${url}/health`, { method: 'GET' });
+        if (res.ok) {
+          const latencyMs = Math.max(1, Math.round(performance.now() - start));
+          this.endpoint = url;
+          return { ok: true, latencyMs };
+        }
+      } catch {
+        // Try next candidate
+      }
     }
+
+    return { ok: false, latencyMs: 0 };
   }
 }
 

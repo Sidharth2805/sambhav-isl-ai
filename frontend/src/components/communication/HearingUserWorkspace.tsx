@@ -309,15 +309,37 @@ export const HearingUserWorkspace: React.FC<HearingUserWorkspaceProps> = ({
             onTouchStart={resetCameraControlsTimer}
             className="flex-1 h-[220px] sm:h-[280px] lg:h-full bg-[#030813] rounded-[24px] border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col relative overflow-hidden group min-h-0"
           >
-            {primaryRemoteTrack ? (
-              <VideoTrack trackRef={primaryRemoteTrack as any} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full text-center flex flex-col items-center justify-center gap-3 p-6 text-[#828796]">
-                <span className="material-symbols-outlined text-[48px] text-[#fe9832] animate-pulse">videocam</span>
-                <span className="text-xs font-bold uppercase tracking-wider text-white">Camera Inactive</span>
-                <span className="text-[11px] text-[#828796]">Waiting for other participant to join...</span>
-              </div>
-            )}
+            {(() => {
+              const hasRemoteVideo = Boolean(
+                primaryRemoteTrack &&
+                ((primaryRemoteTrack instanceof MediaStream && primaryRemoteTrack.getVideoTracks().some((t) => t.readyState === 'live')) ||
+                 (primaryRemoteTrack instanceof MediaStreamTrack && primaryRemoteTrack.kind === 'video' && primaryRemoteTrack.readyState === 'live') ||
+                 (primaryRemoteTrack?.track?.kind === 'video'))
+              );
+
+              if (hasRemoteVideo) {
+                return <VideoTrack trackRef={primaryRemoteTrack as any} className="w-full h-full object-cover" data-remote="true" />;
+              }
+
+              const isConnected = connectionState === LkConnectionState.Connected;
+              const isConnecting = connectionState === LkConnectionState.Connecting;
+
+              return (
+                <div className="w-full h-full text-center flex flex-col items-center justify-center gap-3 p-6 text-[#828796]">
+                  <span className="material-symbols-outlined text-[48px] text-[#fe9832] animate-pulse">videocam</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-white">
+                    {isConnected ? 'Remote Camera Unavailable' : isConnecting ? 'Connecting Media...' : 'Camera Inactive'}
+                  </span>
+                  <span className="text-[11px] text-[#828796]">
+                    {isConnected
+                      ? 'Participant is connected (camera paused or initializing)'
+                      : isConnecting
+                      ? 'Negotiating peer media connection...'
+                      : 'Waiting for other participant to join...'}
+                  </span>
+                </div>
+              );
+            })()}
 
             {/* Live Remote ISL Sign Badge */}
             {activeRemoteSign && (

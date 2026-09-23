@@ -49,7 +49,10 @@ export const VideoTrack: React.FC<VideoTrackProps> = ({
     }
 
     if (targetSrc) {
-      video.srcObject = targetSrc;
+      if (video.srcObject !== targetSrc) {
+        video.srcObject = targetSrc;
+      }
+
       const playVideo = () => {
         if (video && video.srcObject && video.paused) {
           video.play().catch(() => {});
@@ -61,10 +64,16 @@ export const VideoTrack: React.FC<VideoTrackProps> = ({
       video.onloadeddata = playVideo;
       video.oncanplay = playVideo;
 
-      // Handle async track addition and unmute
+      // Handle async track addition, removal and unmute
       targetSrc.onaddtrack = () => {
         if (video) {
-          video.srcObject = targetSrc;
+          if (video.srcObject !== targetSrc) video.srcObject = targetSrc;
+          playVideo();
+        }
+      };
+
+      targetSrc.onremovetrack = () => {
+        if (video) {
           playVideo();
         }
       };
@@ -72,7 +81,6 @@ export const VideoTrack: React.FC<VideoTrackProps> = ({
       targetSrc.getVideoTracks().forEach((vt) => {
         vt.onunmute = () => {
           if (video) {
-            video.srcObject = targetSrc;
             playVideo();
           }
         };
@@ -106,7 +114,7 @@ export const VideoTrack: React.FC<VideoTrackProps> = ({
       ref={videoRef}
       autoPlay
       playsInline
-      muted={true}
+      muted={isSelfView}
       data-self-view={isSelfView ? 'true' : undefined}
       data-remote={props['data-remote'] ? 'true' : undefined}
       className={`${className} ${isSelfView ? 'scale-x-[-1]' : ''}`}

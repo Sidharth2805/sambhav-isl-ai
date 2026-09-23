@@ -400,16 +400,37 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
             onTouchStart={resetCameraControlsTimer}
             className="flex-1 bg-[#030813] rounded-2xl border border-[#e0e3e5] dark:border-[#2d3133] shadow-sm flex flex-col relative overflow-hidden h-full min-h-0 group"
           >
+            {(() => {
+              const hasRemoteVideo = Boolean(
+                primaryRemoteTrack &&
+                ((primaryRemoteTrack instanceof MediaStream && primaryRemoteTrack.getVideoTracks().some((t) => t.readyState === 'live')) ||
+                 (primaryRemoteTrack instanceof MediaStreamTrack && primaryRemoteTrack.kind === 'video' && primaryRemoteTrack.readyState === 'live') ||
+                 (primaryRemoteTrack?.track?.kind === 'video'))
+              );
 
-          {primaryRemoteTrack ? (
-            <VideoTrack trackRef={primaryRemoteTrack as any} className="w-full h-full object-cover" data-remote="true" />
-          ) : (
-            <div className="w-full h-full text-center flex flex-col items-center justify-center gap-2 p-4 text-[#828796]">
-              <span className="material-symbols-outlined text-[36px] sm:text-[44px] text-[#fe9832] animate-pulse">videocam</span>
-              <span className="text-xs font-bold uppercase tracking-wider text-white">Remote Camera Inactive</span>
-              <span className="text-[10px] text-[#828796]">Waiting for hearing participant to join...</span>
-            </div>
-          )}
+              if (hasRemoteVideo) {
+                return <VideoTrack trackRef={primaryRemoteTrack as any} className="w-full h-full object-cover" data-remote="true" />;
+              }
+
+              const isConnected = connectionState === LkConnectionState.Connected;
+              const isConnecting = connectionState === LkConnectionState.Connecting;
+
+              return (
+                <div className="w-full h-full text-center flex flex-col items-center justify-center gap-2 p-4 text-[#828796]">
+                  <span className="material-symbols-outlined text-[36px] sm:text-[44px] text-[#fe9832] animate-pulse">videocam</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-white">
+                    {isConnected ? 'Remote Camera Unavailable' : isConnecting ? 'Connecting Media...' : 'Remote Camera Inactive'}
+                  </span>
+                  <span className="text-[10px] text-[#828796]">
+                    {isConnected
+                      ? 'Participant is connected (camera paused or unavailable)'
+                      : isConnecting
+                      ? 'Negotiating peer media connection...'
+                      : 'Waiting for hearing participant to join...'}
+                  </span>
+                </div>
+              );
+            })()}
 
           {/* Screen Share Tag */}
           {primaryRemoteTrack?.source === Track.Source.ScreenShare && (

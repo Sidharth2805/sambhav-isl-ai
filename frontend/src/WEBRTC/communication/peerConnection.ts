@@ -72,12 +72,11 @@ export class WebRTCPeerConnectionManager {
 
     this.pc = new RTCPeerConnection(DEFAULT_ICE_SERVERS);
 
-    // Setup transceivers for two-way media
-    this.setupTransceivers();
-
-    // Attach local stream tracks
+    // Attach local stream tracks or add transceivers
     if (localStream) {
       this.attachLocalTracks(localStream);
+    } else {
+      this.setupTransceivers();
     }
 
     // ICE Candidate generation
@@ -90,29 +89,45 @@ export class WebRTCPeerConnectionManager {
       }
     };
 
-    // Remote Track received
+    // Robust Remote Track Handling
     this.pc.ontrack = (event) => {
-      console.log('[WEBRTC] Remote track received:', event.track.kind, event.track.id);
+      const track = event.track;
+      console.log(`[WEBRTC] Remote track received: kind=${track.kind}, id=${track.id}, readyState=${track.readyState}, streams=${event.streams?.length || 0}`);
+
+      // 1. Add all tracks from event.streams[0] if present
       if (event.streams && event.streams[0]) {
-        event.streams[0].getTracks().forEach((track) => {
-          if (!this.remoteStream.getTracks().some((t) => t.id === track.id)) {
-            this.remoteStream.addTrack(track);
+        event.streams[0].getTracks().forEach((t) => {
+          if (!this.remoteStream.getTracks().some((existing) => existing.id === t.id)) {
+            this.remoteStream.addTrack(t);
           }
         });
       }
-      if (event.track && !this.remoteStream.getTracks().some((t) => t.id === event.track.id)) {
-        this.remoteStream.addTrack(event.track);
+
+      // 2. Add individual track if not already in remoteStream
+      if (track && !this.remoteStream.getTracks().some((existing) => existing.id === track.id)) {
+        this.remoteStream.addTrack(track);
       }
 
-      const activeStream = new MediaStream(this.remoteStream.getTracks());
-      this.callbacks.onRemoteStream(activeStream);
+      // 3. Dispatch unified MediaStream
+      this.callbacks.onRemoteStream(this.remoteStream);
 
-      event.track.onunmute = () => {
-        console.log('[WEBRTC] Remote track unmuted:', event.track.kind);
-        this.callbacks.onRemoteStream(new MediaStream(this.remoteStream.getTracks()));
+      track.onunmute = () => {
+        console.log(`[WEBRTC] Remote track onunmute: kind=${track.kind}, id=${track.id}`);
+        this.callbacks.onRemoteStream(this.remoteStream);
         if (this.callbacks.onRemoteTrackUnmuted) {
-          this.callbacks.onRemoteTrackUnmuted(event.track);
+          this.callbacks.onRemoteTrackUnmuted(track);
         }
+      };
+
+      track.onmute = () => {
+        console.log(`[WEBRTC] Remote track onmute: kind=${track.kind}, id=${track.id}`);
+        this.callbacks.onRemoteStream(this.remoteStream);
+      };
+
+      track.onended = () => {
+        console.log(`[WEBRTC] Remote track onended: kind=${track.kind}, id=${track.id}`);
+        this.remoteStream.removeTrack(track);
+        this.callbacks.onRemoteStream(this.remoteStream);
       };
     };
 
@@ -148,7 +163,7 @@ export class WebRTCPeerConnectionManager {
     return this.pc;
   }
 
-  private setupTransceivers() {
+  public setupTransceivers() {
     if (!this.pc) return;
     try {
       const transceivers = this.pc.getTransceivers();
@@ -171,47 +186,55 @@ export class WebRTCPeerConnectionManager {
 
     const audioTrack = stream.getAudioTracks()[0];
     const videoTrack = stream.getVideoTracks()[0];
-    const transceivers = this.pc.getTransceivers();
+    const senders = this.pc.getSenders();
 
-    const audioTransceiver = transceivers.find(
-      (t) => t.receiver.track.kind === 'audio' || t.sender.track?.kind === 'audio'
-    );
-    const videoTransceiver = transceivers.find(
-      (t) => t.receiver.track.kind === 'video' || t.sender.track?.kind === 'video'
-    );
+    const audioSender = senders.find((s) => s.track?.kind === 'audio');
+    const videoSender = senders.find((s) => s.track?.kind === 'video');
 
-    if (audioTrack && audioTransceiver) {
-      audioTransceiver.sender.replaceTrack(audioTrack).catch(console.warn);
-    } else if (audioTrack) {
-      this.pc.addTransceiver(audioTrack, { direction: 'sendrecv', streams: [stream] });
+    if (audioTrack) {
+      if (audioSender) {
+        audioSender.replaceTrack(audioTrack).catch(console.warn);
+      } else {
+        try {
+          this.pc.addTrack(audioTrack, stream);
+        } catch {
+          this.pc.addTransceiver(audioTrack, { direction: 'sendrecv', streams: [stream] });
+        }
+      }
     }
 
-    if (videoTrack && videoTransceiver) {
-      videoTransceiver.sender.replaceTrack(videoTrack).catch(console.warn);
-    } else if (videoTrack) {
-      this.pc.addTransceiver(videoTrack, { direction: 'sendrecv', streams: [stream] });
+    if (videoTrack) {
+      if (videoSender) {
+        videoSender.replaceTrack(videoTrack).catch(console.warn);
+      } else {
+        try {
+          this.pc.addTrack(videoTrack, stream);
+        } catch {
+          this.pc.addTransceiver(videoTrack, { direction: 'sendrecv', streams: [stream] });
+        }
+      }
     }
+
+    this.setupTransceivers();
   }
 
   public async replaceVideoTrack(track: MediaStreamTrack | null) {
     if (!this.pc) return;
-    const transceivers = this.pc.getTransceivers();
-    const videoTransceiver = transceivers.find(
-      (t) => t.receiver.track.kind === 'video' || t.sender.track?.kind === 'video'
-    );
-    if (videoTransceiver) {
-      await videoTransceiver.sender.replaceTrack(track);
+    const senders = this.pc.getSenders();
+    const videoSender = senders.find((s) => s.track?.kind === 'video') ||
+                        this.pc.getTransceivers().find((t) => t.receiver.track.kind === 'video')?.sender;
+    if (videoSender) {
+      await videoSender.replaceTrack(track);
     }
   }
 
   public async replaceAudioTrack(track: MediaStreamTrack | null) {
     if (!this.pc) return;
-    const transceivers = this.pc.getTransceivers();
-    const audioTransceiver = transceivers.find(
-      (t) => t.receiver.track.kind === 'audio' || t.sender.track?.kind === 'audio'
-    );
-    if (audioTransceiver) {
-      await audioTransceiver.sender.replaceTrack(track);
+    const senders = this.pc.getSenders();
+    const audioSender = senders.find((s) => s.track?.kind === 'audio') ||
+                        this.pc.getTransceivers().find((t) => t.receiver.track.kind === 'audio')?.sender;
+    if (audioSender) {
+      await audioSender.replaceTrack(track);
     }
   }
 

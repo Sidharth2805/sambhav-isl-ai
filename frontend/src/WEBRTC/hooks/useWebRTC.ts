@@ -46,6 +46,8 @@ export function useWebRTC(options: UseWebRTCOptions) {
   const onRemoteLeaveRef = useRef(onRemoteLeave);
   onRemoteLeaveRef.current = onRemoteLeave;
 
+  const cleanRoomId = roomId.trim().toUpperCase();
+
   useEffect(() => {
     let isCleanedUp = false;
 
@@ -55,7 +57,8 @@ export function useWebRTC(options: UseWebRTCOptions) {
       },
       onRemoteStream: (stream) => {
         if (!isCleanedUp) {
-          setRemoteStream(stream);
+          // Clone stream to guarantee reference equality change triggering re-render
+          setRemoteStream(new MediaStream(stream.getTracks()));
           setRemoteLeftNotice(false);
         }
       },
@@ -84,7 +87,7 @@ export function useWebRTC(options: UseWebRTCOptions) {
     clientRef.current = client;
 
     client
-      .start(roomId, role, isCreator, initialVideo, initialAudio)
+      .start(cleanRoomId, role, isCreator, initialVideo, initialAudio)
       .then(() => {
         if (!isCleanedUp) {
           const devs = client.getDevices();
@@ -105,7 +108,7 @@ export function useWebRTC(options: UseWebRTCOptions) {
       client.close();
       clientRef.current = null;
     };
-  }, [roomId, role, isCreator, initialVideo, initialAudio]);
+  }, [cleanRoomId, role, isCreator, initialVideo, initialAudio]);
 
   const toggleMic = useCallback(async () => {
     if (clientRef.current) {
