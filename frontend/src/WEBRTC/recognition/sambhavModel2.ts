@@ -23,45 +23,58 @@ export class SambhavModel2InferenceEngine {
   }
 
   public async predictSequence(sequence60x126: number[][]): Promise<SambhavModel2Prediction> {
-    try {
-      const response = await fetch(`${this.endpoint}/predict-landmarks`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sequence: sequence60x126 }),
-      });
+    const candidateEndpoints = [
+      this.endpoint,
+      'http://127.0.0.1:8000',
+      'http://localhost:8000',
+      'https://sambhav-isl-ml.onrender.com',
+      'https://sambhav-ml.onrender.com',
+    ];
+    const uniqueCandidates = Array.from(new Set(candidateEndpoints.filter(Boolean)));
 
-      if (!response.ok) {
-        throw new Error(`ML prediction HTTP ${response.status}`);
+    for (const ep of uniqueCandidates) {
+      try {
+        const response = await fetch(`${ep}/predict-landmarks`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sequence: sequence60x126 }),
+        });
+
+        if (!response.ok) {
+          continue;
+        }
+
+        const data = await response.json();
+        const rawLabel = data.gesture || data.label || 'NO_ACTIVE_SIGN';
+        const confidence = typeof data.confidence === 'number' ? data.confidence : 0;
+        const isReliable = confidence >= 0.20 && rawLabel !== 'NO_ACTIVE_SIGN';
+        this.endpoint = ep;
+
+        if (import.meta.env.DEV) {
+          console.log(`[WEBRTC] [RECOGNITION] [SAMBHAV MODEL 2] Input: (${sequence60x126.length}x${sequence60x126[0]?.length || 0}) -> Pred: ${rawLabel} (${(confidence * 100).toFixed(1)}%)`);
+        }
+
+        return {
+          label: rawLabel,
+          phrase: formatSambhavLabel(rawLabel),
+          confidence,
+          top2_label: data.top2_label || '',
+          top2_confidence: data.top2_confidence || 0,
+          margin: data.margin || 0,
+          top_3: data.top_3 || [],
+          isReliable,
+        };
+      } catch {
+        // Try next candidate endpoint
       }
-
-      const data = await response.json();
-      const rawLabel = data.gesture || data.label || 'NO_ACTIVE_SIGN';
-      const confidence = typeof data.confidence === 'number' ? data.confidence : 0;
-      const isReliable = confidence >= 0.35 && rawLabel !== 'NO_ACTIVE_SIGN';
-
-      if (import.meta.env.DEV) {
-        console.log(`[WEBRTC] [RECOGNITION] [SAMBHAV MODEL 2] Input: (${sequence60x126.length}x${sequence60x126[0]?.length || 0}) -> Pred: ${rawLabel} (${(confidence * 100).toFixed(1)}%)`);
-      }
-
-      return {
-        label: rawLabel,
-        phrase: formatSambhavLabel(rawLabel),
-        confidence,
-        top2_label: data.top2_label || '',
-        top2_confidence: data.top2_confidence || 0,
-        margin: data.margin || 0,
-        top_3: data.top_3 || [],
-        isReliable,
-      };
-    } catch (err) {
-      console.warn('[WEBRTC Sambhav Model 2] Inference note:', err);
-      return {
-        label: 'NO_ACTIVE_SIGN',
-        phrase: '',
-        confidence: 0,
-        isReliable: false,
-      };
     }
+
+    return {
+      label: 'NO_ACTIVE_SIGN',
+      phrase: '',
+      confidence: 0,
+      isReliable: false,
+    };
   }
 
   public getEndpoint(): string {

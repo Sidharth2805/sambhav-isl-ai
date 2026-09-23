@@ -192,13 +192,17 @@ export function useSambhavModel2() {
       if (frameBufferRef.current.length > 90) {
         frameBufferRef.current.shift();
       }
-      setGestureState('COLLECTING');
+      if (frameBufferRef.current.length < 10) {
+        setGestureState('COLLECTING');
+      }
     } else {
       if (frameBufferRef.current.length > 0) {
         frameBufferRef.current.shift();
       }
       if (frameBufferRef.current.length === 0) {
         setGestureState('IDLE');
+        setCurrentGesture(null);
+        setConfidence(0);
         consecutivePredictionsRef.current.clear();
       }
     }
@@ -220,10 +224,9 @@ export function useSambhavModel2() {
     }));
 
     const now = Date.now();
-    // Run inference every 120ms if at least 15 frames are collected
-    if (frameBufferRef.current.length >= 15 && now - lastInferenceTimeRef.current > 120) {
+    // Run real-time sliding window inference every 100ms when at least 10 frames are collected
+    if (frameBufferRef.current.length >= 10 && now - lastInferenceTimeRef.current > 100) {
       lastInferenceTimeRef.current = now;
-      setGestureState('INFERENCE');
 
       setTelemetry((prev) => ({ ...prev, requestStatus: 'SENT' }));
       const startReq = performance.now();
@@ -255,12 +258,12 @@ export function useSambhavModel2() {
         const newCount = prevCount + 1;
         consecutivePredictionsRef.current.set(prediction.label, newCount);
 
-        // Commit if sustained over 2 consecutive windows and not duplicate within 1.2s
+        // Commit if sustained over 2 consecutive windows and not duplicate within 1.0s
         if (newCount >= 2) {
           const isSameAsLast = lastCommittedLabelRef.current === prediction.label;
           const timeSinceLastCommit = now - lastCommitTimeRef.current;
 
-          if (!isSameAsLast || timeSinceLastCommit > 1200) {
+          if (!isSameAsLast || timeSinceLastCommit > 1000) {
             lastCommittedLabelRef.current = prediction.label;
             lastCommitTimeRef.current = now;
 
@@ -273,10 +276,17 @@ export function useSambhavModel2() {
             };
             setCommittedSign(committed);
             setGestureState('COMMITTED');
+          } else {
+            setGestureState('SIGN_DETECTED');
           }
+        } else {
+          setGestureState('SIGN_DETECTED');
         }
       } else {
         consecutivePredictionsRef.current.clear();
+        if (frameBufferRef.current.length >= 10) {
+          setGestureState('DETECTING');
+        }
       }
     }
   }, []);

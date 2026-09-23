@@ -100,29 +100,23 @@ export function extract126Landmarks(results: any): { vector: FrameLandmarks126; 
 }
 
 /**
- * Resamples or zero-pads sequence of 126-dim frames to exactly 60 frames.
+ * Resamples sequence of 126-dim frames to exactly 60 frames using linear temporal interpolation.
  */
 export function resampleSequenceTo60(frames: FrameLandmarks126[]): number[][] {
-  if (frames.length === 0) {
+  if (!frames || frames.length === 0) {
     return Array.from({ length: SAMBHAV_SEQUENCE_LENGTH }, () =>
       new Array(SAMBHAV_NUM_FEATURES).fill(0.0)
     );
   }
 
-  if (frames.length >= SAMBHAV_SEQUENCE_LENGTH) {
-    const indices: number[] = [];
-    for (let i = 0; i < SAMBHAV_SEQUENCE_LENGTH; i++) {
-      const idx = Math.round((i * (frames.length - 1)) / (SAMBHAV_SEQUENCE_LENGTH - 1));
-      indices.push(idx);
-    }
-    return indices.map((idx) => frames[idx]);
-  } else {
-    // Zero-pad to 60 frames
-    const padded = [...frames];
-    const diff = SAMBHAV_SEQUENCE_LENGTH - frames.length;
-    for (let i = 0; i < diff; i++) {
-      padded.push(new Array(SAMBHAV_NUM_FEATURES).fill(0.0));
-    }
-    return padded;
+  if (frames.length === 1) {
+    return Array.from({ length: SAMBHAV_SEQUENCE_LENGTH }, () => [...frames[0]]);
   }
+
+  const indices: number[] = [];
+  for (let i = 0; i < SAMBHAV_SEQUENCE_LENGTH; i++) {
+    const idx = Math.round((i * (frames.length - 1)) / (SAMBHAV_SEQUENCE_LENGTH - 1));
+    indices.push(idx);
+  }
+  return indices.map((idx) => frames[idx]);
 }

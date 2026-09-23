@@ -1410,8 +1410,16 @@ export const TranslatePage: React.FC = () => {
                       </div>
                       {isISLRecognizing && (
                         <div className="bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded text-[9px] text-gray-300 font-medium self-start flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-                          <span>Status: {gestureState}</span>
+                          <span className={`w-1.5 h-1.5 rounded-full ${gestureState === 'SIGN_DETECTED' || gestureState === 'COMMITTED' ? 'bg-emerald-400' : gestureState === 'COLLECTING' ? 'bg-amber-400 animate-pulse' : 'bg-indigo-400'}`} />
+                          <span>
+                            Status: {gestureState === 'COLLECTING'
+                              ? `Collecting (${telemetry.bufferedFrames}/60 frames)`
+                              : gestureState === 'SIGN_DETECTED' || gestureState === 'COMMITTED'
+                              ? `Detected: ${recognizedSign || 'Active Sign'}`
+                              : gestureState === 'DETECTING'
+                              ? 'Analyzing Gesture...'
+                              : gestureState}
+                          </span>
                         </div>
                       )}
                     </div>
