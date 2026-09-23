@@ -74,12 +74,6 @@ export const AppLayout: React.FC = () => {
       icon: 'sign_language',
       iconColor: 'text-purple-600 group-hover:text-purple-700',
     },
-    {
-      name: t('sidebar.gallery', 'Gallery'),
-      path: '/gallery',
-      icon: 'photo_library',
-      iconColor: 'text-pink-500 group-hover:text-pink-600',
-    },
   ];
 
   if (user?.accountType === 'ADMIN') {

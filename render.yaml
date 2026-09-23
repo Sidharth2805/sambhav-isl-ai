@@ -63,3 +63,21 @@ services:
         value: https://signbridge-backend-k4k5.onrender.com
       - key: VITE_ML_SERVICE_URL
         value: https://sambhav-ml.onrender.com
+      - key: VITE_ML_API_URL
+        value: https://sambhav-ml.onrender.com
+
+  # ---------------------------------------------------------------------------
+  # 3. ML RECOGNITION SERVICE (FastAPI + TensorFlow 2.x + BiLSTM)
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: sambhav-ml
+    runtime: docker
+    dockerContext: ml_service
+    dockerfilePath: ml_service/Dockerfile
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 10000
+
