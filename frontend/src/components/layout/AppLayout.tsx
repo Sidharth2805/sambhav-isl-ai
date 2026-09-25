@@ -5,6 +5,7 @@ import { useAccessibility } from '../../hooks/useAccessibility';
 import { Chatbot } from '../chatbot/Chatbot';
 import { AccessibilityModal } from '../accessibility/AccessibilityModal';
 import { AccessibilityOverlays } from '../accessibility/AccessibilityOverlays';
+import { FeedbackRatingModal } from '../help/FeedbackRatingModal';
 
 export const AppLayout: React.FC = () => {
   const { logout, user } = useAuth();
@@ -15,6 +16,8 @@ export const AppLayout: React.FC = () => {
   const [isHovered, setIsHovered] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
+  const [feedbackModalTab, setFeedbackModalTab] = useState<'feedback' | 'contact'>('feedback');
 
   // Close modal on Escape key
   useEffect(() => {
@@ -74,6 +77,12 @@ export const AppLayout: React.FC = () => {
       icon: 'sign_language',
       iconColor: 'text-purple-600 group-hover:text-purple-700',
     },
+    {
+      name: t('sidebar.settings', 'User Settings'),
+      path: '/settings',
+      icon: 'settings',
+      iconColor: 'text-slate-600 group-hover:text-slate-700',
+    },
   ];
 
   if (user?.accountType === 'ADMIN') {
@@ -104,7 +113,34 @@ export const AppLayout: React.FC = () => {
             SAM<span className="text-indigo-600 dark:text-[#fe9832] font-extrabold">BHAV</span>
           </span>
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          {/* Direct User Settings Button */}
+          <Link
+            to="/settings"
+            className="p-2 rounded-xl border border-[#e2e8f0] dark:border-[#2d3133] bg-[#f8fafc] dark:bg-[#1a202c] text-[#0f172a] dark:text-white hover:text-indigo-600 dark:hover:text-[#fe9832] hover:border-indigo-300 dark:hover:border-[#fe9832] cursor-pointer transition-colors"
+            title="User Settings"
+            aria-label="User Settings"
+          >
+            <span className="material-symbols-outlined text-[20px]">
+              settings
+            </span>
+          </Link>
+
+          {/* Feedback / Rating Modal Button */}
+          <button
+            onClick={() => {
+              setFeedbackModalTab('feedback');
+              setFeedbackModalOpen(true);
+            }}
+            className="p-2 rounded-xl border border-[#e2e8f0] dark:border-[#2d3133] bg-[#f8fafc] dark:bg-[#1a202c] text-[#0f172a] dark:text-white hover:text-amber-500 hover:border-amber-300 cursor-pointer transition-colors"
+            title="Rate & Review App"
+            aria-label="Rate & Review App"
+          >
+            <span className="material-symbols-outlined text-[20px] text-amber-500">
+              star
+            </span>
+          </button>
+
           {/* Accessibility Options Button */}
           <button
             onClick={openModal}
@@ -174,6 +210,30 @@ export const AppLayout: React.FC = () => {
           </nav>
 
           <div className="mt-auto pt-4 border-t border-[#e2e8f0] dark:border-[#2d3133] flex flex-col gap-2">
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                setFeedbackModalTab('feedback');
+                setFeedbackModalOpen(true);
+              }}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-all cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[20px]">star</span>
+              <span>Rate &amp; Review App</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                setFeedbackModalTab('contact');
+                setFeedbackModalOpen(true);
+              }}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-indigo-600 dark:text-[#fe9832] hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-all cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[20px]">support_agent</span>
+              <span>Contact Support Desk</span>
+            </button>
+
             <button
               onClick={() => {
                 setMobileMenuOpen(false);
@@ -264,6 +324,28 @@ export const AppLayout: React.FC = () => {
         {/* Bottom Footer Actions */}
         <div className="mt-auto px-0.5 pt-3 pb-2 border-t border-[#e2e8f0] dark:border-[#2d3133] flex flex-col gap-2">
           
+          {/* Rate & Review Button */}
+          <button
+            type="button"
+            onClick={() => {
+              setFeedbackModalTab('feedback');
+              setFeedbackModalOpen(true);
+            }}
+            className="w-full py-2.5 px-3 bg-[#f8fafc] dark:bg-[#1a202c] border border-[#e2e8f0] dark:border-[#2d3133] rounded-xl text-xs font-semibold text-[#475569] dark:text-[#c1c6d7] hover:bg-amber-50 dark:hover:bg-[#2d3133] hover:text-amber-600 dark:hover:text-[#fe9832] hover:border-amber-300 dark:hover:border-[#fe9832] transition-all flex items-center relative cursor-pointer group"
+            title="Rate & Review App"
+          >
+            <div className="w-6 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-[20px] text-amber-500">star</span>
+            </div>
+            <div
+              className={`overflow-hidden transition-all duration-300 flex items-center whitespace-nowrap ${
+                isHovered ? 'opacity-100 max-w-[170px] ml-3' : 'opacity-0 max-w-0 ml-0 pointer-events-none'
+              }`}
+            >
+              <span className="font-medium text-[13px]">Rate &amp; Feedback</span>
+            </div>
+          </button>
+
           {/* Accessibility Suite Options Button (UX4G Standard) */}
           <button
             type="button"
@@ -338,67 +420,58 @@ export const AppLayout: React.FC = () => {
       </aside>
 
       {/* Main Content Area (Maximized screen space, offset only by icon bar width on desktop) */}
-      <main className="flex-1 flex flex-col max-w-[1400px] mx-auto w-full px-4 sm:px-8 pt-20 md:pt-6 pb-12 min-h-screen transition-all duration-300 ml-0 md:ml-20">
-        <Outlet />
+      <main className="flex-1 flex flex-col min-w-0 md:pl-20 transition-all duration-300">
+        <div className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full pt-20 md:pt-6">
+          <Outlet />
+        </div>
       </main>
 
-      {/* Floating Chatbot Assistant */}
+      {/* Embedded 24/7 Virtual Assistant */}
       <Chatbot />
 
-      {/* UX4G Universal Accessibility Overlays & Modal */}
-      <AccessibilityOverlays />
+      {/* UX4G Standard Accessibility Suite Modal & Overlays */}
       <AccessibilityModal />
+      <AccessibilityOverlays />
 
-      {/* Logout Confirmation Modal */}
+      {/* Feedback & Support Modal */}
+      <FeedbackRatingModal
+        isOpen={feedbackModalOpen}
+        onClose={() => setFeedbackModalOpen(false)}
+        defaultTab={feedbackModalTab}
+      />
+
+      {/* Logout Confirmation Dialog Modal */}
       {showLogoutConfirm && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="logout-dialog-title"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowLogoutConfirm(false);
-          }}
-        >
-          <div className="bg-white dark:bg-[#151c28] border border-[#e0e3e5] dark:border-[#2d3133] rounded-3xl p-6 max-w-md w-full shadow-2xl animate-scaleUp flex flex-col gap-5">
-            {/* Modal Icon and Header */}
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 shadow-inner">
-                <span className="material-symbols-outlined text-[28px]">logout</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 id="logout-dialog-title" className="text-base sm:text-lg font-black text-[#030813] dark:text-white">
-                  {t('logout.title', 'Confirm Sign Out')}
-                </h3>
-                <p className="text-xs text-[#45474c] dark:text-[#c1c6d7] mt-1 leading-relaxed">
-                  {t('logout.desc', 'Are you sure you want to log out of your SAMBHAV account? You can choose to remain signed in or proceed with logging out.')}
-                </p>
-              </div>
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white dark:bg-[#1a202c] rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 dark:border-[#2d3133] flex flex-col gap-4 animate-scaleUp">
+            <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
+              <span className="material-symbols-outlined text-3xl">logout</span>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                {t('logout.modal.title', 'Sign Out Confirmation')}
+              </h3>
             </div>
-
-            {/* Modal Action Buttons */}
-            <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2.5 pt-3 border-t border-[#e0e3e5] dark:border-[#2d3133]">
+            <p className="text-sm text-gray-600 dark:text-[#c1c6d7] leading-relaxed">
+              {t('logout.modal.message', 'Are you sure you want to end your current session and sign out of SAMBHAV?')}
+            </p>
+            <div className="flex items-center justify-end gap-3 mt-2">
               <button
                 type="button"
                 onClick={() => setShowLogoutConfirm(false)}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-[#e0e3e5] dark:border-[#2d3133] bg-[#f1f4f6] dark:bg-[#1a202c] hover:bg-[#e0e3e5] dark:hover:bg-[#252d3d] text-[#181c1e] dark:text-white text-xs font-bold transition-all cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-gray-700 dark:text-[#c1c6d7] hover:bg-slate-100 dark:hover:bg-[#2d3133] transition-colors cursor-pointer"
               >
-                {t('logout.cancel', 'Remain on Account')}
+                {t('logout.modal.cancel', 'Cancel')}
               </button>
-
               <button
                 type="button"
                 onClick={handleConfirmLogout}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white text-xs font-black transition-all shadow-md hover:shadow-red-500/20 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+                className="px-5 py-2 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white shadow-sm transition-colors cursor-pointer"
               >
-                <span className="material-symbols-outlined text-[18px]">logout</span>
-                <span>{t('logout.confirm', 'Log Out')}</span>
+                {t('logout.modal.confirm', 'Sign Out')}
               </button>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 };

@@ -436,15 +436,28 @@ export const TranslatePage: React.FC = () => {
     }
   }, []);
 
-  // Cleanup on unmount
+  // Cleanup on unmount - immediately stops camera hardware tracks and recognition
   useEffect(() => {
     return () => {
       stopContinuousListening();
+      stopISLRecognition();
       if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach((t) => t.stop());
+        mediaStreamRef.current.getTracks().forEach((t) => {
+          try {
+            t.stop();
+          } catch (e) {}
+        });
+        mediaStreamRef.current = null;
       }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+      if (gestureVideoRef.current) {
+        gestureVideoRef.current.srcObject = null;
+      }
+      setCameraActive(false);
     };
-  }, [stopContinuousListening]);
+  }, [stopContinuousListening, stopISLRecognition]);
 
   // Keep videoRef continuously linked to active mediaStream
   useEffect(() => {
@@ -586,8 +599,18 @@ export const TranslatePage: React.FC = () => {
     if (newMode === 'SPEECH_TEXT_TO_ISL') {
       stopISLRecognition();
       if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current.getTracks().forEach((track) => {
+          try {
+            track.stop();
+          } catch (e) {}
+        });
         mediaStreamRef.current = null;
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+      if (gestureVideoRef.current) {
+        gestureVideoRef.current.srcObject = null;
       }
       setCameraActive(false);
       startContinuousListening();
@@ -628,8 +651,18 @@ export const TranslatePage: React.FC = () => {
     stopContinuousListening();
     stopISLRecognition();
     if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current.getTracks().forEach((track) => {
+        try {
+          track.stop();
+        } catch (e) {}
+      });
       mediaStreamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    if (gestureVideoRef.current) {
+      gestureVideoRef.current.srcObject = null;
     }
     setCameraActive(false);
   };

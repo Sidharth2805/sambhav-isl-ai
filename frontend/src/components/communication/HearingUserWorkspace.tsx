@@ -181,7 +181,13 @@ export const HearingUserWorkspace: React.FC<HearingUserWorkspaceProps> = ({
 
     finalTranscripts.forEach((transcript) => {
       // Check if not already spoken AND sender is NOT the current hearing user (remote deaf participant only)
-      const isMe = transcript.senderId === user?.email || transcript.senderId === user?.id;
+      const isMe =
+        transcript.senderId === user?.email ||
+        transcript.senderId === user?.id ||
+        transcript.senderId === 'self' ||
+        transcript.senderId === 'me' ||
+        transcript.senderType === 'COMMON_USER';
+
       if (!isMe && transcript.text && !spokenTranscriptIdsRef.current.has(transcript.id)) {
         spokenTranscriptIdsRef.current.add(transcript.id);
         

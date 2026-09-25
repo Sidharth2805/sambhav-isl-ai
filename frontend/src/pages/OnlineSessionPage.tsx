@@ -213,15 +213,24 @@ export const OnlineSessionPage: React.FC = () => {
     },
   });
 
-  // Attach remote stream to hidden audio playback element
+  // Attach remote stream to hidden audio playback element with robust autoplay handling
   useEffect(() => {
     if (remoteAudioRef.current && remoteStream) {
       remoteAudioRef.current.srcObject = remoteStream;
-      remoteAudioRef.current.play().catch(() => {});
+      const playAudio = () => {
+        if (remoteAudioRef.current && remoteAudioRef.current.paused) {
+          remoteAudioRef.current.play().catch((err) => {
+            console.log('[WEBRTC] Audio autoplay waiting for user interaction:', err);
+          });
+        }
+      };
+      playAudio();
+      window.addEventListener('click', playAudio, { once: true });
+      window.addEventListener('touchstart', playAudio, { once: true });
     }
   }, [remoteStream]);
 
-  // Sync speaker volume
+  // Sync speaker volume across all audio elements
   useEffect(() => {
     document.querySelectorAll('audio').forEach((audio) => {
       audio.volume = speakerVolume / 100;
@@ -240,7 +249,7 @@ export const OnlineSessionPage: React.FC = () => {
     const mySenderName = (user as any)?.fullName || (user as any)?.name || 'You';
     const mySenderType = isDeafWorkspace ? 'ACCESSIBILITY_USER' : 'COMMON_USER';
 
-    if (micState && connectionState === CallConnectionState.Connected) {
+    if (micState) {
       stt.startRecording(
         sessionId || roomCodeRef.current,
         mySenderId,

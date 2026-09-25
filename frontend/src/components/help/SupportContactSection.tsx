@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 
 interface SupportContactSectionProps {
   initialSubject?: string;
@@ -16,10 +16,63 @@ export const SupportContactSection: React.FC<SupportContactSectionProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  // Image / Screenshot upload state
+  const [attachmentPreview, setAttachmentPreview] = useState<string | null>(null);
+  const [attachmentName, setAttachmentName] = useState<string | null>(null);
+  const [attachmentSize, setAttachmentSize] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        alert('Please upload an image file (PNG, JPG, JPEG, WEBP).');
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Image size exceeds 5MB limit. Please upload a smaller image.');
+        return;
+      }
+
+      setAttachmentName(file.name);
+      setAttachmentSize(`${(file.size / 1024).toFixed(1)} KB`);
+
+      const reader = new FileReader();
+      reader.onload = (loadEvt) => {
+        setAttachmentPreview(loadEvt.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveAttachment = () => {
+    setAttachmentPreview(null);
+    setAttachmentName(null);
+    setAttachmentSize(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !email || !message) return;
     setIsSubmitting(true);
+
+    try {
+      const ticketPayload = {
+        name,
+        email,
+        category,
+        message,
+        attachmentName,
+        timestamp: new Date().toISOString(),
+      };
+      const existing = JSON.parse(localStorage.getItem('sambhav_support_tickets') || '[]');
+      existing.unshift(ticketPayload);
+      localStorage.setItem('sambhav_support_tickets', JSON.stringify(existing.slice(0, 50)));
+    } catch {
+      // Ignore
+    }
+
     setTimeout(() => {
       setIsSubmitting(false);
       setSubmitted(true);
@@ -28,6 +81,7 @@ export const SupportContactSection: React.FC<SupportContactSectionProps> = ({
         setName('');
         setEmail('');
         setMessage('');
+        handleRemoveAttachment();
         setSubmitted(false);
       }, 5000);
     }, 1000);
@@ -67,12 +121,12 @@ export const SupportContactSection: React.FC<SupportContactSectionProps> = ({
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-[#030813] dark:text-white">Support &amp; Escalation Email</p>
                 <a
-                  href="mailto:support@sambhav-isl.org"
+                  href="mailto:nayak.subham2426@gmail.com"
                   className="text-xs font-semibold text-[#fe9832] hover:underline block truncate mt-0.5"
                 >
-                  support@sambhav-isl.org
+                  nayak.subham2426@gmail.com
                 </a>
-                <p className="text-[10px] text-[#45474c] dark:text-[#828796] mt-0.5">Response within 24 business hours</p>
+                <p className="text-[10px] text-[#45474c] dark:text-[#828796] mt-0.5">Direct Developer &amp; Team Support</p>
               </div>
             </div>
 
@@ -84,7 +138,7 @@ export const SupportContactSection: React.FC<SupportContactSectionProps> = ({
               <div className="flex-1 min-w-0">
                 <p className="font-bold text-[#030813] dark:text-white">Accessibility Helpline</p>
                 <p className="text-xs font-bold text-[#030813] dark:text-white mt-0.5">
-                  +91 (080) 4567-8900
+                  1800-SAMBHAV
                 </p>
                 <p className="text-[10px] text-[#45474c] dark:text-[#828796] mt-0.5">Mon - Sat, 9:00 AM to 7:00 PM IST (Toll-Free)</p>
               </div>
@@ -140,20 +194,22 @@ export const SupportContactSection: React.FC<SupportContactSectionProps> = ({
             <form onSubmit={handleSubmit} className="flex flex-col gap-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
-                  <label className="font-bold text-[#030813] dark:text-white">Your Name</label>
+                  <label htmlFor="ticket-name" className="font-bold text-[#030813] dark:text-white">Your Name</label>
                   <input
+                    id="ticket-name"
                     type="text"
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Priyanshu Sharma"
+                    placeholder="e.g. Subham Nayak"
                     className="w-full px-3.5 py-2.5 bg-[#f8fafc] dark:bg-[#0c121e] border border-[#e0e3e5] dark:border-[#243044] rounded-xl text-xs text-[#030813] dark:text-white focus:border-[#fe9832] outline-none"
                   />
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="font-bold text-[#030813] dark:text-white">Email Address</label>
+                  <label htmlFor="ticket-email" className="font-bold text-[#030813] dark:text-white">Email Address</label>
                   <input
+                    id="ticket-email"
                     type="email"
                     required
                     value={email}
@@ -165,13 +221,14 @@ export const SupportContactSection: React.FC<SupportContactSectionProps> = ({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="font-bold text-[#030813] dark:text-white">Problem Category</label>
+                <label htmlFor="ticket-category" className="font-bold text-[#030813] dark:text-white">Problem Category</label>
                 <select
+                  id="ticket-category"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-[#f8fafc] dark:bg-[#0c121e] border border-[#e0e3e5] dark:border-[#243044] rounded-xl text-xs text-[#030813] dark:text-white focus:border-[#fe9832] outline-none"
                 >
-                  <option value="Communication & Calls">🔴 Communication &amp; Calls (LiveKit/Video)</option>
+                  <option value="Communication & Calls">🔴 Communication &amp; Calls (Live Video)</option>
                   <option value="ISL Translation & Avatar">🤟 ISL Translation &amp; Avatar</option>
                   <option value="Speech & Microphone">🎤 Speech &amp; Microphone</option>
                   <option value="Account & Login">👤 Account, Login &amp; Password</option>
@@ -181,8 +238,9 @@ export const SupportContactSection: React.FC<SupportContactSectionProps> = ({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="font-bold text-[#030813] dark:text-white">Describe Your Issue</label>
+                <label htmlFor="ticket-desc" className="font-bold text-[#030813] dark:text-white">Describe Your Issue</label>
                 <textarea
+                  id="ticket-desc"
                   rows={4}
                   required
                   value={message}
@@ -192,10 +250,60 @@ export const SupportContactSection: React.FC<SupportContactSectionProps> = ({
                 />
               </div>
 
+              {/* Attachment Section */}
+              <div className="flex flex-col gap-1.5">
+                <label className="font-bold text-[#030813] dark:text-white">
+                  Attach Error Screenshot (Optional)
+                </label>
+                
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+
+                {!attachmentPreview ? (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="py-2.5 px-3 rounded-xl border border-dashed border-[#e0e3e5] dark:border-[#243044] bg-[#f8fafc] dark:bg-[#0c121e] hover:border-[#fe9832] text-[#45474c] dark:text-[#828796] flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">add_photo_alternate</span>
+                    <span>Click to attach image or screenshot (Max 5MB)</span>
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-3 p-2.5 rounded-xl border border-[#e0e3e5] dark:border-[#243044] bg-[#f8fafc] dark:bg-[#0c121e]">
+                    <img
+                      src={attachmentPreview}
+                      alt="Screenshot preview"
+                      className="w-12 h-12 object-cover rounded-lg border border-[#e0e3e5] dark:border-[#243044]"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-[#030813] dark:text-white truncate text-[11px]">
+                        {attachmentName}
+                      </p>
+                      <p className="text-[10px] text-[#45474c] dark:text-[#828796]">
+                        {attachmentSize}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveAttachment}
+                      className="p-1.5 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg cursor-pointer"
+                      title="Remove attachment"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">delete</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="mt-1 w-full py-3 bg-gradient-to-r from-[#fe9832] to-[#e8872b] hover:brightness-110 text-[#542900] font-black text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
+                className="mt-1 w-full py-3 bg-gradient-to-r from-[#fe9832] to-[#e8872b] hover:brightness-110 text-[#542900] font-black text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
               >
                 {isSubmitting ? (
                   <span className="material-symbols-outlined text-[18px] animate-spin">sync</span>

@@ -1413,7 +1413,7 @@ export const LandingPage: React.FC = () => {
                     </div>
                     <div className="space-y-1">
                       <p className="text-base font-bold text-[#0f172a] dark:text-white">{t('contact.details.email', 'E-mail')}</p>
-                      <a className="block text-sm sm:text-base text-[#475569] dark:text-[#cbd5e1] hover:text-indigo-600 dark:hover:text-[#fe9832] transition font-medium" href="mailto:imsidkr@gmail.com">imsidkr@gmail.com</a>
+                      <a className="block text-sm sm:text-base text-[#475569] dark:text-[#cbd5e1] hover:text-indigo-600 dark:hover:text-[#fe9832] transition font-medium" href="mailto:nayak.subham2426@gmail.com">nayak.subham2426@gmail.com</a>
                     </div>
                   </div>
                   <div className="flex items-start space-x-4">

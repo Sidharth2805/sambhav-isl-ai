@@ -223,9 +223,8 @@ export const AccessibilityDashboard: React.FC = () => {
                     className="w-full min-h-[44px] px-3 rounded-lg border border-border bg-bg text-text"
                   >
                     <option value="English">English</option>
-                    <option value="Hindi">Hindi</option>
-                    <option value="Tamil">Tamil</option>
-                    <option value="Bengali">Bengali</option>
+                    <option value="Hindi">Hindi (हिंदी)</option>
+                    <option value="Odia">Odia (ଓଡ଼ିଆ)</option>
                   </select>
                 </div>
 

@@ -10,20 +10,63 @@ export class WebRTCMediaManager {
   public async initializeMedia(initialVideo: boolean = true, initialAudio: boolean = true): Promise<MediaStream | null> {
     try {
       await this.enumerateDevices();
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
-      });
+      
+      let stream: MediaStream | null = null;
 
-      this.localStream = stream;
-      this.setAudioEnabled(initialAudio);
-      this.setVideoEnabled(initialVideo);
+      // 1. Try unified audio & video capture
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        });
+      } catch (errUnified) {
+        console.warn('[WEBRTC Media] Unified media request failed, attempting separate audio/video track capture:', errUnified);
+        
+        // 2. Resilient fallback: capture audio and video individually
+        const tracks: MediaStreamTrack[] = [];
 
-      // Track active device ids
-      const videoTrack = stream.getVideoTracks()[0];
-      const audioTrack = stream.getAudioTracks()[0];
-      if (videoTrack) this.activeVideoDeviceId = videoTrack.getSettings().deviceId || '';
-      if (audioTrack) this.activeAudioDeviceId = audioTrack.getSettings().deviceId || '';
+        try {
+          const audioStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            },
+          });
+          tracks.push(...audioStream.getAudioTracks());
+        } catch (errAudio) {
+          console.warn('[WEBRTC Media] Microphone capture fallback note:', errAudio);
+        }
+
+        try {
+          const videoStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+          });
+          tracks.push(...videoStream.getVideoTracks());
+        } catch (errVideo) {
+          console.warn('[WEBRTC Media] Camera capture fallback note:', errVideo);
+        }
+
+        if (tracks.length > 0) {
+          stream = new MediaStream(tracks);
+        }
+      }
+
+      if (stream) {
+        this.localStream = stream;
+        this.setAudioEnabled(initialAudio);
+        this.setVideoEnabled(initialVideo);
+
+        // Track active device ids
+        const videoTrack = stream.getVideoTracks()[0];
+        const audioTrack = stream.getAudioTracks()[0];
+        if (videoTrack) this.activeVideoDeviceId = videoTrack.getSettings().deviceId || '';
+        if (audioTrack) this.activeAudioDeviceId = audioTrack.getSettings().deviceId || '';
+      }
 
       return stream;
     } catch (err) {
@@ -61,7 +104,12 @@ export class WebRTCMediaManager {
     this.activeAudioDeviceId = deviceId;
     try {
       const newStream = await navigator.mediaDevices.getUserMedia({
-        audio: { deviceId: { exact: deviceId } },
+        audio: {
+          deviceId: { exact: deviceId },
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
       });
       const newTrack = newStream.getAudioTracks()[0];
       if (newTrack && this.localStream) {

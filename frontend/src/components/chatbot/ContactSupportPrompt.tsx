@@ -67,7 +67,7 @@ export const ContactSupportPrompt: React.FC<ContactSupportPromptProps> = ({
             <div className="space-y-1 text-[11px] text-[#475569] dark:text-[#cbd5e1]">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[15px] text-[#fe9832]">mail</span>
-                <a href="mailto:support@sambhav-isl.ai" className="hover:underline text-sky-600 dark:text-sky-400 font-medium">support@sambhav-isl.ai</a>
+                <a href="mailto:nayak.subham2426@gmail.com" className="hover:underline text-sky-600 dark:text-sky-400 font-medium">nayak.subham2426@gmail.com</a>
               </div>
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[15px] text-emerald-500">call</span>

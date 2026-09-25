@@ -341,5 +341,16 @@ html.a11y-screen-reader-active a:hover {
   outline: 2px dashed #fe9832 !important;
 }
 
+/* 9. Disable App Animations & Transitions */
+html.app-disable-animations *,
+html.app-disable-animations *::before,
+html.app-disable-animations *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+
 
 
