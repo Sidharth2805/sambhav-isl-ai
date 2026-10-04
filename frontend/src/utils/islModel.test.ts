@@ -6,17 +6,17 @@ describe('ISL AI Recognition Pipeline Unit Tests', () => {
   let classifier: SaanketBiLSTMClassifier;
 
   beforeEach(() => {
-    classifier = new SaanketBiLSTMClassifier('http://127.0.0.1:8000');
+    classifier = new SaanketBiLSTMClassifier('http://127.0.0.1:59999');
   });
 
   describe('Gesture-to-Text Vocabulary Mapping', () => {
     it('should map ISL alphabet and words accurately in vocabulary', () => {
-      expect(ISL_VOCABULARY['actor']).toBe('Actor');
-      expect(ISL_VOCABULARY['bank']).toBe('Bank');
-      expect(ISL_VOCABULARY['doctor']).toBe('Doctor');
-      expect(ISL_VOCABULARY['hello']).toBe('Hello');
-      expect(ISL_VOCABULARY['hospital']).toBe('Hospital');
-      expect(ISL_VOCABULARY['school']).toBe('School');
+      expect(ISL_VOCABULARY['A']).toBe('A');
+      expect(ISL_VOCABULARY['again']).toBe('Again');
+      expect(ISL_VOCABULARY['answer']).toBe('Answer');
+      expect(ISL_VOCABULARY['book']).toBe('Book');
+      expect(ISL_VOCABULARY['boy']).toBe('Boy');
+      expect(ISL_VOCABULARY['brother']).toBe('Brother');
     });
 
     it('should format raw labels into clean title-cased English', () => {
@@ -71,9 +71,9 @@ describe('ISL AI Recognition Pipeline Unit Tests', () => {
       expect(classifier.getLatestBuffer().length).toBe(0);
     });
 
-    it('should reject short transient movements (< 20 frames) with INSUFFICIENT_ACTIVITY', async () => {
+    it('should reject short transient movements (< 8 frames) with INSUFFICIENT_ACTIVITY', async () => {
       classifier.clearBuffer();
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 5; i++) {
         classifier.addFrame({
           leftHand: Array.from({ length: 21 }, () => ({ x: 0.5 + i * 0.01, y: 0.5, z: 0 }))
         });

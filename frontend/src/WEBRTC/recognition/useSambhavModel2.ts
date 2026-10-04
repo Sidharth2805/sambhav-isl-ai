@@ -19,6 +19,7 @@ function drawSkeletonOnCanvas(results: any) {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
 
+  // Always clear previous frame skeleton
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   if (!results || !results.multiHandLandmarks || results.multiHandLandmarks.length === 0) return;
 
@@ -56,6 +57,13 @@ function drawSkeletonOnCanvas(results: any) {
       ctx.stroke();
     }
   });
+}
+
+function clearGestureCanvas() {
+  const canvas = document.querySelector('canvas[data-gesture-canvas="true"]') as HTMLCanvasElement;
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
 const defaultTelemetry: SambhavTelemetry = {
@@ -98,7 +106,9 @@ export function useSambhavModel2() {
   const animFrameIdRef = useRef<number | null>(null);
   const frameBufferRef = useRef<FrameLandmarks126[]>([]);
   const isProcessingRef = useRef<boolean>(false);
+  const processingStartTimeRef = useRef<number>(0);
   const isAnalyzingRef = useRef<boolean>(false);
+  const analyzingStartTimeRef = useRef<number>(0);
   const signingStartTimeRef = useRef<number | null>(null);
   const cooldownUntilRef = useRef<number>(0);
   const noHandCountRef = useRef<number>(0);
@@ -109,16 +119,228 @@ export function useSambhavModel2() {
   useEffect(() => {
     setActiveEndpoint(sambhavModel2Engine.getEndpoint());
     const runHealthCheck = () => {
-      sambhavModel2Engine.checkHealth().then(({ ok, latencyMs }) => {
-        setIsModelOnline(ok);
-        if (latencyMs > 0) setPingLatencyMs(latencyMs);
-      }).catch(() => setIsModelOnline(false));
+      sambhavModel2Engine
+        .checkHealth()
+        .then(({ ok, latencyMs }) => {
+          setIsModelOnline(ok);
+          setActiveEndpoint(sambhavModel2Engine.getEndpoint());
+          if (latencyMs > 0) setPingLatencyMs(latencyMs);
+        })
+        .catch(() => setIsModelOnline(false));
     };
 
     runHealthCheck();
     const interval = setInterval(runHealthCheck, 15000);
     return () => clearInterval(interval);
   }, []);
+
+  const triggerInference = useCallback((capturedFrames: FrameLandmarks126[]) => {
+    if (capturedFrames.length < 10) {
+      setGestureState('IDLE');
+      setSigningCountdown(null);
+      setSigningProgress(0);
+      return;
+    }
+
+    isAnalyzingRef.current = true;
+    analyzingStartTimeRef.current = Date.now();
+    setGestureState('INFERENCE');
+    signingStartTimeRef.current = null;
+    setSigningCountdown(0);
+    setSigningProgress(100);
+
+    setTelemetry((prev) => ({ ...prev, requestStatus: 'SENT' }));
+    const startReq = performance.now();
+    const sequence60 = resampleSequenceTo60(capturedFrames);
+
+    // Non-blocking detached async inference execution
+    (async () => {
+      try {
+        const prediction = await sambhavModel2Engine.predictSequence(sequence60);
+        const latencyMs = Math.round(performance.now() - startReq);
+
+        setTelemetry((prev) => ({
+          ...prev,
+          requestStatus: prediction.isReliable ? 'RECEIVED' : 'REJECTED',
+          lastLatencyMs: latencyMs,
+          recognitionSource: 'BiLSTM',
+          top1Label: prediction.label !== 'NO_ACTIVE_SIGN' ? prediction.phrase || prediction.label : '',
+          top1Confidence: prediction.confidence,
+          top2Label: prediction.top2_label || '',
+          top2Confidence: prediction.top2_confidence || 0,
+          margin: prediction.margin || 0,
+        }));
+
+        if (prediction.isReliable && prediction.label !== 'NO_ACTIVE_SIGN') {
+          const displaySign = prediction.phrase || prediction.label;
+          setCurrentGesture(displaySign);
+          setConfidence(prediction.confidence);
+          setTranslatedText(displaySign);
+
+          lastCommittedLabelRef.current = prediction.label;
+          lastCommitTimeRef.current = Date.now();
+
+          const committed: SambhavCommittedEvent = {
+            text: displaySign,
+            confidence: prediction.confidence,
+            sequenceId: Date.now(),
+            timestamp: Date.now(),
+            eventId: `sambhav-seq-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          };
+          setCommittedSign(committed);
+          setGestureState('COMMITTED');
+          cooldownUntilRef.current = Date.now() + 700;
+
+          setTimeout(() => {
+            setGestureState('IDLE');
+            setSigningCountdown(null);
+            setSigningProgress(0);
+          }, 1200);
+        } else {
+          setGestureState('IDLE');
+          setSigningCountdown(null);
+          setSigningProgress(0);
+          cooldownUntilRef.current = Date.now() + 300;
+        }
+      } catch (err) {
+        console.error('[Sambhav Model 2] Inference error:', err);
+        setGestureState('IDLE');
+        setSigningCountdown(null);
+        setSigningProgress(0);
+      } finally {
+        isAnalyzingRef.current = false;
+      }
+    })();
+  }, []);
+
+  const handleMediaPipeResults = useCallback(
+    (results: any) => {
+      // 1. Draw hand skeletons in real time
+      drawSkeletonOnCanvas(results);
+
+      const handsDetected = results?.multiHandLandmarks?.length || 0;
+      setHandsDetectedCount(handsDetected);
+
+      // 2. Extract 126-dim vector (Left=0, Right=1)
+      const { vector, hasHand } = extract126Landmarks(results);
+
+      const now = Date.now();
+
+      // Telemetry statistics
+      let nonZeroCount = 0;
+      let minVal = 0;
+      let maxVal = 0;
+      let sumVal = 0;
+      for (let i = 0; i < vector.length; i++) {
+        const v = vector[i];
+        if (v !== 0) {
+          nonZeroCount++;
+          if (minVal === 0 || v < minVal) minVal = v;
+          if (v > maxVal) maxVal = v;
+          sumVal += v;
+        }
+      }
+      const meanVal = nonZeroCount > 0 ? sumVal / nonZeroCount : 0;
+      let slot0HasData = 0;
+      let slot1HasData = 0;
+      for (let i = 0; i < 63; i++) {
+        if (vector[i] !== 0) {
+          slot0HasData = 63;
+          break;
+        }
+      }
+      for (let i = 63; i < 126; i++) {
+        if (vector[i] !== 0) {
+          slot1HasData = 63;
+          break;
+        }
+      }
+
+      // Watchdog: If analyzing for > 5000ms without response, reset state cleanly
+      if (isAnalyzingRef.current && now - analyzingStartTimeRef.current > 5000) {
+        isAnalyzingRef.current = false;
+        setGestureState('IDLE');
+        setSigningCountdown(null);
+        setSigningProgress(0);
+      }
+
+      // 3. State Machine
+      if (hasHand) {
+        noHandCountRef.current = 0;
+
+        // In cooldown or currently processing inference
+        if (now < cooldownUntilRef.current || isAnalyzingRef.current) {
+          return;
+        }
+
+        // Start signing accumulation
+        if (signingStartTimeRef.current === null) {
+          signingStartTimeRef.current = now;
+          frameBufferRef.current = [];
+          setGestureState('COLLECTING');
+        }
+
+        frameBufferRef.current.push(vector);
+
+        const elapsedMs = now - signingStartTimeRef.current;
+        const remainingSecs = Math.max(0, Math.ceil((3000 - elapsedMs) / 1000));
+        const progress = Math.min(100, Math.round((elapsedMs / 3000) * 100));
+
+        setSigningCountdown(remainingSecs);
+        setSigningProgress(progress);
+
+        setTelemetry((prev) => ({
+          ...prev,
+          cameraActive: true,
+          handsDetected,
+          bufferedFrames: frameBufferRef.current.length,
+          featureVectorDim: 126,
+          slot0Features: slot0HasData,
+          slot1Features: slot1HasData,
+          minVal,
+          maxVal,
+          meanVal,
+        }));
+
+        // 3.0s window reached
+        if (elapsedMs >= 3000 && frameBufferRef.current.length >= 15) {
+          const captured = [...frameBufferRef.current];
+          frameBufferRef.current = [];
+          triggerInference(captured);
+        }
+      } else {
+        // Hand absent
+        noHandCountRef.current += 1;
+
+        // Natural gesture drop completion
+        if (
+          noHandCountRef.current >= 6 &&
+          frameBufferRef.current.length >= 15 &&
+          !isAnalyzingRef.current &&
+          signingStartTimeRef.current !== null
+        ) {
+          const captured = [...frameBufferRef.current];
+          frameBufferRef.current = [];
+          triggerInference(captured);
+        } else if (noHandCountRef.current > 12 && !isAnalyzingRef.current) {
+          // Hand gone for > 400ms: reset idle
+          signingStartTimeRef.current = null;
+          frameBufferRef.current = [];
+          setSigningCountdown(null);
+          setSigningProgress(0);
+          setGestureState('IDLE');
+        }
+
+        setTelemetry((prev) => ({
+          ...prev,
+          cameraActive: true,
+          handsDetected: 0,
+          bufferedFrames: frameBufferRef.current.length,
+        }));
+      }
+    },
+    [triggerInference]
+  );
 
   const processFrame = useCallback(async () => {
     if (!videoElementRef.current || videoElementRef.current.paused || videoElementRef.current.ended) {
@@ -132,15 +354,22 @@ export function useSambhavModel2() {
       return;
     }
 
+    const now = Date.now();
+    // Safety watchdog: reset isProcessing if stuck for > 1500ms
+    if (isProcessingRef.current && now - processingStartTimeRef.current > 1500) {
+      isProcessingRef.current = false;
+    }
+
     if (!isProcessingRef.current) {
       isProcessingRef.current = true;
+      processingStartTimeRef.current = now;
       try {
         const hands = await getSharedHandsInstance();
         if (hands) {
           await hands.send({ image: video });
         }
       } catch {
-        // Frame send error
+        // Safe catch for frame send error
       } finally {
         isProcessingRef.current = false;
       }
@@ -149,261 +378,13 @@ export function useSambhavModel2() {
     animFrameIdRef.current = requestAnimationFrame(processFrame);
   }, []);
 
-  const handleMediaPipeResults = useCallback(async (results: any) => {
-    // 1. Draw hand skeletons on any detected canvas
-    drawSkeletonOnCanvas(results);
-
-    const handsDetected = results?.multiHandLandmarks?.length || 0;
-    setHandsDetectedCount(handsDetected);
-
-    // 2. Extract 126-dim vector (Left=0, Right=1)
-    const { vector, hasHand } = extract126Landmarks(results);
-
-    // Compute basic telemetry stats
-    let nonZeroCount = 0;
-    let minVal = 0;
-    let maxVal = 0;
-    let sumVal = 0;
-    for (let i = 0; i < vector.length; i++) {
-      const v = vector[i];
-      if (v !== 0) {
-        nonZeroCount++;
-        if (minVal === 0 || v < minVal) minVal = v;
-        if (v > maxVal) maxVal = v;
-        sumVal += v;
-      }
-    }
-    const meanVal = nonZeroCount > 0 ? sumVal / nonZeroCount : 0;
-
-    let slot0HasData = 0;
-    let slot1HasData = 0;
-    for (let i = 0; i < 63; i++) {
-      if (vector[i] !== 0) { slot0HasData = 63; break; }
-    }
-    for (let i = 63; i < 126; i++) {
-      if (vector[i] !== 0) { slot1HasData = 63; break; }
-    }
-
-    const now = Date.now();
-
-    // 3. 3-Second Gesture Capture & Immediate Analysis State Machine
-    if (hasHand) {
-      noHandCountRef.current = 0;
-
-      // If currently within cooldown period from previous recognition, wait
-      if (now < cooldownUntilRef.current || isAnalyzingRef.current) {
-        return;
-      }
-
-      // Start 3-second signing collection window
-      if (signingStartTimeRef.current === null) {
-        signingStartTimeRef.current = now;
-        frameBufferRef.current = [];
-        setGestureState('COLLECTING');
-      }
-
-      frameBufferRef.current.push(vector);
-
-      const elapsedMs = now - signingStartTimeRef.current;
-      const remainingSecs = Math.max(0, Math.ceil((3000 - elapsedMs) / 1000));
-      const progress = Math.min(100, Math.round((elapsedMs / 3000) * 100));
-
-      setSigningCountdown(remainingSecs);
-      setSigningProgress(progress);
-
-      // Update live telemetry
-      setTelemetry((prev) => ({
-        ...prev,
-        cameraActive: true,
-        handsDetected,
-        bufferedFrames: frameBufferRef.current.length,
-        featureVectorDim: 126,
-        slot0Features: slot0HasData,
-        slot1Features: slot1HasData,
-        minVal,
-        maxVal,
-        meanVal,
-      }));
-
-      // Helper to execute sequence prediction and committed sign lifecycle
-      const executeSequenceInference = async (capturedFrames: FrameLandmarks126[]) => {
-        isAnalyzingRef.current = true;
-        setGestureState('INFERENCE');
-        signingStartTimeRef.current = null;
-        setSigningCountdown(0);
-        setSigningProgress(100);
-
-        setTelemetry((prev) => ({ ...prev, requestStatus: 'SENT' }));
-        const startReq = performance.now();
-
-        // Resample accumulated gesture sequence to standard 60 frames for BiLSTM
-        const sequence60 = resampleSequenceTo60(capturedFrames);
-
-        try {
-          const prediction = await sambhavModel2Engine.predictSequence(sequence60);
-          const latencyMs = Math.round(performance.now() - startReq);
-
-          setTelemetry((prev) => ({
-            ...prev,
-            requestStatus: prediction.isReliable ? 'RECEIVED' : 'REJECTED',
-            lastLatencyMs: latencyMs,
-            recognitionSource: 'BiLSTM',
-            top1Label: prediction.label !== 'NO_ACTIVE_SIGN' ? prediction.phrase || prediction.label : '',
-            top1Confidence: prediction.confidence,
-            top2Label: prediction.top2_label || '',
-            top2Confidence: prediction.top2_confidence || 0,
-            margin: prediction.margin || 0,
-          }));
-
-          if (prediction.isReliable && prediction.label !== 'NO_ACTIVE_SIGN') {
-            const displaySign = prediction.phrase || prediction.label;
-            setCurrentGesture(displaySign);
-            setConfidence(prediction.confidence);
-            setTranslatedText(displaySign);
-
-            lastCommittedLabelRef.current = prediction.label;
-            lastCommitTimeRef.current = Date.now();
-
-            const committed: SambhavCommittedEvent = {
-              text: displaySign,
-              confidence: prediction.confidence,
-              sequenceId: Date.now(),
-              timestamp: Date.now(),
-              eventId: `sambhav-seq-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-            };
-            setCommittedSign(committed);
-            setGestureState('COMMITTED');
-
-            // Brief 0.8s transition pause before allowing the next sign to begin
-            cooldownUntilRef.current = Date.now() + 800;
-
-            setTimeout(() => {
-              setGestureState('IDLE');
-              setSigningCountdown(null);
-              setSigningProgress(0);
-            }, 1400);
-          } else {
-            setGestureState('IDLE');
-            setSigningCountdown(null);
-            setSigningProgress(0);
-            cooldownUntilRef.current = Date.now() + 400;
-          }
-        } catch (err) {
-          console.error('[Sambhav Model 2] Inference error:', err);
-          setGestureState('IDLE');
-          setSigningCountdown(null);
-          setSigningProgress(0);
-        } finally {
-          isAnalyzingRef.current = false;
-        }
-      };
-
-      // When full 3.0-second window is reached and we have collected sufficient frames:
-      if (elapsedMs >= 3000 && frameBufferRef.current.length >= 15) {
-        const capturedFrames = [...frameBufferRef.current];
-        frameBufferRef.current = [];
-        await executeSequenceInference(capturedFrames);
-      }
-    } else {
-      // Hand not in view
-      noHandCountRef.current += 1;
-
-      // Natural gesture completion: If the user was signing and drops their hand after >=15 frames:
-      if (noHandCountRef.current >= 6 && frameBufferRef.current.length >= 15 && !isAnalyzingRef.current && gestureState === 'COLLECTING') {
-        const capturedFrames = [...frameBufferRef.current];
-        frameBufferRef.current = [];
-        isAnalyzingRef.current = true;
-        setGestureState('INFERENCE');
-        signingStartTimeRef.current = null;
-        setSigningCountdown(0);
-        setSigningProgress(100);
-
-        setTelemetry((prev) => ({ ...prev, requestStatus: 'SENT' }));
-        const startReq = performance.now();
-        const sequence60 = resampleSequenceTo60(capturedFrames);
-
-        try {
-          const prediction = await sambhavModel2Engine.predictSequence(sequence60);
-          const latencyMs = Math.round(performance.now() - startReq);
-
-          setTelemetry((prev) => ({
-            ...prev,
-            requestStatus: prediction.isReliable ? 'RECEIVED' : 'REJECTED',
-            lastLatencyMs: latencyMs,
-            recognitionSource: 'BiLSTM',
-            top1Label: prediction.label !== 'NO_ACTIVE_SIGN' ? prediction.phrase || prediction.label : '',
-            top1Confidence: prediction.confidence,
-            top2Label: prediction.top2_label || '',
-            top2Confidence: prediction.top2_confidence || 0,
-            margin: prediction.margin || 0,
-          }));
-
-          if (prediction.isReliable && prediction.label !== 'NO_ACTIVE_SIGN') {
-            const displaySign = prediction.phrase || prediction.label;
-            setCurrentGesture(displaySign);
-            setConfidence(prediction.confidence);
-            setTranslatedText(displaySign);
-
-            lastCommittedLabelRef.current = prediction.label;
-            lastCommitTimeRef.current = Date.now();
-
-            const committed: SambhavCommittedEvent = {
-              text: displaySign,
-              confidence: prediction.confidence,
-              sequenceId: Date.now(),
-              timestamp: Date.now(),
-              eventId: `sambhav-seq-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-            };
-            setCommittedSign(committed);
-            setGestureState('COMMITTED');
-            cooldownUntilRef.current = Date.now() + 800;
-
-            setTimeout(() => {
-              setGestureState('IDLE');
-              setSigningCountdown(null);
-              setSigningProgress(0);
-            }, 1400);
-          } else {
-            setGestureState('IDLE');
-            setSigningCountdown(null);
-            setSigningProgress(0);
-            cooldownUntilRef.current = Date.now() + 400;
-          }
-        } catch (err) {
-          console.error('[Sambhav Model 2] Natural completion inference error:', err);
-          setGestureState('IDLE');
-          setSigningCountdown(null);
-          setSigningProgress(0);
-        } finally {
-          isAnalyzingRef.current = false;
-        }
-      } else if (noHandCountRef.current > 15 && !isAnalyzingRef.current) {
-        // Hand absent for ~0.5s without active buffer: reset cleanly
-        signingStartTimeRef.current = null;
-        frameBufferRef.current = [];
-        setSigningCountdown(null);
-        setSigningProgress(0);
-        if (gestureState === 'COLLECTING') {
-          setGestureState('IDLE');
-        }
-      }
-
-      setTelemetry((prev) => ({
-        ...prev,
-        cameraActive: true,
-        handsDetected: 0,
-        bufferedFrames: frameBufferRef.current.length,
-      }));
-    }
-  }, [gestureState]);
-
   const isRecognizingRef = useRef<boolean>(false);
 
   const startRecognition = useCallback(
     async (videoElement: HTMLVideoElement | null) => {
       if (!videoElement) return;
       if (videoElementRef.current === videoElement && isRecognizingRef.current) {
-        return; // Already actively recognizing this video element — preserve buffered frames!
+        return;
       }
       videoElementRef.current = videoElement;
       isRecognizingRef.current = true;
@@ -436,17 +417,17 @@ export function useSambhavModel2() {
       animFrameIdRef.current = null;
     }
     frameBufferRef.current = [];
+    isAnalyzingRef.current = false;
+    isProcessingRef.current = false;
+    signingStartTimeRef.current = null;
     setCurrentGesture(null);
     setConfidence(0);
     setGestureState('IDLE');
+    setSigningCountdown(null);
+    setSigningProgress(0);
     setTelemetry((prev) => ({ ...prev, cameraActive: false, bufferedFrames: 0, handsDetected: 0 }));
 
-    // Clear canvas
-    const canvas = document.querySelector('canvas[data-gesture-canvas="true"]') as HTMLCanvasElement;
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
+    clearGestureCanvas();
   }, []);
 
   useEffect(() => {
@@ -454,6 +435,7 @@ export function useSambhavModel2() {
       if (animFrameIdRef.current) {
         cancelAnimationFrame(animFrameIdRef.current);
       }
+      clearGestureCanvas();
     };
   }, []);
 

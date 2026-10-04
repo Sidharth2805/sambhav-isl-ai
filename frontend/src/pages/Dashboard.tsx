@@ -83,6 +83,19 @@ export const Dashboard: React.FC = () => {
       badgeColor: 'bg-gradient-to-r from-[#fe9832] to-[#138808] dark:from-[#fe9832] dark:to-[#fe9832]',
       route: '/cultural-isl',
     },
+    {
+      id: 'mycareermap',
+      title: t('dashboard.card.mycareermap.title', 'Career Discovery'),
+      desc: t('dashboard.card.mycareermap.desc', 'Interactive career domain assessments, engineering trade simulations, aptitude scoring, and customized job salary roadmaps.'),
+      icon: 'explore',
+      iconBg: 'bg-amber-100 text-amber-800 dark:bg-[#fe9832]/20 dark:border dark:border-[#fe9832]/30 dark:text-[#fe9832]',
+      hoverBorder: 'hover:border-amber-400 hover:shadow-md hover:shadow-amber-500/10 dark:hover:border-[#fe9832]',
+      actionColor: 'text-amber-600 dark:text-[#fe9832]',
+      image: '/images/career councling/electrical.png',
+      badge: t('dashboard.card.mycareermap.badge', 'Career Discovery'),
+      badgeColor: 'bg-gradient-to-r from-amber-500 to-orange-600 dark:from-[#fe9832] dark:to-[#fe9832]',
+      route: '/mycareermap',
+    },
   ];
 
   const latestNews = [

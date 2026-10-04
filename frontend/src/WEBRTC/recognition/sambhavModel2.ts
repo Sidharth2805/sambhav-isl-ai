@@ -1,18 +1,19 @@
 import type { SambhavModel2Prediction } from '../types/recognition';
 import { formatSambhavLabel } from './labels';
 
+const PRIMARY_RENDER_ML_URL = 'https://sambhav-ml.onrender.com';
+
 export function getMlServiceUrl(): string {
+  if (import.meta.env.VITE_ML_SERVICE_URL) {
+    return import.meta.env.VITE_ML_SERVICE_URL;
+  }
   if (import.meta.env.VITE_ML_API_URL) {
     return import.meta.env.VITE_ML_API_URL;
   }
   if (import.meta.env.VITE_AI_URL) {
     return import.meta.env.VITE_AI_URL;
   }
-  const isDev = import.meta.env.DEV || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-  if (isDev) {
-    return 'http://localhost:8000';
-  }
-  return 'https://sambhav-isl-ml.onrender.com';
+  return PRIMARY_RENDER_ML_URL;
 }
 
 export class SambhavModel2InferenceEngine {
@@ -25,20 +26,25 @@ export class SambhavModel2InferenceEngine {
   public async predictSequence(sequence60x126: number[][]): Promise<SambhavModel2Prediction> {
     const candidateEndpoints = [
       this.endpoint,
-      'http://127.0.0.1:8000',
+      PRIMARY_RENDER_ML_URL,
       'http://localhost:8000',
-      'https://sambhav-isl-ml.onrender.com',
-      'https://sambhav-ml.onrender.com',
+      'http://127.0.0.1:8000',
     ];
     const uniqueCandidates = Array.from(new Set(candidateEndpoints.filter(Boolean)));
 
     for (const ep of uniqueCandidates) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+
       try {
         const response = await fetch(`${ep}/predict-landmarks`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sequence: sequence60x126 }),
+          signal: controller.signal,
         });
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
           continue;
@@ -52,7 +58,7 @@ export class SambhavModel2InferenceEngine {
         this.endpoint = ep;
 
         if (import.meta.env.DEV) {
-          console.log(`[WEBRTC] [RECOGNITION] [SAMBHAV MODEL 2] Input: (${sequence60x126.length}x${sequence60x126[0]?.length || 0}) -> Pred: ${rawLabel} (${(confidence * 100).toFixed(1)}%)`);
+          console.log(`[WEBRTC] [RECOGNITION] [SAMBHAV MODEL 2] Input: (${sequence60x126.length}x${sequence60x126[0]?.length || 0}) -> Pred: ${rawLabel} (${(confidence * 100).toFixed(1)}%) [via ${ep}]`);
         }
 
         return {
@@ -66,6 +72,7 @@ export class SambhavModel2InferenceEngine {
           isReliable,
         };
       } catch {
+        clearTimeout(timeoutId);
         // Try next candidate endpoint
       }
     }
@@ -85,23 +92,27 @@ export class SambhavModel2InferenceEngine {
   public async checkHealth(): Promise<{ ok: boolean; latencyMs: number }> {
     const candidates = [
       this.endpoint,
-      'http://127.0.0.1:8000',
+      PRIMARY_RENDER_ML_URL,
       'http://localhost:8000',
-      'https://sambhav-ml.onrender.com',
-      'https://sambhav-isl-ml.onrender.com',
+      'http://127.0.0.1:8000',
     ];
-    const uniqueCandidates = Array.from(new Set(candidates));
+    const uniqueCandidates = Array.from(new Set(candidates.filter(Boolean)));
 
     for (const url of uniqueCandidates) {
       const start = performance.now();
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+
       try {
-        const res = await fetch(`${url}/health`, { method: 'GET' });
+        const res = await fetch(`${url}/health`, { method: 'GET', signal: controller.signal });
+        clearTimeout(timeoutId);
         if (res.ok) {
           const latencyMs = Math.max(1, Math.round(performance.now() - start));
           this.endpoint = url;
           return { ok: true, latencyMs };
         }
       } catch {
+        clearTimeout(timeoutId);
         // Try next candidate
       }
     }

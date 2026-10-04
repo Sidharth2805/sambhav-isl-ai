@@ -70,7 +70,13 @@ export const CommonDashboard: React.FC = () => {
             <h1 className="text-3xl font-extrabold mb-1">Welcome back, {user?.name}</h1>
             <p className="text-sm opacity-80">{user?.email}</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
+            <Link 
+              to="/mycareermap" 
+              className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-bold rounded-xl text-sm min-h-[44px] flex items-center justify-center gap-2 hover:opacity-95 transition-all shadow-sm cursor-pointer"
+            >
+              🧭 Career Discovery
+            </Link>
             <button 
               disabled 
               className="btn-primary opacity-60 cursor-not-allowed text-sm min-h-[44px] flex items-center justify-center"

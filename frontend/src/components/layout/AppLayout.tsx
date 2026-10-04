@@ -78,6 +78,12 @@ export const AppLayout: React.FC = () => {
       iconColor: 'text-purple-600 group-hover:text-purple-700',
     },
     {
+      name: t('sidebar.mycareermap', 'Career Discovery'),
+      path: '/mycareermap',
+      icon: 'explore',
+      iconColor: 'text-amber-500 group-hover:text-amber-600',
+    },
+    {
       name: t('sidebar.settings', 'User Settings'),
       path: '/settings',
       icon: 'settings',

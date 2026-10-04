@@ -396,6 +396,18 @@ export const LandingPage: React.FC = () => {
               </button>
               <button
                 type="button"
+                onClick={() => navigate('/mycareermap')}
+                className="text-[#334155] dark:text-[#cbd5e1] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors cursor-pointer font-bold flex items-center gap-1.5"
+                title="Explore Career Discovery Assessment & Vocational Map"
+              >
+                <span className="material-symbols-outlined text-[18px] text-amber-500">explore</span>
+                <span>Career Discovery</span>
+                <span className="px-1.5 py-0.2 bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 text-[10px] font-black rounded-full shadow-xs">
+                  NEW
+                </span>
+              </button>
+              <button
+                type="button"
                 onClick={() => scrollTo('gallery-section')}
                 className="text-[#334155] dark:text-[#cbd5e1] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors cursor-pointer font-bold flex items-center gap-1.5 group"
               >
@@ -543,19 +555,30 @@ export const LandingPage: React.FC = () => {
             </div>
 
             {/* Action CTA Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center space-y-3 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => navigate('/communicate')}
-                className="w-full sm:w-auto bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 text-white dark:bg-none dark:bg-[#fe9832] dark:text-[#3d1e00] px-8 sm:px-10 py-4 rounded-xl text-base sm:text-lg font-extrabold shadow-lg shadow-indigo-500/25 dark:shadow-[0_4px_20px_rgba(254,152,50,0.35)] hover:shadow-indigo-500/40 hover:-translate-y-0.5 transition-all duration-200 text-center cursor-pointer flex items-center justify-center gap-2.5"
+                className="w-full sm:w-auto bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 text-white dark:bg-none dark:bg-[#fe9832] dark:text-[#3d1e00] px-7 sm:px-9 py-4 rounded-xl text-base sm:text-lg font-extrabold shadow-lg shadow-indigo-500/25 dark:shadow-[0_4px_20px_rgba(254,152,50,0.35)] hover:shadow-indigo-500/40 hover:-translate-y-0.5 transition-all duration-200 text-center cursor-pointer flex items-center justify-center gap-2.5"
               >
                 <span className="material-symbols-outlined text-[22px]">videocam</span>
                 <span>{t('hero.cta.try', 'Try Sambhav Now')}</span>
               </button>
+
+              <button
+                type="button"
+                onClick={() => navigate('/mycareermap')}
+                className="w-full sm:w-auto bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 px-7 sm:px-9 py-4 rounded-xl text-base sm:text-lg font-black shadow-lg shadow-orange-500/25 hover:shadow-orange-500/35 hover:-translate-y-0.5 transition-all duration-200 text-center cursor-pointer flex items-center justify-center gap-2.5"
+                title="Start 25-Scenario Career Discovery Assessment"
+              >
+                <span className="material-symbols-outlined text-[22px]">explore</span>
+                <span>Career Discovery</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => scrollTo('how-it-works-section')}
-                className="w-full sm:w-auto bg-white/95 dark:bg-[#1a202c]/95 text-[#0f172a] dark:text-[#f7fafc] border border-slate-300 dark:border-[#2d3133] hover:border-indigo-400 dark:hover:border-[#fe9832]/60 px-8 sm:px-10 py-4 rounded-xl text-base sm:text-lg font-bold hover:bg-slate-50 dark:hover:bg-[#2d3133] hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center space-x-2.5 shadow-xs hover:shadow-sm cursor-pointer backdrop-blur-sm"
+                className="w-full sm:w-auto bg-white/95 dark:bg-[#1a202c]/95 text-[#0f172a] dark:text-[#f7fafc] border border-slate-300 dark:border-[#2d3133] hover:border-indigo-400 dark:hover:border-[#fe9832]/60 px-6 sm:px-8 py-4 rounded-xl text-base sm:text-lg font-bold hover:bg-slate-50 dark:hover:bg-[#2d3133] hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center space-x-2 shadow-xs hover:shadow-sm cursor-pointer backdrop-blur-sm"
               >
                 <span className="material-symbols-outlined text-indigo-600 dark:text-[#fe9832] text-[22px]">info</span>
                 <span>{t('hero.cta.how', 'How it Works')}</span>
@@ -563,18 +586,22 @@ export const LandingPage: React.FC = () => {
             </div>
 
             {/* Feature Pills */}
-            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-3.5 mt-8 pt-6 border-t border-slate-200/60 dark:border-[#2d3133]/80 text-xs sm:text-sm md:text-base font-bold text-[#1e293b] dark:text-[#cbd5e1] w-full max-w-4xl">
-              <span className="flex items-center gap-2 px-4 py-2 bg-white/95 dark:bg-[#0d121d]/85 rounded-full border border-slate-200 dark:border-[#2d3133] shadow-xs backdrop-blur-sm text-slate-800 dark:text-white">
-                <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 dark:bg-[#fe9832]" />
+            <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3 mt-8 pt-6 border-t border-slate-200/60 dark:border-[#2d3133]/80 text-xs sm:text-sm font-bold text-[#1e293b] dark:text-[#cbd5e1] w-full max-w-4xl">
+              <span className="flex items-center gap-2 px-3.5 py-1.5 bg-white/95 dark:bg-[#0d121d]/85 rounded-full border border-slate-200 dark:border-[#2d3133] shadow-xs backdrop-blur-sm text-slate-800 dark:text-white">
+                <span className="w-2 h-2 rounded-full bg-indigo-500 dark:bg-[#fe9832]" />
                 {t('hero.pill.avatar', 'Real-time 3D ISL Avatar')}
               </span>
-              <span className="flex items-center gap-2 px-4 py-2 bg-white/95 dark:bg-[#0d121d]/85 rounded-full border border-slate-200 dark:border-[#2d3133] shadow-xs backdrop-blur-sm text-slate-800 dark:text-white">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 dark:bg-[#059669]" />
+              <span className="flex items-center gap-2 px-3.5 py-1.5 bg-white/95 dark:bg-[#0d121d]/85 rounded-full border border-slate-200 dark:border-[#2d3133] shadow-xs backdrop-blur-sm text-slate-800 dark:text-white">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-[#059669]" />
                 {t('hero.pill.speech', 'Live Speech & Subtitles')}
               </span>
-              <span className="flex items-center gap-2 px-4 py-2 bg-white/95 dark:bg-[#0d121d]/85 rounded-full border border-slate-200 dark:border-[#2d3133] shadow-xs backdrop-blur-sm text-slate-800 dark:text-white">
-                <span className="w-2.5 h-2.5 rounded-full bg-sky-500 dark:bg-[#2563eb]" />
+              <span className="flex items-center gap-2 px-3.5 py-1.5 bg-white/95 dark:bg-[#0d121d]/85 rounded-full border border-slate-200 dark:border-[#2d3133] shadow-xs backdrop-blur-sm text-slate-800 dark:text-white">
+                <span className="w-2 h-2 rounded-full bg-sky-500 dark:bg-[#2563eb]" />
                 {t('hero.pill.webrtc', 'End-to-End Encrypted WebRTC')}
+              </span>
+              <span className="flex items-center gap-2 px-3.5 py-1.5 bg-amber-50/90 dark:bg-amber-950/50 rounded-full border border-amber-300 dark:border-amber-800/60 shadow-xs backdrop-blur-sm text-amber-900 dark:text-amber-300">
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                <span>Career Discovery Assessment (25 Scenarios)</span>
               </span>
             </div>
 
@@ -690,10 +717,10 @@ export const LandingPage: React.FC = () => {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 items-stretch">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 items-stretch">
               
               {/* Card 1: SAMBHAV Translate */}
-              <div className="group rounded-[28px] sm:rounded-[36px] bg-[#2d0e14] dark:bg-[#1f090d] text-white p-6 sm:p-8 flex flex-col justify-between border border-[#5c1c28]/70 shadow-2xl relative overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.01]">
+              <div className="group rounded-[28px] sm:rounded-[36px] bg-[#2d0e14] dark:bg-[#1f090d] text-white p-6 sm:p-7 flex flex-col justify-between border border-[#5c1c28]/70 shadow-2xl relative overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.01]">
                 <div className="relative z-10">
                   {/* Tags */}
                   <div className="flex items-center gap-2 mb-4">
@@ -706,36 +733,36 @@ export const LandingPage: React.FC = () => {
                   </div>
 
                   {/* Title & Description */}
-                  <h3 className="text-3xl sm:text-4xl font-black text-white mb-3 font-headline tracking-tight">
+                  <h3 className="text-2xl sm:text-3xl font-black text-white mb-2.5 font-headline tracking-tight">
                     SAMBHAV Translate
                   </h3>
-                  <p className="text-white/90 text-sm sm:text-base leading-relaxed mb-6 font-normal">
-                    Standalone translation for Indian Sign Language, speech, and text. Use the translator directly without entering a video call. Convert speech or text into Indian Sign Language, or convert Indian Sign Language into speech or text.
+                  <p className="text-white/90 text-xs sm:text-sm leading-relaxed mb-5 font-normal">
+                    Standalone translation for Indian Sign Language, speech, and text. Convert speech or text into Indian Sign Language, or convert signs into clear spoken text.
                   </p>
                 </div>
 
                 {/* Image & Action Button */}
                 <div className="relative z-10 mt-auto">
-                  <div className="rounded-2xl overflow-hidden border border-white/20 shadow-lg mb-5 bg-black/50">
+                  <div className="rounded-2xl overflow-hidden border border-white/20 shadow-lg mb-4 bg-black/50 aspect-[16/10]">
                     <img
                       src="/images/products-translate.jpg"
                       alt="SAMBHAV Translate Interface"
-                      className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-500"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   </div>
                   <button
                     type="button"
                     onClick={() => navigate('/translate')}
-                    className="w-full py-3.5 px-6 rounded-xl bg-white text-[#2d0e14] hover:bg-[#fe9832] hover:text-[#542900] font-black text-sm sm:text-base transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-98"
+                    className="w-full py-3.5 px-5 rounded-xl bg-white text-[#2d0e14] hover:bg-[#fe9832] hover:text-[#542900] font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-98"
                   >
                     <span>Try SAMBHAV Translate</span>
-                    <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
+                    <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                   </button>
                 </div>
               </div>
 
               {/* Card 2: SAMBHAV Connect */}
-              <div className="group rounded-[28px] sm:rounded-[36px] bg-[#0c1424] dark:bg-[#070d18] text-white p-6 sm:p-8 flex flex-col justify-between border border-[#1e2e4a] shadow-2xl relative overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.01]">
+              <div className="group rounded-[28px] sm:rounded-[36px] bg-[#0c1424] dark:bg-[#070d18] text-white p-6 sm:p-7 flex flex-col justify-between border border-[#1e2e4a] shadow-2xl relative overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.01]">
                 <div className="relative z-10">
                   {/* Tags */}
                   <div className="flex items-center gap-2 mb-4">
@@ -748,30 +775,72 @@ export const LandingPage: React.FC = () => {
                   </div>
 
                   {/* Title & Description */}
-                  <h3 className="text-3xl sm:text-4xl font-black text-white mb-3 font-headline tracking-tight">
+                  <h3 className="text-2xl sm:text-3xl font-black text-white mb-2.5 font-headline tracking-tight">
                     SAMBHAV Connect
                   </h3>
-                  <p className="text-white/90 text-sm sm:text-base leading-relaxed mb-6 font-normal">
-                    Real-time communication through an accessible video call. Join a WebRTC conversation where two participants can communicate bidirectionally using Indian Sign Language, speech, and text with translation assistance.
+                  <p className="text-white/90 text-xs sm:text-sm leading-relaxed mb-5 font-normal">
+                    Real-time communication through an accessible video call. Join a WebRTC conversation where two participants communicate bidirectionally with live ISL assistance.
                   </p>
                 </div>
 
                 {/* Image & Action Button */}
                 <div className="relative z-10 mt-auto">
-                  <div className="rounded-2xl overflow-hidden border border-white/20 shadow-lg mb-5 bg-black/50">
+                  <div className="rounded-2xl overflow-hidden border border-white/20 shadow-lg mb-4 bg-black/50 aspect-[16/10]">
                     <img
                       src="/images/products-connect.jpg"
                       alt="SAMBHAV Connect WebRTC Video Call Interface"
-                      className="w-full h-auto object-cover group-hover:scale-105 transition-transform duration-500"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   </div>
                   <button
                     type="button"
                     onClick={() => navigate('/communicate')}
-                    className="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-black text-sm sm:text-base transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-98"
+                    className="w-full py-3.5 px-5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-98"
                   >
                     <span>Launch SAMBHAV Connect</span>
-                    <span className="material-symbols-outlined text-[20px]">videocam</span>
+                    <span className="material-symbols-outlined text-[18px]">videocam</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Card 3: SAMBHAV My Career Map */}
+              <div className="group rounded-[28px] sm:rounded-[36px] bg-[#141226] dark:bg-[#0c0a1a] text-white p-6 sm:p-7 flex flex-col justify-between border border-indigo-900/60 shadow-2xl relative overflow-hidden transition-all duration-300 hover:shadow-2xl hover:scale-[1.01]">
+                <div className="relative z-10">
+                  {/* Tags */}
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="px-4 py-1 bg-amber-500/25 text-amber-300 backdrop-blur-md rounded-full text-xs sm:text-sm font-black border border-amber-400/30">
+                      Vocational AI
+                    </span>
+                    <span className="px-3.5 py-1 bg-white/10 text-white/80 rounded-full text-xs sm:text-sm font-medium">
+                      25 Scenarios
+                    </span>
+                  </div>
+
+                  {/* Title & Description */}
+                  <h3 className="text-2xl sm:text-3xl font-black text-white mb-2.5 font-headline tracking-tight">
+                    SAMBHAV My Career Map
+                  </h3>
+                  <p className="text-white/90 text-xs sm:text-sm leading-relaxed mb-5 font-normal">
+                    Hands-on vocational exploration for deaf students. Solve 25 practical trade scenarios across 5 engineering fields and discover personalized salary and job roadmaps.
+                  </p>
+                </div>
+
+                {/* Image & Action Button */}
+                <div className="relative z-10 mt-auto">
+                  <div className="rounded-2xl overflow-hidden border border-white/20 shadow-lg mb-4 bg-slate-950 aspect-[16/10]">
+                    <img
+                      src="/images/career councling/electrical.png"
+                      alt="SAMBHAV My Career Map Vocational Exploration Interface"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/mycareermap')}
+                    className="w-full py-3.5 px-5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2 shadow-md cursor-pointer active:scale-98"
+                  >
+                    <span>Explore My Career Map</span>
+                    <span className="material-symbols-outlined text-[18px]">explore</span>
                   </button>
                 </div>
               </div>
@@ -1573,6 +1642,12 @@ export const LandingPage: React.FC = () => {
                   <button type="button" onClick={() => scrollTo('gallery-section')} className="text-[#475569] dark:text-[#94a3b8] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors cursor-pointer text-left font-semibold flex items-center gap-1.5">
                     <span>{t('footer.link.gallery', 'Visual Showcase & Gallery')}</span>
                     <span className="w-1.5 h-1.5 rounded-full bg-[#fe9832]" />
+                  </button>
+                </li>
+                <li>
+                  <button type="button" onClick={() => navigate('/mycareermap')} className="text-[#475569] dark:text-[#94a3b8] hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors cursor-pointer text-left font-semibold flex items-center gap-1.5">
+                    <span>My Career Map (Vocational AI)</span>
+                    <span className="px-1 py-0.2 text-[9px] font-black rounded bg-amber-400/20 text-amber-500 border border-amber-400/30">NEW</span>
                   </button>
                 </li>
                 <li>

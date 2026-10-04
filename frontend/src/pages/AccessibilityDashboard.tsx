@@ -126,13 +126,21 @@ export const AccessibilityDashboard: React.FC = () => {
             <h1 id="welcome-title" className="text-3xl md:text-4xl font-extrabold mb-2">Welcome, {user?.name}</h1>
             <p className="text-sm opacity-80">{user?.email}</p>
           </div>
-          <button 
-            disabled 
-            className="btn-primary opacity-60 cursor-not-allowed min-h-[48px] flex items-center justify-center font-bold"
-            aria-describedby="notice-cap"
-          >
-            🎥 Start Accessible Call
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <Link 
+              to="/mycareermap" 
+              className="px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-bold rounded-xl text-sm min-h-[48px] flex items-center justify-center gap-2 hover:opacity-95 transition-all shadow-sm cursor-pointer"
+            >
+              🧭 Career Discovery
+            </Link>
+            <button 
+              disabled 
+              className="btn-primary opacity-60 cursor-not-allowed min-h-[48px] flex items-center justify-center font-bold"
+              aria-describedby="notice-cap"
+            >
+              🎥 Start Accessible Call
+            </button>
+          </div>
         </section>
 
         {/* Dashboard Panels */}

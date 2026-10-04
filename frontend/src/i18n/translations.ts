@@ -56,6 +56,8 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     'sidebar.cultural': 'Cultural ISL',
     'sidebar.news': 'News',
     'sidebar.learn': 'Learn ISL',
+    'sidebar.career': 'Career Discovery',
+    'sidebar.mycareermap': 'Career Discovery',
     'sidebar.admin': 'Admin Console',
     'sidebar.accessibility': 'Accessibility',
     'sidebar.signout': 'Sign Out',
@@ -390,6 +392,9 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     'dashboard.card.cultural.title': 'Cultural ISL',
     'dashboard.card.cultural.desc': 'Experience India\'s National Anthem "Jana Gana Mana" in ISL with 3D avatar animation.',
     'dashboard.card.cultural.badge': 'National Anthem',
+    'dashboard.card.mycareermap.title': 'Career Discovery (My Career Map)',
+    'dashboard.card.mycareermap.desc': 'Interactive career domain assessments, engineering trade simulations, aptitude scoring, and customized job salary roadmaps.',
+    'dashboard.card.mycareermap.badge': 'Career Discovery',
 
     // News Page
     'news.pageTitle': 'Accessibility & ISL News',
@@ -520,6 +525,8 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     'sidebar.cultural': 'सांस्कृतिक ISL',
     'sidebar.news': 'समाचार',
     'sidebar.learn': 'ISL सीखें',
+    'sidebar.career': 'करियर डिस्कवरी',
+    'sidebar.mycareermap': 'करियर डिस्कवरी',
     'sidebar.admin': 'एडमिन कंसोल',
     'sidebar.accessibility': 'सुगमता',
     'sidebar.signout': 'साइन आउट',
@@ -854,6 +861,9 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     'dashboard.card.cultural.title': 'सांस्कृतिक ISL',
     'dashboard.card.cultural.desc': 'ISL में भारत के राष्ट्रगान "जन गण मन" को 3D अवतार एनिमेशन के साथ अनुभव करें।',
     'dashboard.card.cultural.badge': 'राष्ट्रगान',
+    'dashboard.card.mycareermap.title': 'करियर डिस्कवरी (Career Discovery)',
+    'dashboard.card.mycareermap.desc': 'इंटरएक्टिव करियर डोमेन असेसमेंट, 25 इंजीनियरिंग परिदृश्य सिमुलेशन और अनुकूलित करियर रोडमैप।',
+    'dashboard.card.mycareermap.badge': 'करियर डिस्कवरी',
 
     // News Page
     'news.pageTitle': 'सुगमता और ISL समाचार',
@@ -984,6 +994,8 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     'sidebar.cultural': 'ସାଂସ୍କୃତିକ ISL',
     'sidebar.news': 'ସମ୍ବାଦ',
     'sidebar.learn': 'ISL ଶିଖନ୍ତୁ',
+    'sidebar.career': 'କ୍ୟାରିଅର୍ ଡିସ୍କଭରୀ',
+    'sidebar.mycareermap': 'କ୍ୟାରିଅର୍ ଡିସ୍କଭରୀ',
     'sidebar.admin': 'ପ୍ରଶାସନିକ କନସୋଲ୍',
     'sidebar.accessibility': 'ସୁଗମତା',
     'sidebar.signout': 'ଲଗ୍ ଆଉଟ୍',
@@ -1318,6 +1330,9 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     'dashboard.card.cultural.title': 'ସାଂସ୍କୃତିକ ISL',
     'dashboard.card.cultural.desc': 'ISL‌ରେ "ଜନ ଗଣ ମନ" 3D ଅବତାର ଏନିମ୍ୟାସନ ସହ ଅନୁଭବ କରନ୍ତୁ।',
     'dashboard.card.cultural.badge': 'ରାଷ୍ଟ୍ରଗୀତ',
+    'dashboard.card.mycareermap.title': 'କ୍ୟାରିଅର୍ ଡିସ୍କଭରୀ (Career Discovery)',
+    'dashboard.card.mycareermap.desc': 'ଇଣ୍ଟରାକ୍ଟିଭ୍ କ୍ୟାରିଅର୍ ଡୋମେନ୍ ମୂଲ୍ୟାଙ୍କନ, ୨୫ ଇଞ୍ଜିନିୟରିଂ ସିମୁଲେସନ୍ ଏବଂ ଚାକିରି ରୋଡମ୍ୟାପ୍।',
+    'dashboard.card.mycareermap.badge': 'କ୍ୟାରିଅର୍ ଡିସ୍କଭରୀ',
 
     // News Page
     'news.pageTitle': 'ସୁଗମତା ଓ ISL ସମ୍ବାଦ',

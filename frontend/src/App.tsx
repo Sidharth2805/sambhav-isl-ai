@@ -25,6 +25,7 @@ import { CulturalISLPage } from './pages/CulturalISLPage';
 import { GalleryPage } from './pages/GalleryPage';
 import { ISLModelTestPage } from './pages/ISLModelTestPage';
 import { ISLModelDiagnosticPage } from './pages/ISLModelDiagnosticPage';
+import { MyCareerMapPage } from './mycareermap';
 
 const OnlineSessionPage = lazy(() => import('./pages/OnlineSessionPage'));
 
@@ -39,6 +40,11 @@ const App: React.FC = () => {
             <Route path="/gallery" element={<GalleryPage />} />
             <Route path="/showcase" element={<GalleryPage />} />
             <Route path="/accessibility" element={<PlaceholderPage />} />
+            <Route path="/mycareermap" element={<MyCareerMapPage />} />
+            <Route path="/career-discovery" element={<Navigate to="/mycareermap" replace />} />
+            <Route path="/career" element={<Navigate to="/mycareermap" replace />} />
+            <Route path="/careers" element={<Navigate to="/mycareermap" replace />} />
+            <Route path="/explore" element={<Navigate to="/mycareermap" replace />} />
 
             {/* Anonymous Only Routes */}
             <Route element={<UnauthenticatedRoute />}>
@@ -94,7 +100,11 @@ const App: React.FC = () => {
                 <Route path="/learn" element={<Navigate to="/learn-isl" replace />} />
                 <Route path="/learning" element={<Navigate to="/learn-isl" replace />} />
                 <Route path="/isl-learn" element={<Navigate to="/learn-isl" replace />} />
-                <Route path="/explore" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/mycareermap" element={<MyCareerMapPage />} />
+                <Route path="/career-discovery" element={<Navigate to="/mycareermap" replace />} />
+                <Route path="/career" element={<Navigate to="/mycareermap" replace />} />
+                <Route path="/careers" element={<Navigate to="/mycareermap" replace />} />
+                <Route path="/explore" element={<Navigate to="/mycareermap" replace />} />
                 <Route path="/help" element={<HelpPage />} />
                 <Route path="/news" element={<NewsPage />} />
                 <Route path="/gallery" element={<GalleryPage />} />

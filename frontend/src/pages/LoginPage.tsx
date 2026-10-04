@@ -62,6 +62,8 @@ export const LoginPage: React.FC = () => {
     return () => clearInterval(timer);
   }, [isHovered, gestureImages.length]);
 
+  const [loadingStatus, setLoadingStatus] = useState<string | null>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
@@ -70,6 +72,13 @@ export const LoginPage: React.FC = () => {
     }
     setLoading(true);
     setError(null);
+    setLoadingStatus(null);
+
+    // If cloud backend takes longer than 2.5s to respond (cold start spin-up), inform user
+    const slowTimer = setTimeout(() => {
+      setLoadingStatus('Connecting to server (waking up cloud instance)...');
+    }, 2500);
+
     try {
       await login(email, password);
 
@@ -86,7 +95,9 @@ export const LoginPage: React.FC = () => {
     } catch (err: any) {
       setError(err?.message || 'Invalid email or password.');
     } finally {
+      clearTimeout(slowTimer);
       setLoading(false);
+      setLoadingStatus(null);
     }
   };
 
@@ -335,7 +346,10 @@ export const LoginPage: React.FC = () => {
                 className="mt-2 w-full py-3.5 bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 text-white dark:bg-none dark:bg-[#fe9832] dark:hover:bg-[#e8872b] dark:text-[#542900] hover:opacity-95 font-black text-xs sm:text-sm rounded-xl transition-all shadow-md shadow-indigo-500/25 dark:shadow-none flex items-center justify-center gap-2 disabled:opacity-50 active:scale-[0.99] cursor-pointer"
               >
                 {loading ? (
-                  <span className="material-symbols-outlined text-[18px] animate-spin">sync</span>
+                  <>
+                    <span className="material-symbols-outlined text-[18px] animate-spin">sync</span>
+                    <span>{loadingStatus || 'Signing In...'}</span>
+                  </>
                 ) : (
                   <>
                     <span>Sign In</span>
