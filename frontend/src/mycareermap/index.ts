@@ -1,23 +1,13 @@
 /**
- * MyCareerMap - SAMBHAV AI Career Exploration & Vocational Mapping Module
+ * MyCareerMap Unified Vocational & Career Discovery Module
  */
 
-export { MyCareerMapPage, CareerDiscoveryPage } from './pages/MyCareerMapPage';
-export { CareerDomainSelector } from './components/CareerDomainSelector';
-export { EngineeringAssessmentView } from './components/EngineeringAssessmentView';
-export { CareerResultsView } from './components/CareerResultsView';
-export { CareerRoadmapView } from './components/CareerRoadmapView';
-export { CompositeAssetView } from './components/CompositeAssetView';
-export { WorkingOnItView } from './components/WorkingOnItView';
-export { TaskEvidencePanel } from './components/TaskEvidencePanel';
-export { TaskReportModal } from './components/TaskReportModal';
-export { ToolInspectorModal } from './components/ToolInspectorModal';
-export { ElectricalWorkspace } from './components/ElectricalWorkspace';
-
-export * from './types/careerDiscovery';
-export * from './data/careerAssets';
-export * from './data/careerDomains';
-export * from './data/engineeringAssessmentData';
-export * from './data/engineeringJobRoadmaps';
-export * from './data/electricalTaskData';
-export * from './utils/careerScoring';
+export { default as MyCareerMapPage } from './pages/MyCareerMapPage';
+export { default as CareerExplorerPage } from './pages/CareerExplorerPage';
+export { default as CareerDetailPage } from './pages/CareerDetailPage';
+export { default as CareerComparisonPage } from './pages/CareerComparisonPage';
+export { default as RoadmapPage } from './pages/RoadmapPage';
+export { default as OpportunitiesPage } from './pages/OpportunitiesPage';
+export { default as DashboardPage } from './pages/DashboardPage';
+export { careerService } from './services/careerService';
+export { localDb } from './services/localDb';

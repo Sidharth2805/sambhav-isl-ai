@@ -1,466 +1,157 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { useAccessibility } from '../../hooks/useAccessibility';
-import { careerAssets } from '../data/careerAssets';
-import { CareerDomainSelector } from '../components/CareerDomainSelector';
-import { WorkingOnItView } from '../components/WorkingOnItView';
-import { EngineeringAssessmentView } from '../components/EngineeringAssessmentView';
-import { CareerResultsView } from '../components/CareerResultsView';
-import { CareerRoadmapView } from '../components/CareerRoadmapView';
-import type {
-  CareerDomain,
-  CareerAssessmentViewMode,
-  TaskScoreReport,
-  EngineeringTopicScore,
-  JobPathwayDetailed,
-} from '../types/careerDiscovery';
-import { DETAILED_ENGINEERING_JOB_ROADMAPS } from '../data/engineeringJobRoadmaps';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { 
+  Compass, 
+  Map, 
+  Briefcase, 
+  Scale, 
+  Sparkles, 
+  FileText, 
+  ArrowLeft
+} from 'lucide-react';
+import CareerExplorerPage from './CareerExplorerPage';
+import RoadmapPage from './RoadmapPage';
+import OpportunitiesPage from './OpportunitiesPage';
+import CareerComparisonPage from './CareerComparisonPage';
+import GuidedCareerFinderModal from '../components/common/GuidedCareerFinderModal';
+import ResumeUploadModal from '../components/common/ResumeUploadModal';
 
 export const MyCareerMapPage: React.FC = () => {
-  const { user } = useAuth();
-  const { theme, toggleTheme, openModal, activeFeaturesCount } = useAccessibility();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'explore';
 
-  // Master View Navigation State
-  const [viewMode, setViewMode] = useState<CareerAssessmentViewMode>('LANDING');
-  const [selectedDomain, setSelectedDomain] = useState<CareerDomain | null>(null);
-  const [howItWorksOpen, setHowItWorksOpen] = useState<boolean>(false);
+  const [guidedFinderOpen, setGuidedFinderOpen] = useState(false);
+  const [resumeModalOpen, setResumeModalOpen] = useState(false);
 
-  // Assessment & Evaluation Results State
-  const [completedReport, setCompletedReport] = useState<TaskScoreReport | null>(null);
-  const [topicScores, setTopicScores] = useState<EngineeringTopicScore[]>([]);
-  const [selectedJobRoadmap, setSelectedJobRoadmap] = useState<JobPathwayDetailed | null>(null);
-
-  // 1. User Clicks "Start Assessment" on Landing Page
-  const handleStartAssessment = () => {
-    setViewMode('DOMAIN_SELECT');
+  const setTab = (tab: string) => {
+    setSearchParams({ tab });
   };
 
-  // 2. User Selects a Career Domain from the 10 Options
-  const handleSelectDomain = (domain: CareerDomain) => {
-    setSelectedDomain(domain);
-    if (domain.id === 'engineering') {
-      setViewMode('ASSESSMENT');
-    } else {
-      setViewMode('WORKING_ON_IT');
-    }
-  };
+  const tabs = [
+    { id: 'explore', label: 'Career Explorer', icon: Compass, count: '152 Careers' },
+    { id: 'roadmaps', label: 'Milestone Roadmaps', icon: Map, count: '5 Roadmaps' },
+    { id: 'opportunities', label: 'Jobs & Pathways', icon: Briefcase, count: '110 Pathways' },
+    { id: 'compare', label: 'Career Comparison', icon: Scale, count: 'Matrix' },
+  ];
 
-  // 3. User Completes the 25-Question Diagnostic Assessment
-  const handleAssessmentCompleted = (
-    report: TaskScoreReport,
-    scores: EngineeringTopicScore[]
-  ) => {
-    setCompletedReport(report);
-    setTopicScores(scores);
-    setViewMode('RESULTS');
-  };
-
-  // 4. User Selects a Specific Job Option to inspect the Roadmap
-  const handleSelectJobRoadmap = (job: JobPathwayDetailed) => {
-    setSelectedJobRoadmap(job);
-    setViewMode('ROADMAP_VIEW');
-  };
-
-  // 5. Retake / Reset Handler
-  const handleRetakeAssessment = () => {
-    setViewMode('ASSESSMENT');
-  };
-
-  // ==========================================
-  // RENDER: SCREEN 2 - DOMAIN SELECTOR (Grid View)
-  // ==========================================
-  if (viewMode === 'DOMAIN_SELECT') {
-    return (
-      <CareerDomainSelector
-        onSelectDomain={handleSelectDomain}
-        onBackToLanding={() => setViewMode('LANDING')}
-      />
-    );
-  }
-
-  // ==========================================
-  // RENDER: SCREEN 2B - "WORKING ON IT" VIEW
-  // ==========================================
-  if (viewMode === 'WORKING_ON_IT' && selectedDomain) {
-    return (
-      <WorkingOnItView
-        domain={selectedDomain}
-        onBackToDomains={() => setViewMode('DOMAIN_SELECT')}
-        onLaunchEngineering={() => setViewMode('ASSESSMENT')}
-      />
-    );
-  }
-
-  // ==========================================
-  // RENDER: SCREEN 3 - 25-QUESTION ASSESSMENT
-  // ==========================================
-  if (viewMode === 'ASSESSMENT') {
-    return (
-      <EngineeringAssessmentView
-        studentId="student-auth-user"
-        onBackToDomains={() => setViewMode('DOMAIN_SELECT')}
-        onCompleteAssessment={handleAssessmentCompleted}
-      />
-    );
-  }
-
-  // ==========================================
-  // RENDER: SCREEN 4 - RESULTS & JOB MATCHES
-  // ==========================================
-  if (viewMode === 'RESULTS' && completedReport) {
-    return (
-      <CareerResultsView
-        report={completedReport}
-        topicScores={topicScores}
-        onSelectJobRoadmap={handleSelectJobRoadmap}
-        onRetakeAssessment={handleRetakeAssessment}
-        onBackToDomains={() => setViewMode('DOMAIN_SELECT')}
-      />
-    );
-  }
-
-  // ==========================================
-  // RENDER: SCREEN 5 - DETAILED CAREER ROADMAP
-  // ==========================================
-  if (viewMode === 'ROADMAP_VIEW') {
-    const activeJob = selectedJobRoadmap || DETAILED_ENGINEERING_JOB_ROADMAPS[0];
-    return (
-      <CareerRoadmapView
-        job={activeJob}
-        onBackToResults={() => {
-          if (completedReport) {
-            setViewMode('RESULTS');
-          } else {
-            setViewMode('DOMAIN_SELECT');
-          }
-        }}
-        onRetakeAssessment={handleRetakeAssessment}
-      />
-    );
-  }
-
-  // ==========================================
-  // RENDER: SCREEN 1 - CAREER DISCOVERY LANDING
-  // ==========================================
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-6 sm:space-y-8 animate-fadeIn">
+    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-50 selection:bg-amber-500 selection:text-slate-950 font-['Inter',sans-serif]">
       
-      {/* 0. Top Navigation Bar (Always visible for public and authenticated users) */}
-      <div className="flex items-center justify-between gap-3 p-3 sm:p-4 rounded-2xl bg-white dark:bg-[#0d121d] border border-slate-200 dark:border-slate-800 shadow-sm">
-        {/* Brand & Breadcrumbs */}
-        <div className="flex items-center gap-3">
-          <Link
-            to={user ? '/dashboard' : '/'}
-            className="flex items-center gap-2.5 group cursor-pointer"
-            title="Return to SAMBHAV"
-          >
-            <img
-              src="/logo.png"
-              alt="SAMBHAV Logo"
-              className="w-8 h-8 rounded-full object-cover shadow-xs border border-slate-200 dark:border-slate-700 group-hover:scale-105 transition-transform"
-            />
-            <span className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
-              SAM<span className="text-indigo-600 dark:text-[#fe9832]">BHAV</span>
-            </span>
-          </Link>
-          <span className="text-slate-400 dark:text-slate-600 font-mono">/</span>
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-            <span className="material-symbols-outlined text-[13px]">explore</span>
-            My Career Map
-          </span>
-        </div>
-
-        {/* Action Controls: Home, Accessibility, Theme, Sign In */}
-        <div className="flex items-center gap-2">
-          <Link
-            to={user ? '/dashboard' : '/'}
-            className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-          >
-            <span className="material-symbols-outlined text-[16px]">arrow_back</span>
-            <span>{user ? 'Dashboard' : 'Home'}</span>
-          </Link>
-
-          <button
-            type="button"
-            onClick={openModal}
-            className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors relative cursor-pointer"
-            title="Accessibility Suite"
-          >
-            <span className="material-symbols-outlined text-[18px]">accessibility_new</span>
-            {activeFeaturesCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#fe9832] text-[#542900] text-[8px] font-black rounded-full flex items-center justify-center">
-                {activeFeaturesCount}
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-[#fe9832] transition-colors cursor-pointer"
-            title="Toggle Theme"
-          >
-            <span className="material-symbols-outlined text-[18px]">
-              {theme === 'dark' ? 'light_mode' : 'dark_mode'}
-            </span>
-          </button>
-
-          {!user ? (
-            <Link
-              to="/login"
-              className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-all"
-            >
-              Sign In
-            </Link>
-          ) : (
-            <Link
-              to="/dashboard"
-              className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-xs transition-all hidden sm:inline-block"
-            >
-              Dashboard
-            </Link>
-          )}
-        </div>
-      </div>
-
-      {/* 1. Hero / Career Discovery Entry Section */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white border border-slate-800 shadow-xl p-6 sm:p-10 lg:p-12">
-        <div className="absolute -right-16 -top-16 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -left-16 -bottom-16 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-          <div className="lg:col-span-7 space-y-5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-amber-400/10 text-amber-300 border border-amber-400/30">
-              <span className="material-symbols-outlined text-[15px]">explore</span>
-              Experiential Career Discovery
-            </div>
-
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight text-white">
-              Don&apos;t Know What You Want to Become?{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-400">
-                That&apos;s Okay.
-              </span>
-            </h1>
-
-            <p className="text-base sm:text-lg text-slate-300 leading-relaxed max-w-2xl font-normal">
-              You don&apos;t have to choose a career first. Explore real-world tasks, discover your strengths, and find pathways worth exploring.
-            </p>
-
-            {/* Action Buttons: "Start Assessment" (Renamed) and "How It Works" */}
-            <div className="flex flex-wrap items-center gap-4 pt-2">
-              <button
-                type="button"
-                onClick={handleStartAssessment}
-                className="px-7 py-3.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-sm sm:text-base shadow-lg shadow-orange-500/25 hover:shadow-orange-500/35 transition-all cursor-pointer flex items-center gap-2 active:scale-[0.98]"
-              >
-                <span className="material-symbols-outlined text-xl">play_arrow</span>
-                Start Assessment
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setHowItWorksOpen(true)}
-                className="px-5 py-3.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-white font-semibold text-sm sm:text-base border border-slate-700/80 transition-colors cursor-pointer flex items-center gap-2"
-              >
-                <span className="material-symbols-outlined text-xl">help_outline</span>
-                How It Works
-              </button>
-            </div>
-          </div>
-
-          {/* Right: Vocational Spotlight Banner */}
-          <div className="lg:col-span-5 flex justify-center">
-            <div className="relative w-full max-w-sm rounded-2xl overflow-hidden border border-slate-700/80 bg-slate-800/50 shadow-2xl p-2 group">
-              <img
-                src={careerAssets.student.measuring}
-                alt="Vocational student measuring circuit voltage with digital multimeter"
-                className="w-full h-auto rounded-xl object-cover"
-                loading="eager"
-              />
-              <div className="absolute inset-x-4 bottom-4 p-3 rounded-xl bg-slate-950/85 backdrop-blur-xs border border-slate-700/80 text-white">
-                <p className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[14px]">bolt</span>
-                  10 Domains • 25 Practical Scenarios
-                </p>
-                <p className="text-[11px] text-slate-300 mt-0.5">
-                  Hands-on simulated instruments, trade aptitude diagnosis, and salary roadmaps.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 2. Fast Track Career Pathways Preview */}
-      <section className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-8 space-y-6 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
-          <div>
-            <div className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-1">
-              <span className="material-symbols-outlined text-[16px]">alt_route</span>
-              10 Career Tracks Available
-            </div>
-            <h3 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-              Explore Available Vocational Domains
-            </h3>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleStartAssessment}
-            className="px-4 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
-          >
-            <span>Choose Your Domain</span>
-            <span className="material-symbols-outlined text-[15px]">arrow_forward</span>
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          <div
-            onClick={handleStartAssessment}
-            className="p-5 rounded-2xl bg-gradient-to-br from-indigo-50/60 to-white dark:from-slate-800/80 dark:to-slate-900 border border-indigo-200 dark:border-indigo-800/80 hover:border-indigo-400 transition cursor-pointer space-y-2 shadow-xs"
-          >
-            <div className="flex items-center justify-between">
-              <span className="w-9 h-9 rounded-xl bg-indigo-500 text-white flex items-center justify-center font-bold">
-                <span className="material-symbols-outlined text-[20px]">precision_manufacturing</span>
-              </span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-black bg-emerald-500 text-white">
-                25 Scenarios Ready
-              </span>
-            </div>
-            <h4 className="text-base font-bold text-slate-900 dark:text-white">
-              Engineering & Technology
-            </h4>
-            <p className="text-xs text-slate-600 dark:text-slate-300">
-              Electrical, Electronics, Mechanical, Civil, and Computer Science interactive testing.
-            </p>
-          </div>
-
-          <div
-            onClick={handleStartAssessment}
-            className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition cursor-pointer space-y-2 shadow-xs"
-          >
-            <div className="flex items-center justify-between">
-              <span className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center font-bold">
-                <span className="material-symbols-outlined text-[20px]">stethoscope</span>
-              </span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">
-                In Development
-              </span>
-            </div>
-            <h4 className="text-base font-bold text-slate-900 dark:text-white">
-              Doctor & Healthcare
-            </h4>
-            <p className="text-xs text-slate-600 dark:text-slate-300">
-              Clinical observation, pharmacology, biomedical analysis, and patient triaging.
-            </p>
-          </div>
-
-          <div
-            onClick={handleStartAssessment}
-            className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 transition cursor-pointer space-y-2 shadow-xs"
-          >
-            <div className="flex items-center justify-between">
-              <span className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center font-bold">
-                <span className="material-symbols-outlined text-[20px]">account_balance</span>
-              </span>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300">
-                In Development
-              </span>
-            </div>
-            <h4 className="text-base font-bold text-slate-900 dark:text-white">
-              Government & Civil Services
-            </h4>
-            <p className="text-xs text-slate-600 dark:text-slate-300">
-              Public administration, constitutional policy, resource allocation, and civic governance.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* "How It Works" Informational Modal */}
-      {howItWorksOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn"
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setHowItWorksOpen(false)}
-        >
-          <div
-            className="relative w-full max-w-xl overflow-hidden rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl p-6 sm:p-8 animate-scaleUp"
-            onClick={(e) => e.stopPropagation()}
-          >
+      {/* Top Navigation Bar */}
+      <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 sm:px-8 py-3.5 shadow-md">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          
+          {/* Logo & Back to SAMBHAV */}
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => setHowItWorksOpen(false)}
-              className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
-              aria-label="Close dialog"
+              onClick={() => navigate('/dashboard')}
+              className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-all border border-slate-700 flex items-center gap-1.5 text-xs font-bold cursor-pointer"
+              title="Return to SAMBHAV Dashboard"
             >
-              <span className="material-symbols-outlined text-2xl">close</span>
+              <ArrowLeft className="w-4 h-4" />
+              <span>Dashboard</span>
             </button>
 
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 rounded-xl bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
-                <span className="material-symbols-outlined text-2xl">lightbulb</span>
+            <div className="h-5 w-[1px] bg-slate-800 hidden sm:block" />
+
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-amber-500 to-orange-500 flex items-center justify-center text-slate-950 font-black shadow-sm">
+                <Compass className="w-5 h-5 text-slate-950" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white">
-                  How Experiential Assessment Works
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  No questionnaires. No hypothetical quizzes. Real hands-on problem solving.
-                </p>
+                <h1 className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-2">
+                  <span>MyCareerMap</span>
+                  <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    AI Vocational Hub
+                  </span>
+                </h1>
               </div>
             </div>
+          </div>
 
-            <div className="space-y-3.5 my-6 text-sm text-slate-600 dark:text-slate-300">
-              <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-                <span className="w-6 h-6 rounded-full bg-amber-500 text-white font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
-                  1
-                </span>
-                <div>
-                  <strong className="text-slate-900 dark:text-white">Select Your Domain:</strong>
-                  <p className="text-xs mt-0.5">Choose from 10 domains (e.g. Engineering, Medicine, Government, Business, Law).</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-                <span className="w-6 h-6 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
-                  2
-                </span>
-                <div>
-                  <strong className="text-slate-900 dark:text-white">25 Interactive Challenges:</strong>
-                  <p className="text-xs mt-0.5">Solve 5 practical scenarios per trade using simulated tools (5 clicks allowed per question).</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
-                <span className="w-6 h-6 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
-                  3
-                </span>
-                <div>
-                  <strong className="text-slate-900 dark:text-white">Aptitude-Ranked Career Roadmaps:</strong>
-                  <p className="text-xs mt-0.5">Discover recommended college majors, required subjects, and salary tiers (LPA) from Entry to Pro.</p>
-                </div>
-              </div>
-            </div>
+          {/* Quick Action Utilities */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              onClick={() => setGuidedFinderOpen(true)}
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-bold text-xs sm:text-sm hover:opacity-95 transition-all shadow-sm flex items-center gap-2 cursor-pointer"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>Guided Career AI</span>
+            </button>
 
             <button
-              type="button"
-              onClick={() => {
-                setHowItWorksOpen(false);
-                handleStartAssessment();
-              }}
-              className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm transition cursor-pointer"
+              onClick={() => setResumeModalOpen(true)}
+              className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 font-bold text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer"
             >
-              Start Career Assessment Now
+              <FileText className="w-4 h-4 text-amber-400" />
+              <span>Resume Skills Scanner</span>
             </button>
           </div>
         </div>
+
+        {/* Tab Navigation */}
+        <div className="max-w-7xl mx-auto mt-3 pt-2 border-t border-slate-800/80 flex overflow-x-auto no-scrollbar gap-2">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap border ${
+                  isActive
+                    ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-sm'
+                    : 'bg-slate-900 text-slate-400 border-transparent hover:text-slate-200 hover:bg-slate-800/60'
+                }`}
+              >
+                <Icon className={`w-4 h-4 ${isActive ? 'text-slate-950' : 'text-slate-400'}`} />
+                <span>{tab.label}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-md ${
+                    isActive ? 'bg-slate-950/20 text-slate-950 font-extrabold' : 'bg-slate-800 text-slate-400'
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </header>
+
+      {/* Main Tab Content */}
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-8 py-6">
+        {activeTab === 'explore' && <CareerExplorerPage />}
+        {activeTab === 'roadmaps' && <RoadmapPage />}
+        {activeTab === 'opportunities' && <OpportunitiesPage />}
+        {activeTab === 'compare' && <CareerComparisonPage />}
+      </main>
+
+      {/* Modals */}
+      {guidedFinderOpen && (
+        <GuidedCareerFinderModal
+          isOpen={guidedFinderOpen}
+          onClose={() => setGuidedFinderOpen(false)}
+          onOpenResumeUpload={() => {
+            setGuidedFinderOpen(false);
+            setResumeModalOpen(true);
+          }}
+        />
       )}
 
+      {resumeModalOpen && (
+        <ResumeUploadModal
+          isOpen={resumeModalOpen}
+          onClose={() => setResumeModalOpen(false)}
+          onUploadSuccess={() => {
+            setResumeModalOpen(false);
+            setTab('explore');
+          }}
+        />
+      )}
     </div>
   );
 };
 
-export const CareerDiscoveryPage = MyCareerMapPage;
 export default MyCareerMapPage;

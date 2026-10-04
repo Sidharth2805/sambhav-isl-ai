@@ -25,7 +25,7 @@ import { CulturalISLPage } from './pages/CulturalISLPage';
 import { GalleryPage } from './pages/GalleryPage';
 import { ISLModelTestPage } from './pages/ISLModelTestPage';
 import { ISLModelDiagnosticPage } from './pages/ISLModelDiagnosticPage';
-import { MyCareerMapPage } from './mycareermap';
+import { MyCareerMapPage, CareerDetailPage } from './mycareermap';
 
 const OnlineSessionPage = lazy(() => import('./pages/OnlineSessionPage'));
 
@@ -41,9 +41,11 @@ const App: React.FC = () => {
             <Route path="/showcase" element={<GalleryPage />} />
             <Route path="/accessibility" element={<PlaceholderPage />} />
             <Route path="/mycareermap" element={<MyCareerMapPage />} />
+            <Route path="/mycareermap/careers/:id" element={<CareerDetailPage />} />
             <Route path="/career-discovery" element={<Navigate to="/mycareermap" replace />} />
             <Route path="/career" element={<Navigate to="/mycareermap" replace />} />
             <Route path="/careers" element={<Navigate to="/mycareermap" replace />} />
+            <Route path="/careers/:id" element={<CareerDetailPage />} />
             <Route path="/explore" element={<Navigate to="/mycareermap" replace />} />
 
             {/* Anonymous Only Routes */}

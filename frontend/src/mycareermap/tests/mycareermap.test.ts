@@ -1,145 +1,55 @@
 import { describe, it, expect } from 'vitest';
-import { CAREER_DOMAINS } from '../data/careerDomains';
-import {
-  QUESTION_BANK_BY_TRADE,
-  ENGINEERING_TOPICS,
-  generateRandomizedEngineeringAssessment,
-} from '../data/engineeringAssessmentData';
-import { DETAILED_ENGINEERING_JOB_ROADMAPS } from '../data/engineeringJobRoadmaps';
-import { careerAssets } from '../data/careerAssets';
+import { careerService } from '../services/careerService';
 
-describe('Career Discovery: 10 Career Domains Architecture', () => {
-  it('should load all 10 distinct career domains', () => {
-    expect(CAREER_DOMAINS).toHaveLength(10);
-    const engineering = CAREER_DOMAINS.find((d) => d.id === 'engineering');
-    expect(engineering).toBeDefined();
-    expect(engineering?.isAvailable).toBe(true);
+describe('MyCareerMap Unified Platform Integration Tests', () => {
+  it('should load all 152 careers and 15 career types from embedded database', async () => {
+    const careers = await careerService.getCareers();
+    const types = await careerService.getCareerTypes();
 
-    const nonEngineering = CAREER_DOMAINS.filter((d) => d.id !== 'engineering');
-    expect(nonEngineering).toHaveLength(9);
-    for (const d of nonEngineering) {
-      expect(d.isAvailable).toBe(false);
-      expect(d.badgeText).toBe('In Development');
-    }
-  });
-});
-
-describe('Career Discovery: 75-Question Bank across 5 User Images / Trades', () => {
-  it('should have 15 unique questions for each of the 5 trades (75 questions total)', () => {
-    expect(ENGINEERING_TOPICS).toHaveLength(5);
-    const trades = ['electrical', 'mechanical', 'civil', 'software', 'metallurgy'] as const;
-
-    for (const trade of trades) {
-      const bank = QUESTION_BANK_BY_TRADE[trade];
-      expect(bank).toBeDefined();
-      expect(bank).toHaveLength(15);
-
-      // Verify each question has exactly 4 options with 1 correct answer
-      for (const q of bank) {
-        expect(q.options).toHaveLength(4);
-        const correctOpt = q.options.find((o) => o.id === q.correctToolId);
-        expect(correctOpt).toBeDefined();
-      }
-    }
+    expect(careers.length).toBeGreaterThanOrEqual(150);
+    expect(types.length).toBeGreaterThanOrEqual(15);
   });
 
-  it('should generate a randomized 25-question assessment with 4 shuffled options each', () => {
-    const questions = generateRandomizedEngineeringAssessment();
-    expect(questions).toHaveLength(25);
+  it('should filter careers by search query and career discipline', async () => {
+    const softwareCareers = await careerService.getCareers({ search: 'Software' });
+    expect(softwareCareers.length).toBeGreaterThan(0);
+    expect(softwareCareers.some((c: any) => c.title.includes('Software'))).toBe(true);
 
-    const trades = ['electrical', 'mechanical', 'civil', 'software', 'metallurgy'] as const;
-    for (const trade of trades) {
-      const tradeQuestions = questions.filter((q) => q.topicId === trade);
-      expect(tradeQuestions).toHaveLength(5);
-
-      for (const q of tradeQuestions) {
-        expect(q.availableTools).toHaveLength(4);
-        expect(q.workspaceHotspots).toHaveLength(4);
-        const correct = q.availableTools.filter((t) => t.isCorrect);
-        expect(correct).toHaveLength(1);
-        expect(correct[0].id).toBe(q.correctToolId);
-      }
-    }
+    const type1Careers = await careerService.getCareers({ type_id: 1 });
+    expect(type1Careers.length).toBeGreaterThan(0);
   });
 
-  it('should verify all 5 trade images are correctly referenced', () => {
-    expect(careerAssets.trades.electrical).toContain('/images/career councling/electrical.png');
-    expect(careerAssets.trades.mechanical).toContain('/images/career councling/mechnical.png');
-    expect(careerAssets.trades.civil).toContain('/images/career councling/civil.png');
-    expect(careerAssets.trades.computerScience).toContain('/images/career councling/computer science.png');
-    expect(careerAssets.trades.metallurgy).toContain('/images/career councling/metullergy.png');
+  it('should fetch enriched career details with skills, education, and opportunities', async () => {
+    const detail = await careerService.getCareerDetails(1);
+    expect(detail).toBeDefined();
+    expect(detail.id).toBe(1);
+    expect(detail.required_skills).toBeDefined();
+    expect(Array.isArray(detail.required_skills)).toBe(true);
+    expect(detail.education_requirements).toBeDefined();
   });
-});
 
-describe('Career Discovery: Detailed Career Roadmaps & Salary Tiers (LPA)', () => {
-  it('should load comprehensive roadmaps for all 5 engineering trades', () => {
-    expect(DETAILED_ENGINEERING_JOB_ROADMAPS).toHaveLength(5);
-
-    for (const job of DETAILED_ENGINEERING_JOB_ROADMAPS) {
-      expect(job.salaryTiers).toHaveLength(3);
-      expect(job.salaryTiers[0].rangeLPA).toBeDefined();
-      expect(job.salaryTiers[1].rangeLPA).toBeDefined();
-      expect(job.salaryTiers[2].rangeLPA).toBeDefined();
-      expect(job.recommendedMajors.length).toBeGreaterThan(0);
-      expect(job.coreSubjectsToMaster.length).toBeGreaterThan(0);
-      expect(job.roadmapPhases).toHaveLength(3);
-      expect(job.deafAccessibilityAdvantages.length).toBeGreaterThan(0);
-    }
+  it('should compare multiple careers side-by-side', async () => {
+    const comparison = await careerService.compareCareers([1, 2]);
+    expect(comparison).toBeDefined();
+    expect(comparison.careers.length).toBe(2);
+    expect(comparison.comparison_matrix.salary_range.length).toBe(2);
   });
-});
 
-describe('Career Discovery: Scoring & Vocational Assessment Engine', () => {
-  it('should compute comprehensive cumulative report across multiple questions', async () => {
-    const { calculateMultiTaskCareerScore } = await import('../utils/careerScoring');
-    const questions = generateRandomizedEngineeringAssessment();
+  it('should generate milestone progression roadmaps dynamically', async () => {
+    const newRoadmap = await careerService.generateRoadmap(1, 'Test Path', 'Automated test roadmap');
+    expect(newRoadmap).toBeDefined();
+    expect(newRoadmap.steps.length).toBe(4);
+    expect(newRoadmap.steps[0].status).toBe('IN_PROGRESS');
 
-    const eval1 = {
-      evidence: {
-        studentId: 'student-multi-01',
-        sessionId: 'session-multi-01',
-        taskId: questions[0].id,
-        phase: questions[0].phase,
-        attempts: 1,
-        clicksUsed: 1,
-        correctActions: 1,
-        incorrectActions: 0,
-        hintsUsed: 0,
-        guidanceCount: 0,
-        errorsCorrected: 0,
-        startTime: Date.now() - 12000,
-        completionTime: Date.now(),
-        independentCompletion: true,
-      },
-      task: questions[0],
-      inspectedToolIds: new Set([questions[0].correctToolId]),
-    };
+    const updateRes = await careerService.updateRoadmapStepStatus(newRoadmap.steps[0].id, 'COMPLETED');
+    expect(updateRes.status).toBe('COMPLETED');
+  });
 
-    const eval2 = {
-      evidence: {
-        studentId: 'student-multi-01',
-        sessionId: 'session-multi-01',
-        taskId: questions[5].id,
-        phase: questions[5].phase,
-        attempts: 1,
-        clicksUsed: 1,
-        correctActions: 1,
-        incorrectActions: 0,
-        hintsUsed: 0,
-        guidanceCount: 0,
-        errorsCorrected: 0,
-        startTime: Date.now() - 15000,
-        completionTime: Date.now(),
-        independentCompletion: true,
-      },
-      task: questions[5],
-      inspectedToolIds: new Set([questions[5].correctToolId]),
-    };
+  it('should provide verified job opportunities and recruitment pathways', async () => {
+    const opps = await careerService.getOpportunities();
+    const pathways = await careerService.getRecruitmentPathways();
 
-    const cumulativeReport = calculateMultiTaskCareerScore([eval1, eval2], 'student-multi-01', 'session-multi-01');
-
-    expect(cumulativeReport.totalQuestionsAttempted).toBe(2);
-    expect(cumulativeReport.totalQuestionsCorrect).toBe(2);
-    expect(cumulativeReport.scoreBreakdown.totalMarks).toBeGreaterThanOrEqual(70);
-    expect(cumulativeReport.skillProfile.diagnosticReasoning).toBeGreaterThan(70);
+    expect(opps.length).toBeGreaterThan(0);
+    expect(pathways.length).toBeGreaterThan(0);
   });
 });
