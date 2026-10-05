@@ -13,7 +13,6 @@ import {
   X,
   RotateCcw,
   Check,
-  Plus,
   ArrowUpRight
 } from 'lucide-react';
 import rawDb from '../data/mycareermapDb.json';
@@ -33,23 +32,21 @@ export const MyCareerMapPage: React.FC = () => {
   const [compareIds, setCompareIds] = useState<number[]>([]);
   const [selectedCareerDetail, setSelectedCareerDetail] = useState<any | null>(null);
 
+  // Active Roadmap Selection (Default to Full Stack Engineer or chosen career)
+  const [selectedRoadmapCareerId, setSelectedRoadmapCareerId] = useState<number>(() => {
+    const careerParam = searchParams.get('career');
+    return careerParam ? Number(careerParam) : 1;
+  });
+
   // Modals
   const [guidedModalOpen, setGuidedModalOpen] = useState(false);
   const [resumeModalOpen, setResumeModalOpen] = useState(false);
-  const [customRoadmapCareerId, setCustomRoadmapCareerId] = useState<number>(1);
 
-  // Interactive Roadmaps State
-  const [userRoadmaps, setUserRoadmaps] = useState<any[]>(() => {
-    const defaultRMs = (db.roadmaps || []).map((r: any) => {
-      const steps = (db.roadmap_steps || [])
-        .filter((s: any) => s.roadmap_id === r.id)
-        .sort((a: any, b: any) => (a.step_order || 0) - (b.step_order || 0));
-      return {
-        ...r,
-        steps: steps.map((s: any) => ({ ...s, isCompleted: s.status === 'COMPLETED' })),
-      };
-    });
-    return defaultRMs;
+  // Step Completion State stored by roadmapId-stepId
+  const [completedSteps, setCompletedSteps] = useState<Record<string, boolean>>({
+    '1-1': true,
+    '2-1': true,
+    '3-1': true,
   });
 
   // Guided Finder Wizard State
@@ -70,8 +67,13 @@ export const MyCareerMapPage: React.FC = () => {
   const [oppSearch, setOppSearch] = useState('');
   const [oppTypeFilter, setOppTypeFilter] = useState('all');
 
-  const setTab = (tab: string) => {
-    setSearchParams({ tab });
+  const setTab = (tab: string, careerId?: number) => {
+    if (careerId) {
+      setSearchParams({ tab, career: String(careerId) });
+      setSelectedRoadmapCareerId(careerId);
+    } else {
+      setSearchParams({ tab });
+    }
   };
 
   // Career Types Map
@@ -84,7 +86,7 @@ export const MyCareerMapPage: React.FC = () => {
     return map;
   }, []);
 
-  // Filtered Careers
+  // Filtered Careers for Explorer
   const filteredCareers = useMemo(() => {
     let list = db.careers || [];
 
@@ -116,6 +118,95 @@ export const MyCareerMapPage: React.FC = () => {
     return list;
   }, [searchQuery, selectedType, selectedDemand, selectedEnvironment]);
 
+  // Specific Roadmap Generator for Any Chosen Career
+  const activeRoadmap = useMemo(() => {
+    const career = (db.careers || []).find((c: any) => c.id === Number(selectedRoadmapCareerId)) || (db.careers || [])[0];
+    if (!career) return null;
+
+    const skillMap: Record<string | number, string> = {};
+    (db.skills || []).forEach((s: any) => {
+      skillMap[s.id] = s.name;
+    });
+
+    const requiredSkills = (db.career_skills || [])
+      .filter((cs: any) => cs.career_id === career.id)
+      .map((cs: any) => skillMap[cs.skill_id])
+      .filter(Boolean);
+
+    const skillsStr = requiredSkills.slice(0, 4).join(', ') || 'Core Analytical & Technical Principles';
+    const advancedSkillsStr = requiredSkills.slice(4, 8).join(', ') || 'Advanced Frameworks & Domain Tools';
+
+    const eduReqs = (db.career_education || [])
+      .filter((ce: any) => ce.career_id === career.id)
+      .map((ce: any) => ce.degree_level || ce.field_of_study)
+      .filter(Boolean)
+      .join(' / ') || career.required_education_level || 'Undergraduate Degree';
+
+    const relRoles = (db.career_relationships || [])
+      .filter((r: any) => r.source_career_id === career.id)
+      .map((r: any) => {
+        const target = (db.careers || []).find((tc: any) => tc.id === r.target_career_id);
+        return target?.title;
+      })
+      .filter(Boolean)
+      .join(', ');
+
+    const minSal = career.salary_range_min ? (career.salary_range_min / 100000).toFixed(1) : '5.0';
+    const maxSal = career.salary_range_max ? (career.salary_range_max / 100000).toFixed(1) : '20.0';
+
+    const steps = [
+      {
+        id: 1,
+        phase: 'Phase 1: Foundations & Prerequisites',
+        title: `Foundational Competencies & Core Theory`,
+        description: `Master fundamental core competencies: ${skillsStr}. Satisfy academic prerequisites (${eduReqs}).`,
+        skills: requiredSkills.slice(0, 4),
+        estimated_hours: 45,
+      },
+      {
+        id: 2,
+        phase: 'Phase 2: Practical Projects',
+        title: `Applied Portfolio & Real-world Implementation`,
+        description: `Build 2 verified industry portfolio projects demonstrating hands-on mastery of: ${advancedSkillsStr}.`,
+        skills: requiredSkills.slice(4, 8),
+        estimated_hours: 65,
+      },
+      {
+        id: 3,
+        phase: 'Phase 3: Industry Certification',
+        title: `Accredited Credentials & Benchmark Licensing`,
+        description: `Acquire accredited Skill Council, AICTE, or global domain certifications recognized across hiring standards.`,
+        skills: ['Standard Testing', 'Benchmarking'],
+        estimated_hours: 35,
+      },
+      {
+        id: 4,
+        phase: 'Phase 4: Specialization & Advancement',
+        title: `Vertical Growth & Career Progression`,
+        description: relRoles 
+          ? `Prepare for advanced specialization and lateral/vertical transitions into: ${relRoles}.`
+          : `Master senior leadership competencies, architecture, and regulatory domain governance.`,
+        skills: ['Leadership', 'System Architecture'],
+        estimated_hours: 50,
+      },
+      {
+        id: 5,
+        phase: 'Phase 5: Entry Placement & Hiring Drives',
+        title: `Verified Internships, Government Exams & Placement`,
+        description: `Target verified recruitment drives, campus placements, and apprenticeship openings matching ${career.title} salary standards (₹${minSal}L - ₹${maxSal}L/yr).`,
+        skills: ['Interview Prep', 'Portfolio Defense'],
+        estimated_hours: 80,
+      },
+    ];
+
+    return {
+      career,
+      title: `${career.title} Roadmap`,
+      description: `Structured milestone execution blueprint tailored specifically for ${career.title}s.`,
+      steps,
+    };
+  }, [selectedRoadmapCareerId]);
+
   // Toggle Compare
   const handleToggleCompare = (id: number) => {
     if (compareIds.includes(id)) {
@@ -129,72 +220,20 @@ export const MyCareerMapPage: React.FC = () => {
     }
   };
 
-  // Toggle Roadmap Step Completion
-  const handleToggleStep = (roadmapId: number, stepId: number) => {
-    setUserRoadmaps((prev) =>
-      prev.map((rm) => {
-        if (rm.id !== roadmapId) return rm;
-        const updatedSteps = rm.steps.map((st: any) =>
-          st.id === stepId ? { ...st, isCompleted: !st.isCompleted } : st
-        );
-        return { ...rm, steps: updatedSteps };
-      })
-    );
+  // Toggle Step Completion
+  const toggleStep = (stepId: number) => {
+    const key = `${selectedRoadmapCareerId}-${stepId}`;
+    setCompletedSteps((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
   };
 
-  // Generate Dynamic Custom Roadmap
-  const handleGenerateRoadmap = () => {
-    const targetCareer = (db.careers || []).find((c: any) => c.id === Number(customRoadmapCareerId));
-    if (!targetCareer) return;
-
-    const newId = Date.now();
-    const newRoadmap = {
-      id: newId,
-      target_career_id: targetCareer.id,
-      title: `${targetCareer.title} Execution Blueprint`,
-      description: `Comprehensive industry milestone roadmap designed for aspiring ${targetCareer.title}s.`,
-      steps: [
-        {
-          id: newId * 10 + 1,
-          step_order: 1,
-          title: 'Foundational Knowledge & Core Principles',
-          description: `Master fundamental competencies and essential core frameworks for ${targetCareer.title}.`,
-          step_type: 'SKILL',
-          estimated_hours: 40,
-          isCompleted: true,
-        },
-        {
-          id: newId * 10 + 2,
-          step_order: 2,
-          title: 'Practical Project Implementation',
-          description: 'Build 2 verified industry portfolio projects showing real-world application.',
-          step_type: 'PROJECT',
-          estimated_hours: 60,
-          isCompleted: false,
-        },
-        {
-          id: newId * 10 + 3,
-          step_order: 3,
-          title: 'Industry Certifications & Benchmark Credentials',
-          description: 'Attain recognized skill council or domain-specific benchmark accreditations.',
-          step_type: 'CERTIFICATION',
-          estimated_hours: 35,
-          isCompleted: false,
-        },
-        {
-          id: newId * 10 + 4,
-          step_order: 4,
-          title: 'Apprenticeship & Entry Placement Cycles',
-          description: 'Apply to verified openings and recruitment drives with structured mentorship.',
-          step_type: 'OPPORTUNITY',
-          estimated_hours: 80,
-          isCompleted: false,
-        },
-      ],
-    };
-
-    setUserRoadmaps([newRoadmap, ...userRoadmaps]);
-    setTab('roadmaps');
+  // Switch to Roadmap for a Specific Career
+  const handleOpenRoadmapForCareer = (careerId: number) => {
+    setSelectedRoadmapCareerId(careerId);
+    setSelectedCareerDetail(null);
+    setTab('roadmaps', careerId);
   };
 
   // Guided Finder Calculation
@@ -218,7 +257,6 @@ export const MyCareerMapPage: React.FC = () => {
     setIsScanningResume(true);
 
     setTimeout(() => {
-      // Extract keywords
       const commonKeywords = [
         'React', 'JavaScript', 'Python', 'Java', 'SQL', 'Data', 'Design',
         'AutoCAD', 'Circuit', 'Management', 'Testing', 'AWS', 'Security',
@@ -231,7 +269,6 @@ export const MyCareerMapPage: React.FC = () => {
       const detected = matchedSkills.length > 0 ? matchedSkills : ['Problem Solving', 'Analytical Reasoning', 'Project Execution'];
       setResumeSkills(detected);
 
-      // Score careers against detected skills
       const careers = (db.careers || []).map((c: any, idx: number) => {
         const score = Math.min(96, 75 + ((detected.length * 4) + idx * 3) % 22);
         return { ...c, matchScore: score };
@@ -246,6 +283,9 @@ export const MyCareerMapPage: React.FC = () => {
   const comparedCareers = useMemo(() => {
     return (db.careers || []).filter((c: any) => compareIds.includes(c.id));
   }, [compareIds]);
+
+  // Filtered Careers for Roadmap Selector
+  const roadmapFilteredCareers = useMemo(() => db.careers || [], []);
 
   // Opportunities Filtering
   const filteredOpportunities = useMemo(() => {
@@ -280,7 +320,7 @@ export const MyCareerMapPage: React.FC = () => {
   return (
     <div className="flex flex-col gap-6 animate-fadeIn font-['Inter',sans-serif] text-[#0f172a] dark:text-white">
       
-      {/* 1. Header Bar matching SAMBHAV design */}
+      {/* 1. Top Welcome & Action Header Bar */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-[#0d121d] p-5 sm:p-6 rounded-3xl border border-[#e2e8f0] dark:border-[#2d3133] shadow-xs">
         <div className="flex items-center gap-4">
           <button
@@ -302,7 +342,7 @@ export const MyCareerMapPage: React.FC = () => {
               </span>
             </div>
             <p className="text-xs sm:text-sm text-[#475569] dark:text-[#828796] mt-1 font-medium">
-              Explore 152+ verified career tracks, milestone roadmaps, job opportunities, and deterministic AI scoring.
+              Explore 152+ verified career tracks with custom milestone roadmaps, job opportunities, and skill benchmarks.
             </p>
           </div>
         </div>
@@ -330,7 +370,7 @@ export const MyCareerMapPage: React.FC = () => {
         </div>
       </header>
 
-      {/* 2. Top Tabs Nav (Explorer, Roadmaps, Opportunities, Comparison) */}
+      {/* 2. Top Tabs Nav */}
       <div className="bg-white dark:bg-[#0d121d] p-2 rounded-2xl border border-[#e2e8f0] dark:border-[#2d3133] flex flex-wrap gap-2 shadow-xs">
         <button
           onClick={() => setTab('explore')}
@@ -355,7 +395,9 @@ export const MyCareerMapPage: React.FC = () => {
         >
           <Map className="w-4 h-4" />
           <span>Milestone Roadmaps</span>
-          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 font-black">{userRoadmaps.length}</span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 font-black">
+            {activeRoadmap ? activeRoadmap.career.title : 'Active'}
+          </span>
         </button>
 
         <button
@@ -405,7 +447,7 @@ export const MyCareerMapPage: React.FC = () => {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search across 152+ careers by title, role code (e.g. TECH-001), keywords..."
+                placeholder="Search across 152+ careers by title, role code (e.g. TECH-001, MED-001), keywords..."
                 className="w-full pl-12 pr-10 py-3.5 rounded-2xl bg-[#f8fafc] dark:bg-[#151c28] border border-[#e2e8f0] dark:border-[#243044] text-sm text-[#0f172a] dark:text-white placeholder-[#94a3b8] focus:outline-none focus:border-indigo-500 dark:focus:border-[#fe9832] transition-colors"
               />
               {searchQuery && (
@@ -547,21 +589,32 @@ export const MyCareerMapPage: React.FC = () => {
                     <div className="flex items-center justify-between gap-2">
                       <button
                         onClick={() => handleToggleCompare(c.id)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer ${
+                        className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer ${
                           isComparing
                             ? 'bg-indigo-600 text-white'
                             : 'bg-[#f8fafc] dark:bg-[#1e293b] text-[#475569] dark:text-[#94a3b8] hover:bg-[#f1f5f9] dark:hover:bg-[#2d3748]'
                         }`}
+                        title="Compare with other careers"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         <span>{isComparing ? 'Comparing' : 'Compare'}</span>
                       </button>
 
+                      {/* Direct Roadmap Button */}
+                      <button
+                        onClick={() => handleOpenRoadmapForCareer(c.id)}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-900/60 transition-colors flex items-center gap-1 cursor-pointer"
+                        title={`Open custom roadmap for ${c.title}`}
+                      >
+                        <Map className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Roadmap</span>
+                      </button>
+
                       <button
                         onClick={() => setSelectedCareerDetail(c)}
-                        className="px-3 py-1.5 rounded-xl text-xs font-bold text-indigo-600 dark:text-[#fe9832] bg-indigo-50 dark:bg-[#fe9832]/10 hover:bg-indigo-100 dark:hover:bg-[#fe9832]/20 transition-colors flex items-center gap-1 cursor-pointer"
+                        className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-indigo-600 dark:text-[#fe9832] bg-indigo-50 dark:bg-[#fe9832]/10 hover:bg-indigo-100 dark:hover:bg-[#fe9832]/20 transition-colors flex items-center gap-1 cursor-pointer"
                       >
-                        <span>View Details</span>
+                        <span>Details</span>
                         <ArrowUpRight className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -574,112 +627,154 @@ export const MyCareerMapPage: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 2: MILESTONE ROADMAPS                                                 */}
+      {/* TAB 2: MILESTONE ROADMAPS (SPECIFIC TO CHOSEN CAREER)                      */}
       {/* ========================================================================= */}
-      {activeTab === 'roadmaps' && (
+      {activeTab === 'roadmaps' && activeRoadmap && (
         <div className="flex flex-col gap-6">
           
-          {/* Creator Bar */}
+          {/* Career Selector Bar */}
           <div className="bg-white dark:bg-[#0d121d] p-5 sm:p-6 rounded-3xl border border-[#e2e8f0] dark:border-[#2d3133] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-black text-[#0f172a] dark:text-white">
-                Generate Custom Execution Blueprint
-              </h2>
-              <p className="text-xs text-[#475569] dark:text-[#828796] mt-0.5 font-medium">
-                Select any career track to generate step-by-step milestone checklists.
-              </p>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <Map className="w-5 h-5 text-amber-500" />
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-[#fe9832] block">
+                  Customized Career Roadmap
+                </span>
+                <h2 className="text-lg sm:text-xl font-black text-[#0f172a] dark:text-white">
+                  {activeRoadmap.career.title}
+                </h2>
+              </div>
             </div>
 
+            {/* Profession Search & Switcher */}
             <div className="flex flex-wrap items-center gap-3">
-              <select
-                value={customRoadmapCareerId}
-                onChange={(e) => setCustomRoadmapCareerId(Number(e.target.value))}
-                className="py-2.5 px-4 rounded-xl bg-[#f8fafc] dark:bg-[#151c28] border border-[#e2e8f0] dark:border-[#243044] text-xs font-bold text-[#0f172a] dark:text-white focus:outline-none cursor-pointer max-w-[260px]"
-              >
-                {(db.careers || []).map((c: any) => (
-                  <option key={c.id} value={c.id}>{c.title}</option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  value={selectedRoadmapCareerId}
+                  onChange={(e) => setSelectedRoadmapCareerId(Number(e.target.value))}
+                  className="py-2.5 pl-3.5 pr-8 rounded-xl bg-[#f8fafc] dark:bg-[#151c28] border border-[#e2e8f0] dark:border-[#243044] text-xs font-bold text-[#0f172a] dark:text-white focus:outline-none cursor-pointer max-w-[280px]"
+                >
+                  {roadmapFilteredCareers.map((c: any) => (
+                    <option key={c.id} value={c.id}>
+                      {c.title} ({careerTypeMap[c.career_type_id] || 'Track'})
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-              <button
-                onClick={handleGenerateRoadmap}
-                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 text-white font-black text-xs sm:text-sm hover:opacity-95 shadow-md shadow-indigo-500/20 transition-all flex items-center gap-2 cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Create Roadmap</span>
-              </button>
+              <span className="text-xs text-[#64748b] dark:text-[#828796] font-medium hidden sm:inline">
+                ({(db.careers || []).length} Available Professions)
+              </span>
             </div>
           </div>
 
-          {/* Roadmaps List */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {userRoadmaps.map((rm: any) => {
-              const completedCount = rm.steps.filter((s: any) => s.isCompleted).length;
-              const progressPct = rm.steps.length > 0 ? Math.round((completedCount / rm.steps.length) * 100) : 0;
+          {/* Main Roadmap Execution Card */}
+          <div className="bg-white dark:bg-[#151c28] p-6 sm:p-8 rounded-3xl border border-[#e2e8f0] dark:border-[#243044] shadow-xs flex flex-col gap-6">
+            
+            {/* Header Metrics */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-[#f1f5f9] dark:border-[#243044]">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
+                    {activeRoadmap.career.code}
+                  </span>
+                  <span className="text-xs font-bold text-[#64748b] dark:text-[#828796]">
+                    Discipline: <strong className="text-[#0f172a] dark:text-white">{careerTypeMap[activeRoadmap.career.career_type_id]}</strong>
+                  </span>
+                </div>
+                <p className="text-xs text-[#475569] dark:text-[#828796]">
+                  {activeRoadmap.description}
+                </p>
+              </div>
 
-              return (
-                <div
-                  key={rm.id}
-                  className="bg-white dark:bg-[#151c28] p-6 rounded-3xl border border-[#e2e8f0] dark:border-[#243044] shadow-xs flex flex-col justify-between gap-5"
-                >
-                  <div>
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
-                        Active Track
-                      </span>
+              {/* Live Completion Stats */}
+              <div className="flex items-center gap-3 shrink-0">
+                {(() => {
+                  const completedCount = activeRoadmap.steps.filter((s: any) => completedSteps[`${selectedRoadmapCareerId}-${s.id}`]).length;
+                  const progressPct = Math.round((completedCount / activeRoadmap.steps.length) * 100);
+
+                  return (
+                    <div className="flex flex-col text-right">
                       <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
-                        {progressPct}% Completed ({completedCount}/{rm.steps.length})
+                        {progressPct}% Completed ({completedCount}/{activeRoadmap.steps.length} Steps)
                       </span>
-                    </div>
-
-                    <h3 className="text-base font-black text-[#0f172a] dark:text-white">{rm.title}</h3>
-                    <p className="text-xs text-[#475569] dark:text-[#828796] mt-1 mb-4">{rm.description}</p>
-
-                    {/* Progress Bar */}
-                    <div className="w-full h-2 bg-[#f1f5f9] dark:bg-[#243044] rounded-full overflow-hidden mb-5">
-                      <div
-                        className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300"
-                        style={{ width: `${progressPct}%` }}
-                      />
-                    </div>
-
-                    {/* Steps Checklist */}
-                    <div className="flex flex-col gap-3">
-                      {rm.steps.map((st: any) => (
+                      <div className="w-36 h-2.5 bg-[#f1f5f9] dark:bg-[#243044] rounded-full overflow-hidden mt-1.5">
                         <div
-                          key={st.id}
-                          onClick={() => handleToggleStep(rm.id, st.id)}
-                          className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 select-none ${
-                            st.isCompleted
-                              ? 'bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800'
-                              : 'bg-[#f8fafc] dark:bg-[#111622] border-[#e2e8f0] dark:border-[#1e293b] hover:border-indigo-300'
-                          }`}
-                        >
-                          <div
-                            className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
-                              st.isCompleted
-                                ? 'bg-emerald-600 text-white'
-                                : 'border-2 border-[#cbd5e1] dark:border-[#475569]'
-                            }`}
-                          >
-                            {st.isCompleted && <Check className="w-3.5 h-3.5" />}
-                          </div>
+                          className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300"
+                          style={{ width: `${progressPct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
 
-                          <div className="flex flex-col">
-                            <span className={`text-xs font-bold ${st.isCompleted ? 'line-through opacity-70 text-[#475569] dark:text-[#828796]' : 'text-[#0f172a] dark:text-white'}`}>
-                              {st.title}
-                            </span>
-                            <span className="text-[11px] text-[#64748b] dark:text-[#828796] mt-0.5">
-                              {st.description}
-                            </span>
+            {/* 5 Milestone Step Cards */}
+            <div className="flex flex-col gap-4">
+              {activeRoadmap.steps.map((st: any) => {
+                const isDone = Boolean(completedSteps[`${selectedRoadmapCareerId}-${st.id}`]);
+
+                return (
+                  <div
+                    key={st.id}
+                    onClick={() => toggleStep(st.id)}
+                    className={`p-5 rounded-3xl border transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 select-none ${
+                      isDone
+                        ? 'bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800'
+                        : 'bg-[#f8fafc] dark:bg-[#111622] border-[#e2e8f0] dark:border-[#1e293b] hover:border-indigo-400'
+                    }`}
+                  >
+                    <div className="flex items-start gap-4">
+                      {/* Checkbox */}
+                      <div
+                        className={`w-6 h-6 rounded-xl flex items-center justify-center shrink-0 mt-0.5 transition-colors ${
+                          isDone
+                            ? 'bg-emerald-600 text-white shadow-xs'
+                            : 'border-2 border-[#cbd5e1] dark:border-[#475569]'
+                        }`}
+                      >
+                        {isDone && <Check className="w-4 h-4 stroke-[3]" />}
+                      </div>
+
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 dark:text-[#fe9832] mb-0.5">
+                          {st.phase}
+                        </span>
+                        <h4 className={`text-sm font-bold ${isDone ? 'line-through opacity-75 text-[#475569] dark:text-[#828796]' : 'text-[#0f172a] dark:text-white'}`}>
+                          {st.title}
+                        </h4>
+                        <p className="text-xs text-[#64748b] dark:text-[#828796] mt-1 leading-relaxed max-w-3xl">
+                          {st.description}
+                        </p>
+
+                        {/* Skill Tags */}
+                        {st.skills && st.skills.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mt-2.5">
+                            {st.skills.map((sk: string) => (
+                              <span
+                                key={sk}
+                                className="px-2 py-0.5 rounded-md bg-white dark:bg-[#1a2333] border border-[#e2e8f0] dark:border-[#2d3748] text-[10px] font-bold text-[#475569] dark:text-[#cbd5e1]"
+                              >
+                                {sk}
+                              </span>
+                            ))}
                           </div>
-                        </div>
-                      ))}
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0 sm:self-center">
+                      <span className="text-[11px] font-semibold text-[#64748b] dark:text-[#828796] px-2.5 py-1 rounded-lg bg-white dark:bg-[#1a2333] border border-[#e2e8f0] dark:border-[#2d3748]">
+                        ~{st.estimated_hours} Hours
+                      </span>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
@@ -775,7 +870,7 @@ export const MyCareerMapPage: React.FC = () => {
                     </span>
 
                     <button
-                      onClick={() => alert(`Application link for ${o.title} opened.`)}
+                      onClick={() => alert(`Opening verified application for ${o.title}`)}
                       className="px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 font-bold text-xs hover:bg-indigo-100 flex items-center gap-1 cursor-pointer"
                     >
                       <span>Apply</span>
@@ -962,7 +1057,7 @@ export const MyCareerMapPage: React.FC = () => {
 
               <button
                 onClick={() => setSelectedCareerDetail(null)}
-                className="p-2 rounded-xl bg-[#f8fafc] dark:bg-[#151c28] text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-white"
+                className="p-2 rounded-xl bg-[#f8fafc] dark:bg-[#151c28] text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-white cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1002,14 +1097,11 @@ export const MyCareerMapPage: React.FC = () => {
 
             <div className="pt-4 border-t border-[#f1f5f9] dark:border-[#243044] flex items-center justify-end gap-3">
               <button
-                onClick={() => {
-                  setCustomRoadmapCareerId(selectedCareerDetail.id);
-                  setSelectedCareerDetail(null);
-                  handleGenerateRoadmap();
-                }}
-                className="px-4 py-2.5 bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 text-white font-bold rounded-xl text-xs cursor-pointer"
+                onClick={() => handleOpenRoadmapForCareer(selectedCareerDetail.id)}
+                className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black rounded-xl text-xs cursor-pointer flex items-center gap-2 shadow-md shadow-orange-500/20"
               >
-                Generate Milestone Roadmap
+                <Map className="w-4 h-4" />
+                <span>Open Roadmap for {selectedCareerDetail.title}</span>
               </button>
             </div>
           </div>
@@ -1027,7 +1119,7 @@ export const MyCareerMapPage: React.FC = () => {
                 <Sparkles className="w-5 h-5 text-amber-500" />
                 <h3 className="text-base font-black text-[#0f172a] dark:text-white">Guided Career Finder AI</h3>
               </div>
-              <button onClick={() => setGuidedModalOpen(false)} className="p-1.5 text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-white">
+              <button onClick={() => setGuidedModalOpen(false)} className="p-1.5 text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-white cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1040,7 +1132,7 @@ export const MyCareerMapPage: React.FC = () => {
                     <button
                       key={cat}
                       onClick={() => setGuidedCategory(cat)}
-                      className={`p-3 rounded-2xl text-xs font-bold border text-left transition-all ${
+                      className={`p-3 rounded-2xl text-xs font-bold border text-left transition-all cursor-pointer ${
                         guidedCategory === cat
                           ? 'bg-indigo-600 text-white border-indigo-600'
                           : 'bg-[#f8fafc] dark:bg-[#151c28] border-[#e2e8f0] dark:border-[#243044] text-[#0f172a] dark:text-white'
@@ -1052,7 +1144,7 @@ export const MyCareerMapPage: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setGuidedStep(2)}
-                  className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl text-xs mt-2"
+                  className="w-full py-3 bg-indigo-600 text-white font-bold rounded-xl text-xs mt-2 cursor-pointer"
                 >
                   Continue to Work Style &rarr;
                 </button>
@@ -1067,7 +1159,7 @@ export const MyCareerMapPage: React.FC = () => {
                     <button
                       key={env}
                       onClick={() => setGuidedWorkStyle(env)}
-                      className={`p-3 rounded-2xl text-xs font-bold border text-left transition-all ${
+                      className={`p-3 rounded-2xl text-xs font-bold border text-left transition-all cursor-pointer ${
                         guidedWorkStyle === env
                           ? 'bg-indigo-600 text-white border-indigo-600'
                           : 'bg-[#f8fafc] dark:bg-[#151c28] border-[#e2e8f0] dark:border-[#243044] text-[#0f172a] dark:text-white'
@@ -1078,8 +1170,8 @@ export const MyCareerMapPage: React.FC = () => {
                   ))}
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => setGuidedStep(1)} className="px-4 py-3 bg-[#f1f5f9] dark:bg-[#1e293b] font-bold rounded-xl text-xs text-[#475569] dark:text-[#94a3b8]">Back</button>
-                  <button onClick={() => setGuidedStep(3)} className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl text-xs">Continue to Education &rarr;</button>
+                  <button onClick={() => setGuidedStep(1)} className="px-4 py-3 bg-[#f1f5f9] dark:bg-[#1e293b] font-bold rounded-xl text-xs text-[#475569] dark:text-[#94a3b8] cursor-pointer">Back</button>
+                  <button onClick={() => setGuidedStep(3)} className="flex-1 py-3 bg-indigo-600 text-white font-bold rounded-xl text-xs cursor-pointer">Continue to Education &rarr;</button>
                 </div>
               </div>
             )}
@@ -1092,7 +1184,7 @@ export const MyCareerMapPage: React.FC = () => {
                     <button
                       key={edu}
                       onClick={() => setGuidedEducation(edu)}
-                      className={`p-3 rounded-2xl text-xs font-bold border text-left transition-all ${
+                      className={`p-3 rounded-2xl text-xs font-bold border text-left transition-all cursor-pointer ${
                         guidedEducation === edu
                           ? 'bg-indigo-600 text-white border-indigo-600'
                           : 'bg-[#f8fafc] dark:bg-[#151c28] border-[#e2e8f0] dark:border-[#243044] text-[#0f172a] dark:text-white'
@@ -1103,8 +1195,8 @@ export const MyCareerMapPage: React.FC = () => {
                   ))}
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => setGuidedStep(2)} className="px-4 py-3 bg-[#f1f5f9] dark:bg-[#1e293b] font-bold rounded-xl text-xs text-[#475569] dark:text-[#94a3b8]">Back</button>
-                  <button onClick={handleRunGuidedFinder} className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black rounded-xl text-xs">Calculate Top Matches ✨</button>
+                  <button onClick={() => setGuidedStep(2)} className="px-4 py-3 bg-[#f1f5f9] dark:bg-[#1e293b] font-bold rounded-xl text-xs text-[#475569] dark:text-[#94a3b8] cursor-pointer">Back</button>
+                  <button onClick={handleRunGuidedFinder} className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black rounded-xl text-xs cursor-pointer">Calculate Top Matches ✨</button>
                 </div>
               </div>
             )}
@@ -1113,7 +1205,7 @@ export const MyCareerMapPage: React.FC = () => {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">Top Recommended Matches</span>
-                  <button onClick={() => setGuidedStep(1)} className="text-xs text-indigo-600 dark:text-[#fe9832] font-bold">Start Over</button>
+                  <button onClick={() => setGuidedStep(1)} className="text-xs text-indigo-600 dark:text-[#fe9832] font-bold cursor-pointer">Start Over</button>
                 </div>
 
                 <div className="flex flex-col gap-2.5 max-h-[50vh] overflow-y-auto pr-1">
@@ -1121,7 +1213,7 @@ export const MyCareerMapPage: React.FC = () => {
                     <div
                       key={r.id}
                       onClick={() => {
-                        setSelectedCareerDetail(r);
+                        handleOpenRoadmapForCareer(r.id);
                         setGuidedModalOpen(false);
                       }}
                       className="p-3.5 rounded-2xl bg-[#f8fafc] dark:bg-[#151c28] border border-[#e2e8f0] dark:border-[#243044] hover:border-indigo-400 flex items-center justify-between cursor-pointer"
@@ -1130,9 +1222,15 @@ export const MyCareerMapPage: React.FC = () => {
                         <h4 className="text-xs font-black text-[#0f172a] dark:text-white">{r.title}</h4>
                         <p className="text-[11px] text-[#64748b] dark:text-[#828796] mt-0.5">{r.summary || r.description?.slice(0, 70)}...</p>
                       </div>
-                      <span className="text-xs font-black px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 shrink-0">
-                        {r.matchScore}% Match
-                      </span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs font-black px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
+                          {r.matchScore}% Match
+                        </span>
+                        <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 flex items-center gap-0.5">
+                          <span>Roadmap</span>
+                          <ArrowUpRight className="w-3.5 h-3.5" />
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1153,7 +1251,7 @@ export const MyCareerMapPage: React.FC = () => {
                 <FileText className="w-5 h-5 text-indigo-600 dark:text-[#fe9832]" />
                 <h3 className="text-base font-black text-[#0f172a] dark:text-white">Resume & Skills Scanner</h3>
               </div>
-              <button onClick={() => setResumeModalOpen(false)} className="p-1.5 text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-white">
+              <button onClick={() => setResumeModalOpen(false)} className="p-1.5 text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-white cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -1198,12 +1296,15 @@ export const MyCareerMapPage: React.FC = () => {
                       <div
                         key={m.id}
                         onClick={() => {
-                          setSelectedCareerDetail(m);
+                          handleOpenRoadmapForCareer(m.id);
                           setResumeModalOpen(false);
                         }}
                         className="p-3 rounded-xl bg-[#f8fafc] dark:bg-[#151c28] border border-[#e2e8f0] dark:border-[#243044] flex items-center justify-between cursor-pointer hover:border-indigo-400"
                       >
-                        <span className="text-xs font-bold text-[#0f172a] dark:text-white">{m.title}</span>
+                        <div>
+                          <span className="text-xs font-bold text-[#0f172a] dark:text-white block">{m.title}</span>
+                          <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">Click to view roadmap &rarr;</span>
+                        </div>
                         <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">{m.matchScore}% Match</span>
                       </div>
                     ))}
