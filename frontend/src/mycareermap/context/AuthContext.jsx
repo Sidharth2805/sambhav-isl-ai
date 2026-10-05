@@ -75,7 +75,15 @@ export function AuthProvider({ children }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    // Return safe fallback so no component ever crashes
+    return {
+      user: null,
+      loading: false,
+      login: async () => {},
+      register: async () => {},
+      logout: () => {},
+      setUser: () => {},
+    };
   }
   return context;
 }

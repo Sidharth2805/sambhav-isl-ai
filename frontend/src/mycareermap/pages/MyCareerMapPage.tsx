@@ -15,8 +15,10 @@ import OpportunitiesPage from './OpportunitiesPage';
 import CareerComparisonPage from './CareerComparisonPage';
 import GuidedCareerFinderModal from '../components/common/GuidedCareerFinderModal';
 import ResumeUploadModal from '../components/common/ResumeUploadModal';
+import { AuthProvider } from '../context/AuthContext';
+import { LanguageProvider } from '../context/LanguageContext';
 
-export const MyCareerMapPage: React.FC = () => {
+const MyCareerMapInner: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'explore';
@@ -151,6 +153,16 @@ export const MyCareerMapPage: React.FC = () => {
         />
       )}
     </div>
+  );
+};
+
+export const MyCareerMapPage: React.FC = () => {
+  return (
+    <LanguageProvider>
+      <AuthProvider>
+        <MyCareerMapInner />
+      </AuthProvider>
+    </LanguageProvider>
   );
 };
 

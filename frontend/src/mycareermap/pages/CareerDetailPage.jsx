@@ -22,8 +22,10 @@ import Button from '../components/common/Button';
 import Badge from '../components/common/Badge';
 import Card from '../components/common/Card';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import { AuthProvider } from '../context/AuthContext';
+import { LanguageProvider } from '../context/LanguageContext';
 
-export default function CareerDetailPage() {
+function CareerDetailInner() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -488,5 +490,15 @@ export default function CareerDetailPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function CareerDetailPage() {
+  return (
+    <LanguageProvider>
+      <AuthProvider>
+        <CareerDetailInner />
+      </AuthProvider>
+    </LanguageProvider>
   );
 }
