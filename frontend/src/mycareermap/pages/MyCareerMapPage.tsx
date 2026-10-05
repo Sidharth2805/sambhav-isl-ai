@@ -46,6 +46,14 @@ const sampleResumes = [
   }
 ];
 
+const comparePresets = [
+  { name: '🚀 Full-Stack vs. Data Scientist', ids: [1, 2] },
+  { name: '🎨 UI/UX Designer vs. Frontend Dev', ids: [4, 1] },
+  { name: '🩺 MBBS Physician vs. Biomedical Eng', ids: [10, 11] },
+  { name: '🏗️ Civil Eng vs. Mechanical Eng', ids: [7, 8] },
+  { name: '💼 Financial Analyst vs. Product Manager', ids: [5, 3] },
+];
+
 export const MyCareerMapPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -57,7 +65,7 @@ export const MyCareerMapPage: React.FC = () => {
   const [selectedType, setSelectedType] = useState<string>('all');
   const [selectedDemand, setSelectedDemand] = useState<string>('all');
   const [selectedEnvironment, setSelectedEnvironment] = useState<string>('all');
-  const [compareIds, setCompareIds] = useState<number[]>([]);
+  const [compareIds, setCompareIds] = useState<number[]>([1, 2]);
   const [selectedCareerDetail, setSelectedCareerDetail] = useState<any | null>(null);
 
   // Active Roadmap Selection (Default to Full Stack Engineer or chosen career)
@@ -110,6 +118,15 @@ export const MyCareerMapPage: React.FC = () => {
     const map: Record<string | number, string> = {};
     (db.career_types || []).forEach((t: any) => {
       map[t.id] = t.name;
+    });
+    return map;
+  }, []);
+
+  // Skills Map
+  const skillMap = useMemo(() => {
+    const map: Record<string | number, string> = {};
+    (db.skills || []).forEach((s: any) => {
+      map[s.id] = s.name;
     });
     return map;
   }, []);
@@ -368,8 +385,31 @@ export const MyCareerMapPage: React.FC = () => {
 
   // Comparison Matrix Data
   const comparedCareers = useMemo(() => {
-    return (db.careers || []).filter((c: any) => compareIds.includes(c.id));
-  }, [compareIds]);
+    return (db.careers || [])
+      .filter((c: any) => compareIds.includes(c.id))
+      .map((c: any) => {
+        const reqSkills = (db.career_skills || [])
+          .filter((cs: any) => cs.career_id === c.id)
+          .map((cs: any) => skillMap[cs.skill_id])
+          .filter(Boolean)
+          .slice(0, 6);
+
+        const relRoles = (db.career_relationships || [])
+          .filter((r: any) => r.source_career_id === c.id)
+          .map((r: any) => {
+            const target = (db.careers || []).find((tc: any) => tc.id === r.target_career_id);
+            return target?.title;
+          })
+          .filter(Boolean)
+          .slice(0, 3);
+
+        return {
+          ...c,
+          reqSkills,
+          relRoles,
+        };
+      });
+  }, [compareIds, skillMap]);
 
   // Filtered Careers for Roadmap Selector
   const roadmapFilteredCareers = useMemo(() => db.careers || [], []);
@@ -1065,106 +1105,281 @@ export const MyCareerMapPage: React.FC = () => {
       {/* TAB 4: COMPARISON MATRIX                                                  */}
       {/* ========================================================================= */}
       {activeTab === 'compare' && (
-        <div className="bg-white dark:bg-[#0d121d] p-6 rounded-3xl border border-[#e2e8f0] dark:border-[#2d3133] shadow-xs flex flex-col gap-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="bg-white dark:bg-[#0d121d] p-6 sm:p-8 rounded-3xl border border-[#e2e8f0] dark:border-[#2d3133] shadow-xs flex flex-col gap-6">
+          
+          {/* Header & Controls */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-[#f1f5f9] dark:border-[#243044]">
             <div>
-              <h2 className="text-xl font-black text-[#0f172a] dark:text-white">Multi-Career Comparison Matrix</h2>
-              <p className="text-xs text-[#475569] dark:text-[#828796] mt-0.5">
-                Side-by-side evaluation of salary benchmarks, growth trends, and prerequisites.
+              <div className="flex items-center gap-2 mb-1">
+                <Scale className="w-5 h-5 text-indigo-600 dark:text-[#fe9832]" />
+                <h2 className="text-xl sm:text-2xl font-black text-[#0f172a] dark:text-white">
+                  Multi-Career Comparison Matrix
+                </h2>
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+                  {comparedCareers.length} / 4 Selected
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-[#475569] dark:text-[#828796]">
+                Side-by-side evaluation of salary benchmarks, required technical skills, growth trends, and promotion trajectories across 152+ professions.
               </p>
             </div>
 
-            {compareIds.length > 0 && (
-              <button
-                onClick={() => setCompareIds([])}
-                className="text-xs font-bold text-rose-600 hover:underline cursor-pointer"
-              >
-                Clear All Selected ({compareIds.length})
-              </button>
-            )}
+            <div className="flex flex-wrap items-center gap-3">
+              {/* In-tab Career Add Dropdown */}
+              {comparedCareers.length < 4 && (
+                <div className="relative">
+                  <select
+                    defaultValue=""
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        handleToggleCompare(Number(e.target.value));
+                        e.target.value = '';
+                      }
+                    }}
+                    className="py-2.5 pl-3 pr-8 rounded-xl bg-[#f8fafc] dark:bg-[#151c28] border border-[#e2e8f0] dark:border-[#243044] text-xs font-bold text-[#0f172a] dark:text-white focus:outline-none cursor-pointer max-w-[220px]"
+                  >
+                    <option value="" disabled>+ Add Profession to Compare...</option>
+                    {(db.careers || [])
+                      .filter((c: any) => !compareIds.includes(c.id))
+                      .map((c: any) => (
+                        <option key={c.id} value={c.id}>
+                          {c.title} ({careerTypeMap[c.career_type_id] || 'General'})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              )}
+
+              {compareIds.length > 0 && (
+                <button
+                  onClick={() => setCompareIds([])}
+                  className="px-3 py-2 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                >
+                  Clear All ({compareIds.length})
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Quick Presets Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
+            <span className="text-xs font-bold text-[#64748b] dark:text-[#828796] shrink-0">
+              ⚡ Popular Comparison Presets:
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {comparePresets.map((preset) => (
+                <button
+                  key={preset.name}
+                  onClick={() => setCompareIds(preset.ids)}
+                  className="px-3 py-1.5 rounded-xl bg-[#f8fafc] dark:bg-[#151c28] hover:bg-indigo-50 dark:hover:bg-indigo-950/60 border border-[#e2e8f0] dark:border-[#243044] hover:border-indigo-400 text-[11px] font-bold text-[#0f172a] dark:text-white transition-all cursor-pointer"
+                >
+                  {preset.name}
+                </button>
+              ))}
+            </div>
           </div>
 
           {comparedCareers.length === 0 ? (
-            <div className="py-16 text-center border-2 border-dashed border-[#e2e8f0] dark:border-[#243044] rounded-2xl">
-              <Scale className="w-10 h-10 text-[#94a3b8] mx-auto mb-2" />
-              <h4 className="text-sm font-bold text-[#0f172a] dark:text-white">No Careers Selected for Comparison</h4>
-              <p className="text-xs text-[#64748b] dark:text-[#828796] mt-1 mb-4">
-                Go to the Career Explorer tab and click 'Compare' on any career cards.
-              </p>
-              <button
-                onClick={() => setTab('explore')}
-                className="px-4 py-2 bg-indigo-600 text-white font-bold rounded-xl text-xs"
-              >
-                Browse Career Tracks
-              </button>
+            <div className="py-16 text-center border-2 border-dashed border-[#e2e8f0] dark:border-[#243044] rounded-3xl flex flex-col items-center justify-center gap-3">
+              <div className="w-14 h-14 rounded-2xl bg-[#f1f5f9] dark:bg-[#1e293b] flex items-center justify-center text-[#94a3b8]">
+                <Scale className="w-7 h-7" />
+              </div>
+              <div>
+                <h4 className="text-base font-black text-[#0f172a] dark:text-white">No Careers Selected for Comparison</h4>
+                <p className="text-xs text-[#64748b] dark:text-[#828796] mt-1 max-w-md mx-auto">
+                  Click any of the popular presets above, use the dropdown to add careers, or click 'Compare' on cards in Career Explorer.
+                </p>
+              </div>
+              <div className="flex items-center gap-3 mt-2">
+                <button
+                  onClick={() => setCompareIds([1, 2])}
+                  className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-xs"
+                >
+                  Load Tech Track Comparison (Full-Stack vs. Data Scientist)
+                </button>
+                <button
+                  onClick={() => setTab('explore')}
+                  className="px-4 py-2.5 bg-[#f8fafc] dark:bg-[#151c28] border border-[#e2e8f0] dark:border-[#243044] text-[#0f172a] dark:text-white font-bold rounded-xl text-xs cursor-pointer"
+                >
+                  Browse All 152 Careers
+                </button>
+              </div>
             </div>
           ) : (
-            <div className="overflow-x-auto no-scrollbar">
+            <div className="overflow-x-auto no-scrollbar rounded-2xl border border-[#e2e8f0] dark:border-[#243044]">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-[#e2e8f0] dark:border-[#243044]">
-                    <th className="py-3 px-4 font-bold text-[#64748b] dark:text-[#828796]">Metric</th>
+                  <tr className="bg-[#f8fafc] dark:bg-[#111622] border-b border-[#e2e8f0] dark:border-[#243044]">
+                    <th className="py-4 px-5 font-black text-xs uppercase tracking-wider text-[#64748b] dark:text-[#828796] w-48 min-w-[180px]">
+                      Career Dimension
+                    </th>
                     {comparedCareers.map((c: any) => (
-                      <th key={c.id} className="py-3 px-4 font-black text-sm text-[#0f172a] dark:text-white min-w-[200px]">
-                        <div className="flex items-center justify-between">
-                          <span>{c.title}</span>
-                          <button onClick={() => handleToggleCompare(c.id)} className="text-rose-500 hover:text-rose-700">
-                            <X className="w-4 h-4" />
-                          </button>
+                      <th key={c.id} className="py-4 px-5 font-black text-sm text-[#0f172a] dark:text-white min-w-[260px] align-top">
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="text-base font-black text-[#0f172a] dark:text-white leading-tight">{c.title}</span>
+                            <button
+                              onClick={() => handleToggleCompare(c.id)}
+                              className="p-1 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-950/60 text-rose-500 transition-colors cursor-pointer shrink-0"
+                              title="Remove from comparison"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[10px] font-mono font-black uppercase px-2 py-0.5 rounded-md bg-[#e2e8f0] dark:bg-[#1e293b] text-[#475569] dark:text-[#94a3b8]">
+                              {c.code || `CR-${c.id}`}
+                            </span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
+                              {careerTypeMap[c.career_type_id] || 'General'}
+                            </span>
+                          </div>
                         </div>
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#f1f5f9] dark:divide-[#243044]">
-                  <tr>
-                    <td className="py-3 px-4 font-bold text-[#64748b] dark:text-[#828796]">Discipline</td>
+                <tbody className="divide-y divide-[#f1f5f9] dark:divide-[#1e293b]">
+                  
+                  {/* Salary Band */}
+                  <tr className="hover:bg-[#f8fafc]/50 dark:hover:bg-[#151c28]/40 transition-colors">
+                    <td className="py-4 px-5 font-bold text-[#64748b] dark:text-[#828796]">
+                      Salary Benchmark
+                    </td>
                     {comparedCareers.map((c: any) => (
-                      <td key={c.id} className="py-3 px-4 font-semibold text-indigo-600 dark:text-[#fe9832]">
-                        {careerTypeMap[c.career_type_id] || 'General'}
+                      <td key={c.id} className="py-4 px-5 font-bold text-emerald-600 dark:text-emerald-400">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                            ₹{((c.salary_range_min || 500000) / 100000).toFixed(1)}L - ₹{((c.salary_range_max || 1800000) / 100000).toFixed(1)}L / yr
+                          </span>
+                          <span className="text-[10px] text-[#64748b] dark:text-[#828796] font-normal">
+                            Entry level starting ~₹{((c.salary_range_min || 500000) / 100000).toFixed(1)}L
+                          </span>
+                        </div>
                       </td>
                     ))}
                   </tr>
-                  <tr>
-                    <td className="py-3 px-4 font-bold text-[#64748b] dark:text-[#828796]">Salary Range</td>
+
+                  {/* Required Core Skills */}
+                  <tr className="hover:bg-[#f8fafc]/50 dark:hover:bg-[#151c28]/40 transition-colors">
+                    <td className="py-4 px-5 font-bold text-[#64748b] dark:text-[#828796]">
+                      Key Prerequisite Skills
+                    </td>
                     {comparedCareers.map((c: any) => (
-                      <td key={c.id} className="py-3 px-4 font-bold text-emerald-600 dark:text-emerald-400">
-                        ₹{((c.salary_range_min || 500000) / 100000).toFixed(1)}L - ₹{((c.salary_range_max || 1800000) / 100000).toFixed(1)}L / yr
+                      <td key={c.id} className="py-4 px-5">
+                        <div className="flex flex-wrap gap-1.5">
+                          {(c.reqSkills || ['Domain Fundamentals', 'Problem Solving']).map((s: string, sIdx: number) => (
+                            <span key={sIdx} className="px-2.5 py-1 rounded-lg bg-[#f1f5f9] dark:bg-[#151c28] border border-[#e2e8f0] dark:border-[#243044] text-[11px] font-bold text-[#0f172a] dark:text-white">
+                              {s}
+                            </span>
+                          ))}
+                        </div>
                       </td>
                     ))}
                   </tr>
-                  <tr>
-                    <td className="py-3 px-4 font-bold text-[#64748b] dark:text-[#828796]">Market Demand</td>
+
+                  {/* Market Demand & Growth */}
+                  <tr className="hover:bg-[#f8fafc]/50 dark:hover:bg-[#151c28]/40 transition-colors">
+                    <td className="py-4 px-5 font-bold text-[#64748b] dark:text-[#828796]">
+                      Market Demand & Growth
+                    </td>
                     {comparedCareers.map((c: any) => (
-                      <td key={c.id} className="py-3 px-4 font-semibold text-[#0f172a] dark:text-white">
-                        {c.demand_level || 'High'}
+                      <td key={c.id} className="py-4 px-5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-black px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
+                            {c.demand_level || 'High Demand'}
+                          </span>
+                          <span className="text-xs font-bold text-[#0f172a] dark:text-white">
+                            {c.growth_rate || '+18% YoY'}
+                          </span>
+                        </div>
                       </td>
                     ))}
                   </tr>
-                  <tr>
-                    <td className="py-3 px-4 font-bold text-[#64748b] dark:text-[#828796]">Growth Trend</td>
+
+                  {/* Required Education */}
+                  <tr className="hover:bg-[#f8fafc]/50 dark:hover:bg-[#151c28]/40 transition-colors">
+                    <td className="py-4 px-5 font-bold text-[#64748b] dark:text-[#828796]">
+                      Education Prerequisites
+                    </td>
                     {comparedCareers.map((c: any) => (
-                      <td key={c.id} className="py-3 px-4 font-semibold text-[#0f172a] dark:text-white">
-                        {c.growth_rate || '+18%'}
+                      <td key={c.id} className="py-4 px-5 font-semibold text-[#0f172a] dark:text-white">
+                        {c.required_education_level || 'Undergraduate / Bachelors Degree'}
                       </td>
                     ))}
                   </tr>
-                  <tr>
-                    <td className="py-3 px-4 font-bold text-[#64748b] dark:text-[#828796]">Education Required</td>
+
+                  {/* Work Environments */}
+                  <tr className="hover:bg-[#f8fafc]/50 dark:hover:bg-[#151c28]/40 transition-colors">
+                    <td className="py-4 px-5 font-bold text-[#64748b] dark:text-[#828796]">
+                      Work Modality
+                    </td>
                     {comparedCareers.map((c: any) => (
-                      <td key={c.id} className="py-3 px-4 font-medium text-[#475569] dark:text-[#828796]">
-                        {c.required_education_level || 'Undergraduate Degree'}
+                      <td key={c.id} className="py-4 px-5">
+                        <div className="flex flex-wrap gap-1">
+                          {(c.work_environments || ['Office', 'Hybrid']).map((env: string, eIdx: number) => (
+                            <span key={eIdx} className="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold">
+                              {env}
+                            </span>
+                          ))}
+                        </div>
                       </td>
                     ))}
                   </tr>
-                  <tr>
-                    <td className="py-3 px-4 font-bold text-[#64748b] dark:text-[#828796]">Work Environments</td>
+
+                  {/* Promotion Trajectories */}
+                  <tr className="hover:bg-[#f8fafc]/50 dark:hover:bg-[#151c28]/40 transition-colors">
+                    <td className="py-4 px-5 font-bold text-[#64748b] dark:text-[#828796]">
+                      Vertical & Lateral Paths
+                    </td>
                     {comparedCareers.map((c: any) => (
-                      <td key={c.id} className="py-3 px-4 text-[#475569] dark:text-[#828796]">
-                        {(c.work_environments || ['Office', 'Hybrid']).join(', ')}
+                      <td key={c.id} className="py-4 px-5 text-xs text-[#475569] dark:text-[#828796]">
+                        {c.relRoles && c.relRoles.length > 0
+                          ? c.relRoles.join(' → ')
+                          : 'Senior Specialist → Technical Lead / Manager'}
                       </td>
                     ))}
                   </tr>
+
+                  {/* Summary */}
+                  <tr className="hover:bg-[#f8fafc]/50 dark:hover:bg-[#151c28]/40 transition-colors">
+                    <td className="py-4 px-5 font-bold text-[#64748b] dark:text-[#828796]">
+                      Summary Scope
+                    </td>
+                    {comparedCareers.map((c: any) => (
+                      <td key={c.id} className="py-4 px-5 text-xs text-[#475569] dark:text-[#828796] leading-relaxed">
+                        {c.summary || c.description?.slice(0, 140)}...
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* Direct Actions */}
+                  <tr className="bg-[#f8fafc]/80 dark:bg-[#111622]/80">
+                    <td className="py-4 px-5 font-black text-xs text-[#0f172a] dark:text-white">
+                      Action Execution
+                    </td>
+                    {comparedCareers.map((c: any) => (
+                      <td key={c.id} className="py-4 px-5">
+                        <div className="flex flex-col gap-2">
+                          <button
+                            onClick={() => handleOpenRoadmapForCareer(c.id)}
+                            className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-xs shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                          >
+                            <Map className="w-3.5 h-3.5 text-slate-950" />
+                            <span>Open {c.title} Roadmap</span>
+                          </button>
+                          
+                          <button
+                            onClick={() => setSelectedCareerDetail(c)}
+                            className="w-full py-2 px-3 rounded-xl bg-white dark:bg-[#151c28] border border-[#e2e8f0] dark:border-[#243044] text-[#475569] dark:text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-white text-xs font-bold transition-colors cursor-pointer text-center"
+                          >
+                            Full Career Details
+                          </button>
+                        </div>
+                      </td>
+                    ))}
+                  </tr>
+
                 </tbody>
               </table>
             </div>
@@ -1738,6 +1953,55 @@ export const MyCareerMapPage: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* FLOATING COMPARE DOCK                                                     */}
+      {/* ========================================================================= */}
+      {compareIds.length > 0 && activeTab !== 'compare' && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 dark:bg-[#0d121d]/95 backdrop-blur-md text-white px-5 py-3 rounded-2xl border border-indigo-500/40 shadow-2xl flex items-center gap-4 max-w-[90vw]">
+          <div className="flex items-center gap-2 shrink-0">
+            <Scale className="w-4 h-4 text-amber-400" />
+            <span className="text-xs font-black">
+              {compareIds.length} / 4 Comparing
+            </span>
+          </div>
+
+          <div className="hidden sm:flex items-center gap-1.5 overflow-x-auto max-w-[320px] no-scrollbar">
+            {comparedCareers.map((c: any) => (
+              <span
+                key={c.id}
+                className="px-2 py-0.5 rounded-lg bg-white/10 text-[10px] font-bold flex items-center gap-1 shrink-0"
+              >
+                <span>{c.title}</span>
+                <button
+                  onClick={() => handleToggleCompare(c.id)}
+                  className="hover:text-rose-400 cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setTab('compare')}
+              className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black text-xs shadow-xs hover:from-amber-600 hover:to-orange-600 flex items-center gap-1 cursor-pointer"
+            >
+              <span>View Comparison Matrix</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </button>
+
+            <button
+              onClick={() => setCompareIds([])}
+              className="p-1.5 text-slate-400 hover:text-white text-xs cursor-pointer"
+              title="Clear comparison"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
       )}
