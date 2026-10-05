@@ -47,6 +47,12 @@ const App: React.FC = () => {
             <Route path="/careers" element={<Navigate to="/mycareermap" replace />} />
             <Route path="/careers/:id" element={<CareerDetailPage />} />
             <Route path="/explore" element={<Navigate to="/mycareermap" replace />} />
+            <Route path="/roadmap" element={<Navigate to="/mycareermap?tab=roadmaps" replace />} />
+            <Route path="/roadmaps" element={<Navigate to="/mycareermap?tab=roadmaps" replace />} />
+            <Route path="/compare" element={<Navigate to="/mycareermap?tab=compare" replace />} />
+            <Route path="/opportunities" element={<Navigate to="/mycareermap?tab=opportunities" replace />} />
+            <Route path="/jobs" element={<Navigate to="/mycareermap?tab=opportunities" replace />} />
+            <Route path="/pathways" element={<Navigate to="/mycareermap?tab=opportunities" replace />} />
             <Route path="/resume" element={<Navigate to="/mycareermap?tab=resume" replace />} />
             <Route path="/resume-scanner" element={<Navigate to="/mycareermap?tab=resume" replace />} />
             <Route path="/mycareermap/resume" element={<Navigate to="/mycareermap?tab=resume" replace />} />

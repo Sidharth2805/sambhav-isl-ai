@@ -67,6 +67,8 @@ export const MyCareerMapPage: React.FC = () => {
   const [selectedEnvironment, setSelectedEnvironment] = useState<string>('all');
   const [compareIds, setCompareIds] = useState<number[]>([1, 2]);
   const [selectedCareerDetail, setSelectedCareerDetail] = useState<any | null>(null);
+  const [selectedOpportunityDetail, setSelectedOpportunityDetail] = useState<any | null>(null);
+  const [selectedPathwayDetail, setSelectedPathwayDetail] = useState<any | null>(null);
 
   // Active Roadmap Selection (Default to Full Stack Engineer or chosen career)
   const [selectedRoadmapCareerId, setSelectedRoadmapCareerId] = useState<number>(() => {
@@ -1046,10 +1048,10 @@ export const MyCareerMapPage: React.FC = () => {
                     </span>
 
                     <button
-                      onClick={() => alert(`Opening verified application for ${o.title}`)}
+                      onClick={() => setSelectedOpportunityDetail(o)}
                       className="px-3 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 font-bold text-xs hover:bg-indigo-100 flex items-center gap-1 cursor-pointer"
                     >
-                      <span>Apply</span>
+                      <span>Apply & Details</span>
                       <ArrowUpRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -1088,7 +1090,7 @@ export const MyCareerMapPage: React.FC = () => {
                   <div className="pt-3 border-t border-[#f1f5f9] dark:border-[#243044] flex items-center justify-between text-xs">
                     <span className="text-[#64748b] dark:text-[#828796]">Pay Band: <strong className="text-[#0f172a] dark:text-white">{p.pay_scale || 'Level 7-10 7th CPC'}</strong></span>
                     <button
-                      onClick={() => alert(`Viewing pathway details for ${p.title}`)}
+                      onClick={() => setSelectedPathwayDetail(p)}
                       className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-black text-xs cursor-pointer"
                     >
                       View Syllabus & Rules
@@ -1953,6 +1955,150 @@ export const MyCareerMapPage: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: OPPORTUNITY DETAIL & APPLICATION                                   */}
+      {/* ========================================================================= */}
+      {selectedOpportunityDetail && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#0d121d] w-full max-w-xl max-h-[85vh] overflow-y-auto rounded-3xl p-6 border border-[#e2e8f0] dark:border-[#2d3133] shadow-2xl flex flex-col gap-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+                  {selectedOpportunityDetail.opportunity_type || 'Opportunity'}
+                </span>
+                <h3 className="text-lg font-black text-[#0f172a] dark:text-white mt-1">
+                  {selectedOpportunityDetail.title}
+                </h3>
+                <p className="text-xs font-bold text-indigo-600 dark:text-[#fe9832]">
+                  {selectedOpportunityDetail.organization_name} • {selectedOpportunityDetail.location || 'Pan-India'}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedOpportunityDetail(null)}
+                className="p-1.5 text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-[#f8fafc] dark:bg-[#151c28] border border-[#e2e8f0] dark:border-[#243044] flex items-center justify-between text-xs">
+              <span className="text-[#64748b] dark:text-[#828796] font-medium">Stipend / Salary:</span>
+              <span className="font-black text-emerald-600 dark:text-emerald-400">
+                {selectedOpportunityDetail.stipend_or_salary || 'Competitive Pay Band'}
+              </span>
+            </div>
+
+            <div>
+              <span className="text-xs font-bold text-[#0f172a] dark:text-white block mb-1">Role Description:</span>
+              <p className="text-xs text-[#475569] dark:text-[#828796] leading-relaxed">
+                {selectedOpportunityDetail.description}
+              </p>
+            </div>
+
+            {selectedOpportunityDetail.eligibility && (
+              <div>
+                <span className="text-xs font-bold text-[#0f172a] dark:text-white block mb-1">Eligibility Criteria:</span>
+                <p className="text-xs text-[#475569] dark:text-[#828796] leading-relaxed">
+                  {selectedOpportunityDetail.eligibility}
+                </p>
+              </div>
+            )}
+
+            <div className="pt-3 border-t border-[#f1f5f9] dark:border-[#243044] flex items-center justify-end gap-3">
+              <button
+                onClick={() => setSelectedOpportunityDetail(null)}
+                className="px-4 py-2 rounded-xl bg-[#f8fafc] dark:bg-[#151c28] border border-[#e2e8f0] dark:border-[#243044] text-xs font-bold text-[#475569] dark:text-[#94a3b8] cursor-pointer"
+              >
+                Close
+              </button>
+              <a
+                href={selectedOpportunityDetail.application_url || '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => {
+                  if (!selectedOpportunityDetail.application_url) {
+                    e.preventDefault();
+                    window.open(`https://www.google.com/search?q=${encodeURIComponent(selectedOpportunityDetail.organization_name + ' ' + selectedOpportunityDetail.title + ' careers apply')}`, '_blank');
+                  }
+                }}
+                className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>Apply on Official Portal</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: GOVERNMENT PATHWAY SCHEME & SYLLABUS                                */}
+      {/* ========================================================================= */}
+      {selectedPathwayDetail && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#0d121d] w-full max-w-xl max-h-[85vh] overflow-y-auto rounded-3xl p-6 border border-[#e2e8f0] dark:border-[#2d3133] shadow-2xl flex flex-col gap-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400">
+                  {selectedPathwayDetail.conducting_body || 'Government Body'}
+                </span>
+                <h3 className="text-lg font-black text-[#0f172a] dark:text-white mt-1">
+                  {selectedPathwayDetail.title}
+                </h3>
+                <p className="text-xs font-bold text-indigo-600 dark:text-[#fe9832]">
+                  Recruitment Cycle: {selectedPathwayDetail.frequency || 'Annual'} • Pay Scale: {selectedPathwayDetail.pay_scale || 'Level 7-10 7th CPC'}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedPathwayDetail(null)}
+                className="p-1.5 text-[#94a3b8] hover:text-[#0f172a] dark:hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div>
+              <span className="text-xs font-bold text-[#0f172a] dark:text-white block mb-1">Eligibility Summary:</span>
+              <p className="text-xs text-[#475569] dark:text-[#828796] leading-relaxed">
+                {selectedPathwayDetail.eligibility_summary}
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-[#f8fafc] dark:bg-[#151c28] border border-[#e2e8f0] dark:border-[#243044]">
+              <span className="text-xs font-bold text-[#0f172a] dark:text-white block mb-1">Examination Stages:</span>
+              <p className="text-xs text-[#64748b] dark:text-[#828796] leading-relaxed">
+                {selectedPathwayDetail.stages_summary || 'Tier 1 Preliminary Examination, Tier 2 Mains Written Exam, followed by Personal Interview & Document Verification.'}
+              </p>
+            </div>
+
+            {selectedPathwayDetail.age_limit && (
+              <div className="text-xs">
+                <span className="font-bold text-[#0f172a] dark:text-white">Age Limit & Relaxations: </span>
+                <span className="text-[#475569] dark:text-[#828796]">{selectedPathwayDetail.age_limit}</span>
+              </div>
+            )}
+
+            <div className="pt-3 border-t border-[#f1f5f9] dark:border-[#243044] flex items-center justify-end gap-3">
+              <button
+                onClick={() => setSelectedPathwayDetail(null)}
+                className="px-4 py-2 rounded-xl bg-[#f8fafc] dark:bg-[#151c28] border border-[#e2e8f0] dark:border-[#243044] text-xs font-bold text-[#475569] dark:text-[#94a3b8] cursor-pointer"
+              >
+                Close
+              </button>
+              <a
+                href={`https://www.google.com/search?q=${encodeURIComponent(selectedPathwayDetail.conducting_body + ' ' + selectedPathwayDetail.title + ' official notification syllabus rules')}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>View Official Commission Portal</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </a>
+            </div>
           </div>
         </div>
       )}

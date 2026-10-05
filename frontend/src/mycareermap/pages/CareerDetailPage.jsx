@@ -77,10 +77,10 @@ function CareerDetailInner() {
         `Roadmap to ${career.title}`,
         'Personalized progression path based on your skill gaps'
       );
-      navigate('/roadmap');
+      navigate(`/mycareermap?tab=roadmaps&career=${career.id}`);
     } catch (err) {
       console.error('Failed to generate roadmap:', err);
-      alert('Failed to generate roadmap. Please ensure your profile is setup.');
+      navigate(`/mycareermap?tab=roadmaps&career=${career.id}`);
     } finally {
       setGeneratingRoadmap(false);
     }
