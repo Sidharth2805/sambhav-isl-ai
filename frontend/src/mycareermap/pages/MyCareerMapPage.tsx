@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Search,
@@ -13,16 +13,44 @@ import {
   X,
   RotateCcw,
   Check,
-  ArrowUpRight
+  ArrowUpRight,
+  Upload,
+  FileCheck,
+  Zap,
+  Target
 } from 'lucide-react';
 import rawDb from '../data/mycareermapDb.json';
 
 const db: any = rawDb;
 
+const sampleResumes = [
+  {
+    name: '💻 Tech / Full-Stack',
+    text: `Experienced full stack web developer with 3+ years in React, TypeScript, Node.js, Next.js, REST APIs, GraphQL, PostgreSQL, MongoDB, Docker, Git, CI/CD pipelines, and cloud deployment on AWS. Strong foundations in data structures, algorithms, and microservices architecture.`
+  },
+  {
+    name: '📊 Data Science & AI/ML',
+    text: `Data scientist with experience in Python, Pandas, NumPy, Scikit-Learn, TensorFlow, PyTorch, SQL data pipelines, exploratory data analysis, machine learning algorithms, deep neural networks, natural language processing, Tableau dashboards, and predictive modeling.`
+  },
+  {
+    name: '🩺 Healthcare & Medical',
+    text: `Medical graduate with clinical training in patient diagnosis, emergency triage, pharmacotherapy, pathology, internal medicine, medical physiology, electronic health records (EHR), clinical documentation, and patient care management.`
+  },
+  {
+    name: '🎨 UI/UX & Product Design',
+    text: `Product & UI/UX designer proficient in Figma, Adobe XD, design systems, wireframing, interactive prototyping, user research, usability testing, accessibility (WCAG 2.1), information architecture, and responsive web/mobile UX.`
+  },
+  {
+    name: '🏗️ Civil & Infrastructure',
+    text: `Civil engineer with expertise in structural design, AutoCAD, Revit BIM modeling, concrete structures, soil mechanics, project cost estimation, site engineering, building safety codes, and infrastructure surveying.`
+  }
+];
+
 export const MyCareerMapPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'explore';
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // State
   const [searchQuery, setSearchQuery] = useState('');
@@ -251,32 +279,91 @@ export const MyCareerMapPage: React.FC = () => {
     setGuidedStep(4);
   };
 
-  // Resume Scanner Calculation
-  const handleScanResume = () => {
-    if (!resumeText.trim()) return;
+  // File Upload Parser
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = (event.target?.result as string) || '';
+      setResumeText(content);
+      handleScanResume(content);
+    };
+    reader.readAsText(file);
+  };
+
+  // Resume Scanner Calculation against 533 Skills and 152 Careers
+  const handleScanResume = (customText?: string) => {
+    const text = (customText !== undefined ? customText : resumeText).trim();
+    if (!text) return;
     setIsScanningResume(true);
 
     setTimeout(() => {
-      const commonKeywords = [
-        'React', 'JavaScript', 'Python', 'Java', 'SQL', 'Data', 'Design',
-        'AutoCAD', 'Circuit', 'Management', 'Testing', 'AWS', 'Security',
-        'Algorithms', 'Machine Learning', 'Communication', 'Research', 'Accounting'
-      ];
-      const matchedSkills = commonKeywords.filter((k) =>
-        new RegExp(`\\b${k}\\b`, 'i').test(resumeText)
-      );
-
-      const detected = matchedSkills.length > 0 ? matchedSkills : ['Problem Solving', 'Analytical Reasoning', 'Project Execution'];
-      setResumeSkills(detected);
-
-      const careers = (db.careers || []).map((c: any, idx: number) => {
-        const score = Math.min(96, 75 + ((detected.length * 4) + idx * 3) % 22);
-        return { ...c, matchScore: score };
+      const allDbSkills: any[] = db.skills || [];
+      const skillNameMap: Record<number, string> = {};
+      allDbSkills.forEach((s) => {
+        skillNameMap[s.id] = s.name;
       });
-      careers.sort((a: any, b: any) => b.matchScore - a.matchScore);
-      setResumeMatches(careers.slice(0, 5));
+
+      const detectedSkills: { id: number; name: string }[] = [];
+      allDbSkills.forEach((s) => {
+        const escaped = s.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+        if (regex.test(text)) {
+          detectedSkills.push(s);
+        }
+      });
+
+      let finalSkills = detectedSkills;
+      if (finalSkills.length === 0) {
+        const fallbackKeywords = ['Problem Solving', 'Project Management', 'Communication', 'Data Analysis', 'Analytical Reasoning'];
+        finalSkills = fallbackKeywords.map((name, idx) => ({ id: 9000 + idx, name }));
+      }
+      setResumeSkills(finalSkills.map((s) => s.name));
+
+      const detectedSkillIds = new Set(finalSkills.map((s) => s.id));
+      const detectedSkillNamesLower = new Set(finalSkills.map((s) => s.name.toLowerCase()));
+
+      const careerSkills: any[] = db.career_skills || [];
+      const scoredCareers = (db.careers || []).map((c: any) => {
+        const reqSkillEntries = careerSkills.filter((cs) => cs.career_id === c.id);
+        const totalReq = reqSkillEntries.length || 4;
+        
+        const matchingReqs = reqSkillEntries.filter((cs) => {
+          if (detectedSkillIds.has(cs.skill_id)) return true;
+          const skillName = skillNameMap[cs.skill_id];
+          return skillName && detectedSkillNamesLower.has(skillName.toLowerCase());
+        });
+
+        const matchedSkillNames = matchingReqs.map((cs) => skillNameMap[cs.skill_id] || 'Core Competency');
+        const missingSkillNames = reqSkillEntries
+          .filter((cs) => !detectedSkillIds.has(cs.skill_id) && !detectedSkillNamesLower.has((skillNameMap[cs.skill_id] || '').toLowerCase()))
+          .map((cs) => skillNameMap[cs.skill_id])
+          .filter(Boolean)
+          .slice(0, 4);
+
+        const baseRatio = matchingReqs.length / totalReq;
+        let matchScore = Math.round(baseRatio * 75 + 25);
+        if (matchingReqs.length > 0) {
+          matchScore = Math.min(99, Math.max(68, matchScore + Math.min(16, matchingReqs.length * 6)));
+        } else {
+          matchScore = Math.min(65, Math.max(35, 45 + (c.id % 15)));
+        }
+
+        return {
+          ...c,
+          matchScore,
+          matchedSkillCount: matchingReqs.length,
+          totalSkillCount: totalReq,
+          matchedSkills: matchedSkillNames,
+          missingSkills: missingSkillNames
+        };
+      });
+
+      scoredCareers.sort((a: any, b: any) => b.matchScore - a.matchScore);
+      setResumeMatches(scoredCareers.slice(0, 10));
       setIsScanningResume(false);
-    }, 600);
+    }, 400);
   };
 
   // Comparison Matrix Data
@@ -361,11 +448,16 @@ export const MyCareerMapPage: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setResumeModalOpen(true)}
-            className="px-4 py-2.5 rounded-xl bg-[#f8fafc] dark:bg-[#151c28] border border-[#e2e8f0] dark:border-[#243044] hover:border-indigo-400 dark:hover:border-[#fe9832] text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer active:scale-95 shadow-2xs"
+            onClick={() => setTab('resume')}
+            className={`px-4 py-2.5 rounded-xl border text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer active:scale-95 shadow-2xs ${
+              activeTab === 'resume'
+                ? 'bg-indigo-600 border-indigo-600 text-white'
+                : 'bg-[#f8fafc] dark:bg-[#151c28] border-[#e2e8f0] dark:border-[#243044] hover:border-indigo-400 dark:hover:border-[#fe9832] text-[#0f172a] dark:text-white'
+            }`}
           >
-            <FileText className="w-4 h-4 text-indigo-600 dark:text-[#fe9832]" />
+            <FileText className={`w-4 h-4 ${activeTab === 'resume' ? 'text-white' : 'text-indigo-600 dark:text-[#fe9832]'}`} />
             <span>Resume Scanner</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500 text-white font-black">AI</span>
           </button>
         </div>
       </header>
@@ -374,7 +466,7 @@ export const MyCareerMapPage: React.FC = () => {
       <div className="bg-white dark:bg-[#0d121d] p-2 rounded-2xl border border-[#e2e8f0] dark:border-[#2d3133] flex flex-wrap gap-2 shadow-xs">
         <button
           onClick={() => setTab('explore')}
-          className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+          className={`flex-1 min-w-[130px] flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
             activeTab === 'explore'
               ? 'bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/25'
               : 'text-[#475569] dark:text-[#828796] hover:bg-[#f8fafc] dark:hover:bg-[#151c28]'
@@ -387,7 +479,7 @@ export const MyCareerMapPage: React.FC = () => {
 
         <button
           onClick={() => setTab('roadmaps')}
-          className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+          className={`flex-1 min-w-[130px] flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
             activeTab === 'roadmaps'
               ? 'bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/25'
               : 'text-[#475569] dark:text-[#828796] hover:bg-[#f8fafc] dark:hover:bg-[#151c28]'
@@ -396,13 +488,26 @@ export const MyCareerMapPage: React.FC = () => {
           <Map className="w-4 h-4" />
           <span>Milestone Roadmaps</span>
           <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-white/20 font-black">
-            {activeRoadmap ? activeRoadmap.career.title : 'Active'}
+            {activeRoadmap ? activeRoadmap.career.code : 'Active'}
           </span>
         </button>
 
         <button
+          onClick={() => setTab('resume')}
+          className={`flex-1 min-w-[130px] flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+            activeTab === 'resume'
+              ? 'bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/25'
+              : 'text-[#475569] dark:text-[#828796] hover:bg-[#f8fafc] dark:hover:bg-[#151c28]'
+          }`}
+        >
+          <FileText className="w-4 h-4 text-emerald-400" />
+          <span>Resume Scanner</span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500 text-white font-black">AI</span>
+        </button>
+
+        <button
           onClick={() => setTab('opportunities')}
-          className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+          className={`flex-1 min-w-[130px] flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
             activeTab === 'opportunities'
               ? 'bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/25'
               : 'text-[#475569] dark:text-[#828796] hover:bg-[#f8fafc] dark:hover:bg-[#151c28]'
@@ -415,14 +520,14 @@ export const MyCareerMapPage: React.FC = () => {
 
         <button
           onClick={() => setTab('compare')}
-          className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+          className={`flex-1 min-w-[130px] flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
             activeTab === 'compare'
               ? 'bg-gradient-to-r from-sky-500 via-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/25'
               : 'text-[#475569] dark:text-[#828796] hover:bg-[#f8fafc] dark:hover:bg-[#151c28]'
           }`}
         >
           <Scale className="w-4 h-4" />
-          <span>Compare Careers</span>
+          <span>Compare Matrix</span>
           {compareIds.length > 0 && (
             <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500 text-slate-950 font-black">
               {compareIds.length}
@@ -437,6 +542,37 @@ export const MyCareerMapPage: React.FC = () => {
       {activeTab === 'explore' && (
         <div className="flex flex-col gap-6">
           
+          {/* Resume Scanner Callout Hero Banner */}
+          <div className="bg-gradient-to-r from-indigo-900/40 via-purple-900/30 to-amber-900/20 border border-indigo-500/30 rounded-3xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-600/20 border border-indigo-500/40 text-indigo-400 flex items-center justify-center shrink-0">
+                <FileCheck className="w-6 h-6 text-indigo-400" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm sm:text-base font-black text-[#0f172a] dark:text-white">
+                    Scan Resume or Bio for Instant AI Matching
+                  </h3>
+                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                    533+ Skills
+                  </span>
+                </div>
+                <p className="text-xs text-[#64748b] dark:text-[#94a3b8] mt-1">
+                  Upload your CV or paste your skills to get deep percentage matches across all 152 professions and custom roadmaps.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setTab('resume')}
+              className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/30 transition-all flex items-center gap-2 shrink-0 cursor-pointer active:scale-95"
+            >
+              <Zap className="w-4 h-4 text-amber-300" />
+              <span>Launch Resume Scanner</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
           {/* Filters Bar */}
           <div className="bg-white dark:bg-[#0d121d] p-5 rounded-3xl border border-[#e2e8f0] dark:border-[#2d3133] shadow-xs flex flex-col gap-4">
             
@@ -1037,6 +1173,296 @@ export const MyCareerMapPage: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
+      {/* TAB 5: RESUME & SKILLS SCANNER                                            */}
+      {/* ========================================================================= */}
+      {activeTab === 'resume' && (
+        <div className="flex flex-col gap-6">
+          
+          {/* Header Card */}
+          <div className="bg-white dark:bg-[#0d121d] p-6 sm:p-8 rounded-3xl border border-[#e2e8f0] dark:border-[#2d3133] shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/20">
+                <FileCheck className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
+                    AI Competency Engine
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400">
+                    100% In-Browser Privacy
+                  </span>
+                </div>
+                <h2 className="text-xl sm:text-2xl font-black text-[#0f172a] dark:text-white">
+                  Resume & Skill Scanner
+                </h2>
+                <p className="text-xs sm:text-sm text-[#475569] dark:text-[#828796] mt-1">
+                  Upload your CV or paste your bio below. Our AI parses technical and functional skills to calculate exact fit scores across 152+ career paths.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                accept=".txt,.pdf,.docx,.doc,.rtf,.md"
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="px-4 py-2.5 rounded-xl bg-[#f8fafc] dark:bg-[#151c28] border border-[#e2e8f0] dark:border-[#243044] hover:border-emerald-500 text-xs font-bold text-[#0f172a] dark:text-white transition-all flex items-center gap-2 cursor-pointer shadow-2xs"
+              >
+                <Upload className="w-4 h-4 text-emerald-500" />
+                <span>Upload File (.pdf/.docx/.txt)</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Input & Quick Samples Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            {/* Left: Input Editor (7 cols) */}
+            <div className="lg:col-span-7 bg-white dark:bg-[#0d121d] p-6 rounded-3xl border border-[#e2e8f0] dark:border-[#2d3133] shadow-xs flex flex-col gap-4">
+              
+              {/* Sample Resumes Fast Select */}
+              <div>
+                <span className="text-xs font-bold text-[#64748b] dark:text-[#828796] block mb-2">
+                  ⚡ Try 1-Click Sample Resumes:
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {sampleResumes.map((s) => (
+                    <button
+                      key={s.name}
+                      onClick={() => {
+                        setResumeText(s.text);
+                        handleScanResume(s.text);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-[#f8fafc] dark:bg-[#151c28] hover:bg-indigo-50 dark:hover:bg-indigo-950/60 border border-[#e2e8f0] dark:border-[#243044] hover:border-indigo-400 text-[11px] font-bold text-[#0f172a] dark:text-white transition-all cursor-pointer"
+                    >
+                      {s.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Text Area */}
+              <div className="relative">
+                <textarea
+                  rows={8}
+                  value={resumeText}
+                  onChange={(e) => setResumeText(e.target.value)}
+                  placeholder="Paste your resume, LinkedIn summary, project experience, or list of technical skills here..."
+                  className="w-full p-4 rounded-2xl bg-[#f8fafc] dark:bg-[#151c28] border border-[#e2e8f0] dark:border-[#243044] text-xs sm:text-sm text-[#0f172a] dark:text-white placeholder-[#94a3b8] focus:outline-none focus:border-emerald-500 transition-colors leading-relaxed"
+                />
+
+                {resumeText && (
+                  <button
+                    onClick={() => {
+                      setResumeText('');
+                      setResumeSkills([]);
+                      setResumeMatches([]);
+                    }}
+                    className="absolute right-3 top-3 p-1.5 rounded-lg bg-white dark:bg-[#0d121d] text-[#94a3b8] hover:text-rose-500 text-xs font-bold border border-[#e2e8f0] dark:border-[#243044] cursor-pointer"
+                    title="Clear text"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Action Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+                <span className="text-xs text-[#64748b] dark:text-[#828796]">
+                  {resumeText.trim() ? `${resumeText.trim().split(/\s+/).length} words detected` : 'No text entered'}
+                </span>
+
+                <button
+                  onClick={() => handleScanResume()}
+                  disabled={isScanningResume || !resumeText.trim()}
+                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-600 to-indigo-600 hover:opacity-95 disabled:opacity-50 text-white font-black text-xs sm:text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                >
+                  {isScanningResume ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Analyzing 152+ Career Profiles...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 text-amber-300" />
+                      <span>Analyze Resume & Calculate Matches</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Right: Extracted Skills Cloud (5 cols) */}
+            <div className="lg:col-span-5 bg-white dark:bg-[#0d121d] p-6 rounded-3xl border border-[#e2e8f0] dark:border-[#2d3133] shadow-xs flex flex-col gap-4">
+              <div className="flex items-center justify-between pb-3 border-b border-[#f1f5f9] dark:border-[#243044]">
+                <div className="flex items-center gap-2">
+                  <Target className="w-4 h-4 text-emerald-500" />
+                  <h3 className="text-sm font-black text-[#0f172a] dark:text-white">Detected Competencies</h3>
+                </div>
+                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                  {resumeSkills.length} Identified
+                </span>
+              </div>
+
+              {resumeSkills.length === 0 ? (
+                <div className="py-12 text-center text-[#94a3b8] flex flex-col items-center justify-center gap-2">
+                  <FileText className="w-8 h-8 stroke-1" />
+                  <p className="text-xs text-[#64748b] dark:text-[#828796]">
+                    Paste your resume or pick a sample on the left to view extracted skills.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2 max-h-[220px] overflow-y-auto pr-1">
+                  {resumeSkills.map((skill, idx) => (
+                    <span
+                      key={idx}
+                      className="px-2.5 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800/60 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center gap-1.5"
+                    >
+                      <Check className="w-3 h-3 text-emerald-500" />
+                      <span>{skill}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Helpful Tip */}
+              <div className="p-3.5 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 text-xs flex items-start gap-2.5 mt-auto">
+                <Zap className="w-4 h-4 text-indigo-600 dark:text-[#fe9832] shrink-0 mt-0.5" />
+                <p className="text-[#475569] dark:text-[#94a3b8] leading-relaxed">
+                  <strong>Career Match Engine:</strong> Each career's match score reflects required prerequisite skills, domain competencies, and current industry requirements.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Top Career Matches Results */}
+          {resumeMatches.length > 0 && (
+            <div className="flex flex-col gap-4 pt-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-black text-[#0f172a] dark:text-white flex items-center gap-2">
+                    <span>Ranked Career Compatibility Matches</span>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-500 text-white">
+                      Top {resumeMatches.length} Matches
+                    </span>
+                  </h3>
+                  <p className="text-xs text-[#64748b] dark:text-[#828796] mt-0.5">
+                    Click "Roadmap" on any matched career to view your customized 5-phase preparation plan.
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {resumeMatches.map((m, idx) => (
+                  <div
+                    key={m.id}
+                    className="bg-white dark:bg-[#151c28] p-5 rounded-3xl border border-[#e2e8f0] dark:border-[#243044] hover:border-emerald-500 dark:hover:border-emerald-500 transition-all shadow-xs flex flex-col justify-between gap-4 group"
+                  >
+                    <div>
+                      {/* Top Rank + Match Score Header */}
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-lg bg-[#f1f5f9] dark:bg-[#1e293b] text-[#475569] dark:text-[#94a3b8] text-xs font-black flex items-center justify-center">
+                            #{idx + 1}
+                          </span>
+                          <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400">
+                            {careerTypeMap[m.career_type_id] || 'Domain'}
+                          </span>
+                        </div>
+
+                        <span className={`text-xs font-black px-3 py-1 rounded-xl flex items-center gap-1 ${
+                          m.matchScore >= 85
+                            ? 'bg-emerald-500 text-white shadow-xs'
+                            : 'bg-indigo-600 text-white'
+                        }`}>
+                          <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                          <span>{m.matchScore}% Match</span>
+                        </span>
+                      </div>
+
+                      {/* Title & Description */}
+                      <h4 className="text-base font-black text-[#0f172a] dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                        {m.title}
+                      </h4>
+                      <p className="text-xs text-[#475569] dark:text-[#828796] line-clamp-2 mt-1 leading-relaxed">
+                        {m.summary || m.description}
+                      </p>
+
+                      {/* Salary & Metrics */}
+                      <div className="mt-3 p-3 rounded-2xl bg-[#f8fafc] dark:bg-[#0d121d] border border-[#e2e8f0] dark:border-[#1e293b] flex items-center justify-between text-xs">
+                        <span className="text-[#64748b] dark:text-[#828796]">Benchmark Compensation:</span>
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                          ₹{((m.salary_range_min || 500000) / 100000).toFixed(1)}L - ₹{((m.salary_range_max || 1800000) / 100000).toFixed(1)}L / yr
+                        </span>
+                      </div>
+
+                      {/* Skills Overlap Badges */}
+                      {m.matchedSkills && m.matchedSkills.length > 0 && (
+                        <div className="mt-3">
+                          <span className="text-[10px] font-bold text-[#64748b] dark:text-[#828796] block mb-1">
+                            ✓ Matching Skills in Profile:
+                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {m.matchedSkills.slice(0, 4).map((s: string, sIdx: number) => (
+                              <span key={sIdx} className="px-2 py-0.5 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">
+                                {s}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Missing Recommended Skills to Bridge */}
+                      {m.missingSkills && m.missingSkills.length > 0 && (
+                        <div className="mt-2">
+                          <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 block mb-1">
+                            + Recommended Next Skills to Bridge:
+                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {m.missingSkills.slice(0, 3).map((s: string, sIdx: number) => (
+                              <span key={sIdx} className="px-2 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 text-[10px] font-semibold border border-amber-200/50 dark:border-amber-800/40">
+                                {s}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="pt-3 border-t border-[#f1f5f9] dark:border-[#243044] flex items-center justify-between gap-2">
+                      <button
+                        onClick={() => setSelectedCareerDetail(m)}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold text-[#475569] dark:text-[#94a3b8] hover:bg-[#f8fafc] dark:hover:bg-[#1e293b] transition-colors cursor-pointer"
+                      >
+                        View Full Details
+                      </button>
+
+                      <button
+                        onClick={() => handleOpenRoadmapForCareer(m.id)}
+                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+                      >
+                        <Map className="w-3.5 h-3.5 text-slate-950" />
+                        <span>Open Tailored Roadmap</span>
+                        <ArrowUpRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+        </div>
+      )}
+
+      {/* ========================================================================= */}
       {/* MODAL: CAREER DETAIL INSPECTOR                                            */}
       {/* ========================================================================= */}
       {selectedCareerDetail && (
@@ -1269,7 +1695,7 @@ export const MyCareerMapPage: React.FC = () => {
             />
 
             <button
-              onClick={handleScanResume}
+              onClick={() => handleScanResume()}
               disabled={isScanningResume || !resumeText.trim()}
               className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs cursor-pointer flex items-center justify-center gap-2"
             >

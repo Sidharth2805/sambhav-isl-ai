@@ -47,6 +47,9 @@ const App: React.FC = () => {
             <Route path="/careers" element={<Navigate to="/mycareermap" replace />} />
             <Route path="/careers/:id" element={<CareerDetailPage />} />
             <Route path="/explore" element={<Navigate to="/mycareermap" replace />} />
+            <Route path="/resume" element={<Navigate to="/mycareermap?tab=resume" replace />} />
+            <Route path="/resume-scanner" element={<Navigate to="/mycareermap?tab=resume" replace />} />
+            <Route path="/mycareermap/resume" element={<Navigate to="/mycareermap?tab=resume" replace />} />
 
             {/* Anonymous Only Routes */}
             <Route element={<UnauthenticatedRoute />}>
