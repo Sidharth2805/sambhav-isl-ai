@@ -189,18 +189,24 @@ export function useSambhavModel2() {
           };
           setCommittedSign(committed);
           setGestureState('COMMITTED');
-          cooldownUntilRef.current = Date.now() + 700;
+          cooldownUntilRef.current = Date.now() + 600;
 
           setTimeout(() => {
             setGestureState('IDLE');
             setSigningCountdown(null);
             setSigningProgress(0);
-          }, 1200);
+          }, 1000);
         } else {
+          // If a sign was detected but below commit threshold, show it briefly in HUD
+          if (prediction.label !== 'NO_ACTIVE_SIGN' && prediction.confidence >= 0.08) {
+            const displaySign = prediction.phrase || prediction.label;
+            setCurrentGesture(displaySign);
+            setConfidence(prediction.confidence);
+          }
           setGestureState('IDLE');
           setSigningCountdown(null);
           setSigningProgress(0);
-          cooldownUntilRef.current = Date.now() + 300;
+          cooldownUntilRef.current = Date.now() + 250;
         }
       } catch (err) {
         console.error('[Sambhav Model 2] Inference error:', err);
@@ -264,7 +270,9 @@ export function useSambhavModel2() {
         setSigningProgress(0);
       }
 
-      // 3. State Machine
+      // 3. State Machine (1.5s window for responsive recognition)
+      const SIGNING_WINDOW_MS = 1500;
+
       if (hasHand) {
         noHandCountRef.current = 0;
 
@@ -283,8 +291,8 @@ export function useSambhavModel2() {
         frameBufferRef.current.push(vector);
 
         const elapsedMs = now - signingStartTimeRef.current;
-        const remainingSecs = Math.max(0, Math.ceil((3000 - elapsedMs) / 1000));
-        const progress = Math.min(100, Math.round((elapsedMs / 3000) * 100));
+        const remainingSecs = Math.max(0, Math.ceil((SIGNING_WINDOW_MS - elapsedMs) / 1000));
+        const progress = Math.min(100, Math.round((elapsedMs / SIGNING_WINDOW_MS) * 100));
 
         setSigningCountdown(remainingSecs);
         setSigningProgress(progress);
@@ -302,8 +310,8 @@ export function useSambhavModel2() {
           meanVal,
         }));
 
-        // 3.0s window reached
-        if (elapsedMs >= 3000 && frameBufferRef.current.length >= 15) {
+        // 1.5s window reached with sufficient frames
+        if (elapsedMs >= SIGNING_WINDOW_MS && frameBufferRef.current.length >= 12) {
           const captured = [...frameBufferRef.current];
           frameBufferRef.current = [];
           triggerInference(captured);
@@ -312,18 +320,18 @@ export function useSambhavModel2() {
         // Hand absent
         noHandCountRef.current += 1;
 
-        // Natural gesture drop completion
+        // Natural gesture drop completion (hand moved away after signing)
         if (
-          noHandCountRef.current >= 6 &&
-          frameBufferRef.current.length >= 15 &&
+          noHandCountRef.current >= 4 &&
+          frameBufferRef.current.length >= 10 &&
           !isAnalyzingRef.current &&
           signingStartTimeRef.current !== null
         ) {
           const captured = [...frameBufferRef.current];
           frameBufferRef.current = [];
           triggerInference(captured);
-        } else if (noHandCountRef.current > 12 && !isAnalyzingRef.current) {
-          // Hand gone for > 400ms: reset idle
+        } else if (noHandCountRef.current > 8 && !isAnalyzingRef.current) {
+          // Hand gone for > 250ms: reset idle
           signingStartTimeRef.current = null;
           frameBufferRef.current = [];
           setSigningCountdown(null);

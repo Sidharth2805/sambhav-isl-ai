@@ -124,28 +124,6 @@ def format_class_name(label: str) -> str:
     if not label:
         return ""
     clean = label.replace('_', ' ').strip()
-    if clean.lower() == 'howareyou':
-        return 'How Are You'
-    if clean.lower() == 'thankyou':
-        return 'Thank You'
-    if clean.lower() == 'goodmorning':
-        return 'Good Morning'
-    if clean.lower() == 'goodafternoon':
-        return 'Good Afternoon'
-    if clean.lower() == 'goodevening':
-        return 'Good Evening'
-    if clean.lower() == 'goodnight':
-        return 'Good Night'
-    if clean.lower() == 'smalllittle':
-        return 'Small / Little'
-    if clean.lower() == 'biglarge':
-        return 'Big / Large'
-    if clean.lower() == 'storeorshop':
-        return 'Store / Shop'
-    if clean.lower() == 'streetorroad':
-        return 'Street / Road'
-    if clean.lower() == 'youplural':
-        return 'You (Plural)'
     return ' '.join(w.capitalize() for w in clean.split())
 
 FRIENDLY_PHRASES = {

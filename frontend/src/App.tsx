@@ -25,7 +25,6 @@ import { CulturalISLPage } from './pages/CulturalISLPage';
 import { GalleryPage } from './pages/GalleryPage';
 import { ISLModelTestPage } from './pages/ISLModelTestPage';
 import { ISLModelDiagnosticPage } from './pages/ISLModelDiagnosticPage';
-import { MyCareerMapPage, CareerDetailPage } from './mycareermap';
 
 const OnlineSessionPage = lazy(() => import('./pages/OnlineSessionPage'));
 
@@ -40,22 +39,6 @@ const App: React.FC = () => {
             <Route path="/gallery" element={<GalleryPage />} />
             <Route path="/showcase" element={<GalleryPage />} />
             <Route path="/accessibility" element={<PlaceholderPage />} />
-            <Route path="/mycareermap" element={<MyCareerMapPage />} />
-            <Route path="/mycareermap/careers/:id" element={<CareerDetailPage />} />
-            <Route path="/career-discovery" element={<Navigate to="/mycareermap" replace />} />
-            <Route path="/career" element={<Navigate to="/mycareermap" replace />} />
-            <Route path="/careers" element={<Navigate to="/mycareermap" replace />} />
-            <Route path="/careers/:id" element={<CareerDetailPage />} />
-            <Route path="/explore" element={<Navigate to="/mycareermap" replace />} />
-            <Route path="/roadmap" element={<Navigate to="/mycareermap?tab=roadmaps" replace />} />
-            <Route path="/roadmaps" element={<Navigate to="/mycareermap?tab=roadmaps" replace />} />
-            <Route path="/compare" element={<Navigate to="/mycareermap?tab=compare" replace />} />
-            <Route path="/opportunities" element={<Navigate to="/mycareermap?tab=opportunities" replace />} />
-            <Route path="/jobs" element={<Navigate to="/mycareermap?tab=opportunities" replace />} />
-            <Route path="/pathways" element={<Navigate to="/mycareermap?tab=opportunities" replace />} />
-            <Route path="/resume" element={<Navigate to="/mycareermap?tab=resume" replace />} />
-            <Route path="/resume-scanner" element={<Navigate to="/mycareermap?tab=resume" replace />} />
-            <Route path="/mycareermap/resume" element={<Navigate to="/mycareermap?tab=resume" replace />} />
 
             {/* Anonymous Only Routes */}
             <Route element={<UnauthenticatedRoute />}>
@@ -111,11 +94,6 @@ const App: React.FC = () => {
                 <Route path="/learn" element={<Navigate to="/learn-isl" replace />} />
                 <Route path="/learning" element={<Navigate to="/learn-isl" replace />} />
                 <Route path="/isl-learn" element={<Navigate to="/learn-isl" replace />} />
-                <Route path="/mycareermap" element={<MyCareerMapPage />} />
-                <Route path="/career-discovery" element={<Navigate to="/mycareermap" replace />} />
-                <Route path="/career" element={<Navigate to="/mycareermap" replace />} />
-                <Route path="/careers" element={<Navigate to="/mycareermap" replace />} />
-                <Route path="/explore" element={<Navigate to="/mycareermap" replace />} />
                 <Route path="/help" element={<HelpPage />} />
                 <Route path="/news" element={<NewsPage />} />
                 <Route path="/gallery" element={<GalleryPage />} />

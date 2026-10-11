@@ -64,7 +64,6 @@ export const TranslatePage: React.FC = () => {
   const [activeMode, setActiveMode] = useState<'SPEECH_TEXT_TO_ISL' | 'ISL_TO_TEXT'>('SPEECH_TEXT_TO_ISL');
 
   // Persistent Media Stream State (Camera active only for ISL recognition)
-  const videoRef = useRef<HTMLVideoElement | null>(null);
   const gestureVideoRef = useRef<HTMLVideoElement | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
@@ -92,6 +91,7 @@ export const TranslatePage: React.FC = () => {
     gestureState,
     signingCountdown,
     signingProgress,
+    telemetry,
     startRecognition: startISLRecognition,
     stopRecognition: stopISLRecognition,
   } = useSambhavModel2();
@@ -436,11 +436,25 @@ export const TranslatePage: React.FC = () => {
     }
   }, []);
 
-  // Cleanup on unmount - immediately stops camera hardware tracks and recognition
-  useEffect(() => {
-    return () => {
-      stopContinuousListening();
-      stopISLRecognition();
+  // Authoritative camera management functions
+  const stopCamera = useCallback(() => {
+    stopISLRecognition();
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => {
+        try {
+          track.stop();
+        } catch (e) {}
+      });
+      mediaStreamRef.current = null;
+    }
+    if (gestureVideoRef.current) {
+      gestureVideoRef.current.srcObject = null;
+    }
+    setCameraActive(false);
+  }, [stopISLRecognition]);
+
+  const startCamera = useCallback(async () => {
+    try {
       if (mediaStreamRef.current) {
         mediaStreamRef.current.getTracks().forEach((t) => {
           try {
@@ -449,32 +463,49 @@ export const TranslatePage: React.FC = () => {
         });
         mediaStreamRef.current = null;
       }
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
+
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 640, max: 640 },
+            height: { ideal: 480, max: 480 },
+            frameRate: { ideal: 30, max: 30 },
+            facingMode: 'user',
+          },
+          audio: false,
+        });
+
+        mediaStreamRef.current = stream;
+        setCameraActive(true);
+
+        const vid = gestureVideoRef.current;
+        if (vid) {
+          vid.srcObject = stream;
+          try {
+            await vid.play();
+          } catch (e) {}
+          startISLRecognition(vid);
+        }
       }
-      if (gestureVideoRef.current) {
-        gestureVideoRef.current.srcObject = null;
-      }
+    } catch (err) {
+      console.warn('[Translate] Camera hardware track access error:', err);
       setCameraActive(false);
+    }
+  }, [startISLRecognition]);
+
+  const handleRestartCamera = useCallback(async () => {
+    stopCamera();
+    await new Promise((res) => setTimeout(res, 250));
+    await startCamera();
+  }, [stopCamera, startCamera]);
+
+  // Cleanup on unmount - immediately stops camera hardware tracks and recognition
+  useEffect(() => {
+    return () => {
+      stopContinuousListening();
+      stopCamera();
     };
-  }, [stopContinuousListening, stopISLRecognition]);
-
-  // Keep videoRef continuously linked to active mediaStream
-  useEffect(() => {
-    if (inSession && videoRef.current && mediaStreamRef.current) {
-      videoRef.current.srcObject = mediaStreamRef.current;
-    }
-  }, [inSession, activeMode, cameraActive]);
-
-  // Auto-start ISL gesture recognition whenever entering ISL_TO_TEXT mode in session
-  useEffect(() => {
-    if (inSession && activeMode === 'ISL_TO_TEXT') {
-      const vid = gestureVideoRef.current || videoRef.current;
-      if (vid) {
-        startISLRecognition(vid);
-      }
-    }
-  }, [inSession, activeMode, startISLRecognition]);
+  }, [stopContinuousListening, stopCamera]);
 
   // Start Communication Flow (Enables Camera for ISL mode, Mic for Speech mode)
   const handleStartCommunication = async () => {
@@ -488,84 +519,30 @@ export const TranslatePage: React.FC = () => {
     setMicError(null);
 
     if (activeMode === 'ISL_TO_TEXT') {
-      try {
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-              width: { ideal: 640, max: 640 },
-              height: { ideal: 480, max: 480 },
-              frameRate: { ideal: 30, max: 30 },
-              facingMode: 'user'
-            },
-            audio: false,
-          });
-
-          if (stream) {
-            mediaStreamRef.current = stream;
-            setCameraActive(true);
-
-            if (gestureVideoRef.current) {
-              gestureVideoRef.current.srcObject = stream;
-            }
-          }
-        }
-      } catch (err) {
-        console.warn('Camera hardware track access note:', err);
-      }
-
-      setTimeout(() => {
-        const vid = gestureVideoRef.current || videoRef.current;
-        if (vid) {
-          if (mediaStreamRef.current && vid.srcObject !== mediaStreamRef.current) {
-            vid.srcObject = mediaStreamRef.current;
-            vid.play().catch(() => {});
-          }
-          startISLRecognition(vid);
-        }
-      }, 200);
+      await startCamera();
     } else {
-      // SPEECH_TEXT_TO_ISL mode: no camera needed
       setCameraActive(false);
       startContinuousListening();
     }
   };
 
-  // Auto-trigger ISL Recognition and attach video stream when session is active in ISL_TO_TEXT mode
+  // Keep camera and recognition active when inSession in ISL_TO_TEXT mode
   useEffect(() => {
     if (inSession && activeMode === 'ISL_TO_TEXT') {
-      const timer = setTimeout(async () => {
-        if (!mediaStreamRef.current && navigator.mediaDevices?.getUserMedia) {
-          try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-              video: {
-                width: { ideal: 640, max: 640 },
-                height: { ideal: 480, max: 480 },
-                frameRate: { ideal: 30, max: 30 },
-                facingMode: 'user'
-              },
-              audio: false,
-            });
-            mediaStreamRef.current = stream;
-            setCameraActive(true);
-          } catch (e) {
-            console.warn('Camera access error:', e);
-          }
+      if (!mediaStreamRef.current) {
+        startCamera();
+      } else if (gestureVideoRef.current) {
+        const vid = gestureVideoRef.current;
+        if (vid.srcObject !== mediaStreamRef.current) {
+          vid.srcObject = mediaStreamRef.current;
+          vid.play().catch(() => {});
         }
-
-        const vid = gestureVideoRef.current || videoRef.current;
-        if (vid) {
-          if (mediaStreamRef.current && vid.srcObject !== mediaStreamRef.current) {
-            vid.srcObject = mediaStreamRef.current;
-            vid.play().catch(() => {});
-          }
-          if (!isISLRecognizing) {
-            startISLRecognition(vid);
-          }
+        if (!isISLRecognizing) {
+          startISLRecognition(vid);
         }
-      }, 300);
-      return () => clearTimeout(timer);
+      }
     }
-  }, [inSession, activeMode, isISLRecognizing, startISLRecognition]);
+  }, [inSession, activeMode, isISLRecognizing, startCamera, startISLRecognition]);
 
   // Mode Switch Handler (Logs mid-conversation mode switch and manages camera/mic)
   const handleSwitchMode = async (newMode: 'SPEECH_TEXT_TO_ISL' | 'ISL_TO_TEXT') => {
@@ -597,74 +574,17 @@ export const TranslatePage: React.FC = () => {
 
     // Manage continuous speech recognition and ISL gesture tracking
     if (newMode === 'SPEECH_TEXT_TO_ISL') {
-      stopISLRecognition();
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach((track) => {
-          try {
-            track.stop();
-          } catch (e) {}
-        });
-        mediaStreamRef.current = null;
-      }
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
-      if (gestureVideoRef.current) {
-        gestureVideoRef.current.srcObject = null;
-      }
-      setCameraActive(false);
+      stopCamera();
       startContinuousListening();
     } else if (newMode === 'ISL_TO_TEXT') {
       stopContinuousListening();
-      try {
-        if (!mediaStreamRef.current && navigator.mediaDevices?.getUserMedia) {
-          const stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-              width: { ideal: 640, max: 640 },
-              height: { ideal: 480, max: 480 },
-              frameRate: { ideal: 30, max: 30 },
-              facingMode: 'user'
-            },
-            audio: false,
-          });
-          mediaStreamRef.current = stream;
-          setCameraActive(true);
-        }
-      } catch (err) {
-        console.warn('Camera access on mode switch:', err);
-      }
-
-      setTimeout(() => {
-        if (gestureVideoRef.current || videoRef.current) {
-          const vid = gestureVideoRef.current || videoRef.current;
-          if (vid && mediaStreamRef.current && vid.srcObject !== mediaStreamRef.current) {
-            vid.srcObject = mediaStreamRef.current;
-            vid.play().catch(() => {});
-          }
-          if (vid) startISLRecognition(vid);
-        }
-      }, 100);
+      await startCamera();
     }
   };
 
   const stopMediaStream = () => {
     stopContinuousListening();
-    stopISLRecognition();
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((track) => {
-        try {
-          track.stop();
-        } catch (e) {}
-      });
-      mediaStreamRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-    if (gestureVideoRef.current) {
-      gestureVideoRef.current.srcObject = null;
-    }
-    setCameraActive(false);
+    stopCamera();
   };
 
   const handleStopCommunication = () => {
@@ -1134,7 +1054,7 @@ export const TranslatePage: React.FC = () => {
                           <span className={`w-1.5 h-1.5 rounded-full ${gestureState === 'SIGN_DETECTED' || gestureState === 'COMMITTED' ? 'bg-emerald-400' : gestureState === 'COLLECTING' ? 'bg-amber-400 animate-ping' : gestureState === 'INFERENCE' ? 'bg-indigo-400 animate-spin' : 'bg-gray-400'}`} />
                           <span>
                             Status: {gestureState === 'COLLECTING'
-                              ? `Signing (${signingCountdown ?? 3}s)...`
+                              ? `Signing (${signingCountdown ?? 1}s)...`
                               : gestureState === 'INFERENCE' || gestureState === 'DETECTING'
                               ? 'Analyzing Gesture...'
                               : gestureState === 'SIGN_DETECTED' || gestureState === 'COMMITTED'
@@ -1145,6 +1065,9 @@ export const TranslatePage: React.FC = () => {
                             <div className="w-10 h-1 bg-white/20 rounded-full overflow-hidden ml-0.5">
                               <div className="h-full bg-amber-400 transition-all duration-100" style={{ width: `${signingProgress}%` }} />
                             </div>
+                          )}
+                          {gestureState === 'COLLECTING' && telemetry.bufferedFrames > 0 && (
+                            <span className="text-[8px] text-gray-400 font-mono">({telemetry.bufferedFrames}f)</span>
                           )}
                         </div>
                       )}
@@ -1190,11 +1113,7 @@ export const TranslatePage: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => {
-                          if (gestureVideoRef.current) {
-                            startISLRecognition(gestureVideoRef.current);
-                          }
-                        }}
+                        onClick={handleRestartCamera}
                         className="px-3 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-white/10 dark:hover:bg-white/20 text-gray-950 dark:text-white rounded-lg text-xs font-bold flex items-center gap-1 transition cursor-pointer border border-gray-300 dark:border-transparent"
                       >
                         <span className="material-symbols-outlined text-[14px]">refresh</span>
