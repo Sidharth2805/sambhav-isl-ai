@@ -1054,12 +1054,12 @@ export const TranslatePage: React.FC = () => {
                           <span className={`w-1.5 h-1.5 rounded-full ${gestureState === 'SIGN_DETECTED' || gestureState === 'COMMITTED' ? 'bg-emerald-400' : gestureState === 'COLLECTING' ? 'bg-amber-400 animate-ping' : gestureState === 'INFERENCE' ? 'bg-indigo-400 animate-spin' : 'bg-gray-400'}`} />
                           <span>
                             Status: {gestureState === 'COLLECTING'
-                              ? `Analyzing Sign (${signingCountdown ?? 3}s)...`
+                              ? `Analyzing Sign (${signingCountdown ?? 2}s)...`
                               : gestureState === 'INFERENCE' || gestureState === 'DETECTING'
                               ? 'Evaluating Model...'
                               : gestureState === 'SIGN_DETECTED' || gestureState === 'COMMITTED'
                               ? `Detected: ${recognizedSign || 'Active Sign'}`
-                              : 'Ready to Sign (Hold gesture for 3s)'}
+                              : 'Ready to Sign (Hold gesture for 2s)'}
                           </span>
                           {gestureState === 'COLLECTING' && (
                             <div className="w-10 h-1 bg-white/20 rounded-full overflow-hidden ml-0.5">

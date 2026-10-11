@@ -463,7 +463,7 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
               ) : gestureState === 'COLLECTING' ? (
                 <div className="bg-black/85 backdrop-blur-md px-3 py-1 rounded-xl border border-amber-400/60 text-amber-300 text-[10px] font-bold flex items-center gap-2 shadow-lg">
                   <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
-                  <span>Signing ({signingCountdown ?? 3}s)...</span>
+                  <span>Signing ({signingCountdown ?? 2}s)...</span>
                   <div className="w-12 h-1.5 bg-white/20 rounded-full overflow-hidden">
                     <div className="h-full bg-amber-400 transition-all duration-100" style={{ width: `${signingProgress}%` }} />
                   </div>
@@ -471,7 +471,7 @@ export const DeafUserWorkspace: React.FC<DeafUserWorkspaceProps> = ({
               ) : (
                 <div className="bg-black/65 backdrop-blur-md px-2.5 py-1 rounded-xl border border-white/15 text-white/80 text-[10px] font-bold flex items-center gap-1.5">
                   <span className={`w-1.5 h-1.5 rounded-full ${isModelOnline ? 'bg-emerald-400' : 'bg-[#fe9832] animate-pulse'}`} />
-                  <span>{isModelOnline ? 'Ready to Sign (3s window)' : 'AI Gesture Recognition (Offline)'}</span>
+                  <span>{isModelOnline ? 'Ready to Sign (2s window)' : 'AI Gesture Recognition (Offline)'}</span>
                 </div>
               )}
             </div>

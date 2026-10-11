@@ -269,8 +269,8 @@ export function useSambhavModel2() {
         setSigningProgress(0);
       }
 
-      // 3. State Machine (Full 3-second continuous gesture window for reliable ISL recognition)
-      const SIGNING_WINDOW_MS = 3000;
+      // 3. State Machine (2-second continuous gesture window for responsive ISL recognition)
+      const SIGNING_WINDOW_MS = 2000;
 
       if (hasHand) {
         noHandCountRef.current = 0;
@@ -309,8 +309,8 @@ export function useSambhavModel2() {
           meanVal,
         }));
 
-        // Full 3-second window reached with sufficient frame count
-        if (elapsedMs >= SIGNING_WINDOW_MS && frameBufferRef.current.length >= 30) {
+        // 2-second window reached with sufficient frame count
+        if (elapsedMs >= SIGNING_WINDOW_MS && frameBufferRef.current.length >= 20) {
           const captured = [...frameBufferRef.current];
           frameBufferRef.current = [];
           triggerInference(captured);
@@ -321,11 +321,11 @@ export function useSambhavModel2() {
 
         const elapsedMs = signingStartTimeRef.current !== null ? now - signingStartTimeRef.current : 0;
 
-        // Natural gesture drop completion (must have completed at least 2.5s of signing)
+        // Natural gesture drop completion (must have completed at least 1.6s of signing)
         if (
           noHandCountRef.current >= 6 &&
-          elapsedMs >= 2500 &&
-          frameBufferRef.current.length >= 45 &&
+          elapsedMs >= 1600 &&
+          frameBufferRef.current.length >= 30 &&
           !isAnalyzingRef.current &&
           signingStartTimeRef.current !== null
         ) {
