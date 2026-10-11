@@ -580,8 +580,8 @@ export function useISLRecognition(classifier: ISLClassifier = defaultSaanketClas
             setFrameCount(activeFramesAccumulatedRef.current);
             setGestureState('COLLECTING');
 
-            // Responsive continuous gesture window (~0.6s at 30 FPS matching active resampler)
-            if (activeFramesAccumulatedRef.current >= 20) {
+            // Full 3-second continuous gesture window (75-90 frames at 30 FPS)
+            if (activeFramesAccumulatedRef.current >= 75) {
               triggerInference();
             }
             return;

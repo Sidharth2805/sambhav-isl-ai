@@ -656,27 +656,7 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
       }
     }
 
-    // 5. Intelligent Client-Side Geometric Classifier Fallback (0ms instant offline recognition)
-    const geometricResult = analyzeHandGeometry(this.landmarkBuffer);
-    if (geometricResult && geometricResult.gesture) {
-      return {
-        gesture: geometricResult.gesture,
-        confidence: geometricResult.confidence,
-        label: geometricResult.gesture,
-        phrase: geometricResult.phrase || formatISLLabel(geometricResult.gesture),
-        isRealModel: true,
-        source: 'Geometric Fallback',
-        frameCount: this.landmarkBuffer.length,
-        activityTelemetry: telemetry,
-        vectorStats,
-        requestId: reqId,
-        gestureCycleId: cycleId,
-        top_3: [
-          { class_id: 0, label: geometricResult.gesture, confidence: geometricResult.confidence }
-        ]
-      };
-    }
-
+    // If server model endpoint could not be reached or buffer rejected, return clean empty result (no demo/fake data)
     return {
       gesture: '',
       confidence: 0.0,
@@ -707,7 +687,7 @@ export class SaanketBiLSTMClassifier implements ISLClassifier {
 /**
  * Geometric Rule Engine for Direct Instant ISL & Alphabet Recognition from Hand Landmarks
  */
-function analyzeHandGeometry(buffer: number[][]): { gesture: string; confidence: number; phrase?: string } | null {
+export function analyzeHandGeometry(buffer: number[][]): { gesture: string; confidence: number; phrase?: string } | null {
   if (!buffer || buffer.length === 0) return null;
   const lastFrame = buffer[buffer.length - 1];
   if (!lastFrame || lastFrame.length < 63) return null;

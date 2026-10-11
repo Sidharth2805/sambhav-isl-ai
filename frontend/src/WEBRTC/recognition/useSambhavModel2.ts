@@ -189,27 +189,26 @@ export function useSambhavModel2() {
           };
           setCommittedSign(committed);
           setGestureState('COMMITTED');
-          cooldownUntilRef.current = Date.now() + 600;
+          cooldownUntilRef.current = Date.now() + 1500;
 
           setTimeout(() => {
             setGestureState('IDLE');
             setSigningCountdown(null);
             setSigningProgress(0);
-          }, 1000);
+          }, 1500);
         } else {
-          // If a sign was detected but below commit threshold, show it briefly in HUD
-          if (prediction.label !== 'NO_ACTIVE_SIGN' && prediction.confidence >= 0.08) {
-            const displaySign = prediction.phrase || prediction.label;
-            setCurrentGesture(displaySign);
-            setConfidence(prediction.confidence);
-          }
+          // CRITICAL: Strictly reject low-confidence/ambiguous gestures to prevent false demo/mock signs from flashing
+          setCurrentGesture(null);
+          setConfidence(0);
           setGestureState('IDLE');
           setSigningCountdown(null);
           setSigningProgress(0);
-          cooldownUntilRef.current = Date.now() + 250;
+          cooldownUntilRef.current = Date.now() + 600;
         }
       } catch (err) {
         console.error('[Sambhav Model 2] Inference error:', err);
+        setCurrentGesture(null);
+        setConfidence(0);
         setGestureState('IDLE');
         setSigningCountdown(null);
         setSigningProgress(0);
@@ -270,8 +269,8 @@ export function useSambhavModel2() {
         setSigningProgress(0);
       }
 
-      // 3. State Machine (1.5s window for responsive recognition)
-      const SIGNING_WINDOW_MS = 1500;
+      // 3. State Machine (Full 3-second continuous gesture window for reliable ISL recognition)
+      const SIGNING_WINDOW_MS = 3000;
 
       if (hasHand) {
         noHandCountRef.current = 0;
@@ -291,7 +290,7 @@ export function useSambhavModel2() {
         frameBufferRef.current.push(vector);
 
         const elapsedMs = now - signingStartTimeRef.current;
-        const remainingSecs = Math.max(0, Math.ceil((SIGNING_WINDOW_MS - elapsedMs) / 1000));
+        const remainingSecs = Math.max(1, Math.ceil((SIGNING_WINDOW_MS - elapsedMs) / 1000));
         const progress = Math.min(100, Math.round((elapsedMs / SIGNING_WINDOW_MS) * 100));
 
         setSigningCountdown(remainingSecs);
@@ -310,8 +309,8 @@ export function useSambhavModel2() {
           meanVal,
         }));
 
-        // 1.5s window reached with sufficient frames
-        if (elapsedMs >= SIGNING_WINDOW_MS && frameBufferRef.current.length >= 12) {
+        // Full 3-second window reached with sufficient frame count
+        if (elapsedMs >= SIGNING_WINDOW_MS && frameBufferRef.current.length >= 30) {
           const captured = [...frameBufferRef.current];
           frameBufferRef.current = [];
           triggerInference(captured);
@@ -320,10 +319,13 @@ export function useSambhavModel2() {
         // Hand absent
         noHandCountRef.current += 1;
 
-        // Natural gesture drop completion (hand moved away after signing)
+        const elapsedMs = signingStartTimeRef.current !== null ? now - signingStartTimeRef.current : 0;
+
+        // Natural gesture drop completion (must have completed at least 2.5s of signing)
         if (
-          noHandCountRef.current >= 4 &&
-          frameBufferRef.current.length >= 10 &&
+          noHandCountRef.current >= 6 &&
+          elapsedMs >= 2500 &&
+          frameBufferRef.current.length >= 45 &&
           !isAnalyzingRef.current &&
           signingStartTimeRef.current !== null
         ) {
@@ -331,7 +333,7 @@ export function useSambhavModel2() {
           frameBufferRef.current = [];
           triggerInference(captured);
         } else if (noHandCountRef.current > 8 && !isAnalyzingRef.current) {
-          // Hand gone for > 250ms: reset idle
+          // Hand vanished or aborted before full duration: cleanly reset to IDLE without false predictions
           signingStartTimeRef.current = null;
           frameBufferRef.current = [];
           setSigningCountdown(null);

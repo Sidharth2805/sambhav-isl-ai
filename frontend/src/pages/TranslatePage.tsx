@@ -1054,12 +1054,12 @@ export const TranslatePage: React.FC = () => {
                           <span className={`w-1.5 h-1.5 rounded-full ${gestureState === 'SIGN_DETECTED' || gestureState === 'COMMITTED' ? 'bg-emerald-400' : gestureState === 'COLLECTING' ? 'bg-amber-400 animate-ping' : gestureState === 'INFERENCE' ? 'bg-indigo-400 animate-spin' : 'bg-gray-400'}`} />
                           <span>
                             Status: {gestureState === 'COLLECTING'
-                              ? `Signing (${signingCountdown ?? 1}s)...`
+                              ? `Analyzing Sign (${signingCountdown ?? 3}s)...`
                               : gestureState === 'INFERENCE' || gestureState === 'DETECTING'
-                              ? 'Analyzing Gesture...'
+                              ? 'Evaluating Model...'
                               : gestureState === 'SIGN_DETECTED' || gestureState === 'COMMITTED'
                               ? `Detected: ${recognizedSign || 'Active Sign'}`
-                              : 'Ready to Sign'}
+                              : 'Ready to Sign (Hold gesture for 3s)'}
                           </span>
                           {gestureState === 'COLLECTING' && (
                             <div className="w-10 h-1 bg-white/20 rounded-full overflow-hidden ml-0.5">
@@ -1073,8 +1073,8 @@ export const TranslatePage: React.FC = () => {
                       )}
                     </div>
 
-                    {/* Bottom Floating Detected Sign Gauge */}
-                    {recognizedSign && (
+                    {/* Bottom Floating Detected Sign Gauge (Shown strictly for verified, committed predictions) */}
+                    {recognizedSign && (gestureState === 'COMMITTED' || signConfidence >= 0.65) && (
                       <div className="absolute bottom-3 left-3 right-3 bg-black/85 backdrop-blur-md p-3 rounded-xl border border-white/15 text-white flex items-center justify-between z-10 animate-scaleUp">
                         <div className="flex items-center gap-2.5">
                           <div className="w-8 h-8 rounded-lg bg-[#fe9832] text-[#683700] flex items-center justify-center font-black text-sm">
@@ -1084,6 +1084,9 @@ export const TranslatePage: React.FC = () => {
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-black text-white uppercase tracking-wide">
                                 Sign: {recognizedSign}
+                              </span>
+                              <span className="text-[10px] font-mono text-emerald-400 font-bold">
+                                ({Math.round(signConfidence * 100)}%)
                               </span>
                             </div>
                             <p className="text-xs text-gray-300 font-medium truncate max-w-xs">
